@@ -1,0 +1,58 @@
+# parts taken from devkitppc
+
+PREFIX	:=	xenon-
+
+export AS		:=	$(PREFIX)as
+export CC		:=	$(PREFIX)gcc
+export CXX		:=	$(PREFIX)g++
+export AR		:=	$(PREFIX)ar
+export OBJCOPY	:=	$(PREFIX)objcopy
+
+
+%.a:
+	@echo $(notdir $@)
+	@rm -f $@
+	@$(AR) -rc $@ $^
+
+%.o: %.cpp
+	@echo $(notdir $<)
+	$(CXX) -MMD -MP -MF $(DEPSDIR)/$*.d $(CXXFLAGS) -c $< -o $@
+	
+%.o: %.c
+	@echo $(notdir $<)
+	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(CFLAGS) -c $< -o $@
+
+%.o: %.m
+	@echo $(notdir $<)
+	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(OBJCFLAGS) -c $< -o $@
+
+%.o: %.s
+	@echo $(notdir $<)
+	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
+
+%.o: %.S
+	@echo $(notdir $<)
+	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
+
+%.elf:
+	@echo linking ... $(notdir $@)
+	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -n -T $(DEVKITXENON)/app.lds -o $@
+
+%.elf32: %.elf
+	@echo converting ... $(notdir $@)
+	$(OBJCOPY) -O elf32-powerpc --adjust-vma 0x80000000 $< $@
+
+#---------------------------------------------------------------------------------
+# canned command sequence for binary data
+#---------------------------------------------------------------------------------
+define bin2o
+	bin2s -a 32 $< | $(AS) -o $(@)
+	echo "extern const u8" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"_end[];" > `(echo $(<F) | tr . _)`.h
+	echo "extern const u8" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> `(echo $(<F) | tr . _)`.h
+	echo "extern const u32" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> `(echo $(<F) | tr . _)`.h
+endef
+
+export	LIBXENON_INC	:=	$(DEVKITXENON)/libxenon/include
+export	LIBXENON_LIB	:=	$(DEVKITXENON)/libxenon/lib/xenon
+
+MACHDEP =  -DXENON -m32 -mno-altivec -fno-pic -mpowerpc64 -mhard-float -L /home/dev360/cross/xenon/lib/32/ -u read -u _start -u exc_base
