@@ -1,0 +1,44 @@
+diff -aur gcc-4.4.0/config.sub gcc-4.4.0/config.sub
+--- gcc-4.4.0/config.sub	2008-12-18 04:27:27.000000000 +0100
++++ gcc-4.4.0/config.sub	2009-04-11 01:05:57.000000000 +0200
+@@ -919,6 +919,15 @@
+ 	ppc64le-* | powerpc64little-*)
+ 		basic_machine=powerpc64le-`echo $basic_machine | sed 's/^[^-]*-//'`
+ 		;;
++	ppu)
++		basic_machine=powerpc64-unknown
++		os=-linux-gnu
++		;;
++	xenon)
++		basic_machine=powerpc64-unknown
++		os=-linux-gnu
++		#os=-elf
++		;;
+ 	ps2)
+ 		basic_machine=i386-ibm
+ 		;;
+diff -aur gcc-4.4.0/libmudflap/configure.ac gcc-4.4.0/libmudflap/configure.ac
+--- gcc-4.4.0/libmudflap/configure.ac	2009-01-23 05:58:03.000000000 +0100
++++ gcc-4.4.0/libmudflap/configure.ac	2009-04-10 23:04:17.000000000 +0200
+@@ -94,7 +94,9 @@
+    AC_MSG_RESULT(yes)],
+   [AC_MSG_RESULT(no)])
+ 
+-AC_LIBTOOL_DLOPEN
++if test "x${with_newlib}" != "xyes"; then
++  AC_LIBTOOL_DLOPEN
++fi
+ AM_PROG_LIBTOOL
+ AC_SUBST(enable_shared)
+ AC_SUBST(enable_static)
+diff -aur gcc-4.4.0/libstdc++-v3/configure gcc-4.4.0/libstdc++-v3/configure
+--- gcc-4.4.0/libstdc++-v3/configure	2009-03-01 18:49:31.000000000 +0100
++++ gcc-4.4.0/libstdc++-v3/configure	2009-04-10 22:48:16.000000000 +0200
+@@ -10179,6 +10179,7 @@
+   finish_cmds='PATH="\$PATH:/sbin" ldconfig -n $libdir'
+   shlibpath_var=LD_LIBRARY_PATH
+   shlibpath_overrides_runpath=no
++  lt_cv_shlibpath_overrides_runpath=no
+ 
+   # Some binutils ld are patched to set DT_RUNPATH
+   if test "${lt_cv_shlibpath_overrides_runpath+set}" = set; then

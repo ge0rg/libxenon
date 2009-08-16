@@ -1,0 +1,18 @@
+diff -aur binutils-2.19.1/config.sub binutils-2.19.1/config.sub
+--- binutils-2.19.1/config.sub	2008-04-14 11:28:35.000000000 +0200
++++ binutils-2.19.1/config.sub	2009-04-10 21:15:27.000000000 +0200
+@@ -913,6 +913,14 @@
+ 	ppc64le-* | powerpc64little-*)
+ 		basic_machine=powerpc64le-`echo $basic_machine | sed 's/^[^-]*-//'`
+ 		;;
++	ppu)
++		basic_machine=powerpc64-unknown
++		os=-linux-gnu
++		;;
++	xenon)
++		basic_machine=powerpc64-unknown
++		os=-linux-gnu
++		;;
+ 	ps2)
+ 		basic_machine=i386-ibm
+ 		;;

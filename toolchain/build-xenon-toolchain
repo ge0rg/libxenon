@@ -1,0 +1,87 @@
+#!/bin/sh
+
+# originally written by Uwe Hermann <uwe@hermann-uwe.de>, released as public domain.
+# changed for xenon by Felix Domke <tmbinc@elitedvb.net>, still public domain
+
+TARGET=xenon
+PREFIX=/tmp/toolchain # Install location of your final toolchain
+PARALLEL="-j 2"			 # Or: PARALLEL=""
+
+BINUTILS=binutils-2.19.1
+GCC=gcc-4.4.0
+NEWLIB=newlib-1.17.0
+GDB=gdb-6.8
+
+BUILD_BINUTILS=false
+BUILD_GCC=true
+BUILD_NEWLIB=true
+BUILD_GCC_SECOND=true
+
+export PATH="$PATH:$PREFIX/bin"
+
+wget -c http://ftp.gnu.org/gnu/binutils/$BINUTILS.tar.bz2 || exit 0
+wget -c ftp://ftp.gnu.org/gnu/gcc/$GCC/$GCC.tar.bz2 || exit 0
+wget -c ftp://sources.redhat.com/pub/newlib/$NEWLIB.tar.gz || exit 0
+wget -c ftp://ftp.gnu.org/gnu/gdb/$GDB.tar.bz2 || exit 0
+
+rm -rf build
+
+mkdir build
+
+if $BUILD_BINUTILS; then
+tar xfj $BINUTILS.tar.bz2 && cat binutils.diff | patch -p0 || exit 0
+cd build
+../$BINUTILS/configure --target=$TARGET --prefix=$PREFIX  --enable-multilib   --disable-nls || exit 0
+make $PARALLEL || exit 0
+make install || exit 0
+cd ..
+rm -rf build/*;
+fi; 
+
+if $BUILD_GCC; then
+tar xfj $GCC.tar.bz2  && cat gcc.diff | patch -p0 || exit 0
+cd build
+../$GCC/configure --target=$TARGET --prefix=$PREFIX --with-libiconv-prefix=/opt/local -enable-interwork --enable-multilib \
+	--enable-languages="c" --without-headers --disable-shared \
+	--with-newlib --disable-libgomp --disable-libmudflap --disable-libssp --disable-nls --disable-shared --disable-threads --without-headers \
+	--disable-decimal-float \
+	  --with-gmp=/opt/local --with-mpfr=/opt/local --with-cpu=cell || exit 0 
+make $PARALLEL all-gcc || exit 0
+make install-gcc || exit 0
+cd ..
+rm -rf build/*
+fi;
+
+if $BUILD_NEWLIB; then
+tar xfz $NEWLIB.tar.gz && cat newlib.diff | patch -p0 || exit 0
+cd build
+../$NEWLIB/configure --target=$TARGET --prefix=$PREFIX  --enable-multilib   --disable-nls || exit 0
+make $PARALLEL || exit 0
+make install || exit 0
+cd ..
+#rm -rf build/*
+fi 
+
+if $BUILD_GCC_SECOND; then
+# Yes, you need to build gcc again!
+cd build
+../$GCC/configure --target=$TARGET --prefix=$PREFIX --with-libiconv-prefix=/opt/local \
+	  --enable-multilib  --with-cpu=cell \
+	   --with-gmp=/opt/local --with-mpfr=/opt/local --disable-decimal-float \
+	 --enable-languages=c,c++ --disable-libssp --with-newlib --enable-cxx-flags="-G0" --disable-libgomp \
+	 --disable-libmudflap --disable-nls --disable-shared --disable-threads  --disable-linux-futex  \
+	 	|| exit 0
+make $PARALLEL || exit 0
+make install || exit 0
+cd ..
+rm -rf build/*
+fi
+
+#tar xfvj $GDB.tar.bz2
+#cd build
+#../$GDB/configure --target=$TARGET --prefix=$PREFIX  --enable-multilib
+#make $PARALLEL
+#make install
+#cd ..
+#rm -rf build $GDB $GDB.tar.bz2
+
