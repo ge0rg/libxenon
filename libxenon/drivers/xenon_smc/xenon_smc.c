@@ -162,3 +162,11 @@ void xenon_smc_query_sensors(uint16_t *data)
 	for (i = 0; i < 4; ++i)
 		*data++ = (buf[i * 2 + 1] | (buf[i * 2 + 2] << 8));
 }
+
+int xenon_smc_read_avpack(void)
+{
+	uint8_t buf[16] = {0x0f};
+	xenon_smc_send_message(buf);
+	xenon_smc_receive_response(buf);
+	return buf[1];
+}

@@ -19,6 +19,7 @@ void xenon_smc_power_shutdown(void);
 void xenon_smc_start_bootanim(void);
 
 void xenon_smc_query_sensors(uint16_t *data);
+int xenon_smc_read_avpack(void);
 
 #ifdef __cplusplus
 };
