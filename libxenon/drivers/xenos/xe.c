@@ -1558,9 +1558,6 @@ void Xe_Init(struct XenosDevice *xe)
 	xe->regs = (void*)0xec800000;
 	xe->rb = xe->rb_primary = (void*)(RINGBUFFER_BASE | 0x80000000);
 	
-// optimize framebuffer to the end, so we have a bit more space: 
-	w32(0x6110, 0x1fc00000);
-	
 	xe->tex_fb.ptr = r32(0x6110);
 	xe->tex_fb.pitch = r32(0x6120) * 4;
 	xe->tex_fb.width = r32(0x6134);

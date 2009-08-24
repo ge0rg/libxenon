@@ -589,7 +589,7 @@ void xenos_set_mode(struct mode_s *mode)
 	xenos_write32(0x6060, 0x000000ec);
 	xenos_write32(0x6064, 0x014a00ec);
 	xenos_write32(0x6068, 0x00d4014a);
-	xenos_write32(0x6110, 0x1f920000);
+	xenos_write32(0x6110, 0x0f920000);
 
 
 	if (!mode->rgb)
@@ -1233,20 +1233,38 @@ void xenos_autoset_mode(void)
 	int mode = MODE_PAL60;
 	int avpack = xenon_smc_read_avpack();
 	printf("AVPACK detected: %02x\n", avpack);
-	switch (avpack)
+	switch (avpack&0xF)
 	{
-	case 0x03: // normal
+	case 0x3: // normal (composite)
 		mode = MODE_PAL60;
 		break;
-	case 0x0F: // HDTV
+	case 0xF: // HDTV
 		mode = MODE_PAL60; // is fine for that, too.
 		break;
-	case 0x1b: // VGA
+	case 0xb: // VGA
 		mode = MODE_VGA_1024x768;
+		break;
+	case 0xC: // no AV pack, revert to composite.
+		mode = MODE_PAL60;
 		break;
 	default:
 		printf("unsupported AVPACK!\n");
-		xenon_smc_set_led(1, 0xf0);
+		{
+			int table[] = {0xf, 0x1, 0x3, 0x7};
+			xenon_smc_set_led(1, 0xff);
+			mdelay(1000);
+			xenon_smc_set_led(1, table[(avpack>>6) & 3]);
+			mdelay(1000);
+			xenon_smc_set_led(1, table[(avpack>>4) & 3]);
+			mdelay(1000);
+			xenon_smc_set_led(1, table[(avpack>>2) & 3]);
+			mdelay(1000);
+			xenon_smc_set_led(1, table[(avpack>>0) & 3]);
+			mdelay(1000);
+			xenon_smc_set_led(1, 0xff);
+			mdelay(1000);
+			xenon_smc_set_led(0, 0);
+		}
 		break;
 	}
 	xenos_set_mode(&xenos_modes[mode]);
