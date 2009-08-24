@@ -10,15 +10,15 @@ static void tdelay(uint64_t i)
 
 void udelay(int u)
 {
-	tdelay(PPC_TIMEBASE_FREQ * u / 1000000);
+	tdelay(((long long)PPC_TIMEBASE_FREQ) * u / 1000000);
 }
 
 void mdelay(int u)
 {
-	tdelay(PPC_TIMEBASE_FREQ * u / 1000);
+	tdelay(((long long)PPC_TIMEBASE_FREQ) * u / 1000);
 }
 
 void delay(int u)
 {
-	tdelay(PPC_TIMEBASE_FREQ * u);
+	tdelay(((long long)PPC_TIMEBASE_FREQ) * u);
 }
