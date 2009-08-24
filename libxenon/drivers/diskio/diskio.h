@@ -1,6 +1,10 @@
 #ifndef __diskio_h
 #define __diskio_h
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef unsigned long long lba_t;
 
 struct bdev;
@@ -25,5 +29,9 @@ struct bdev *register_bdev_child(struct bdev *parent, lba_t offset, int index);
 void unregister_bdev(struct bdev *bdev);
 
 struct bdev *bdev_open(const char *name);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif
