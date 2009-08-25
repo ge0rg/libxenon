@@ -52,7 +52,7 @@ define bin2o
 	echo "extern const u32" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> `(echo $(<F) | tr . _)`.h
 endef
 
-export	LIBXENON_INC	:=	$(DEVKITXENON)/libxenon/include
-export	LIBXENON_LIB	:=	$(DEVKITXENON)/libxenon/lib/xenon
+export	LIBXENON_INC	:=	$(DEVKITXENON)/usr/include
+export	LIBXENON_LIB	:=	$(DEVKITXENON)/usr/lib
 
-MACHDEP =  -DXENON -m32 -mno-altivec -fno-pic -mpowerpc64 -mhard-float -L /home/dev360/cross/xenon/lib/32/ -u read -u _start -u exc_base
+MACHDEP =  -DXENON -m32 -mno-altivec -fno-pic -mpowerpc64 -mhard-float -L$(DEVKITXENON)/xenon/lib/32 -u read -u _start -u exc_base
