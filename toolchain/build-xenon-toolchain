@@ -17,10 +17,21 @@ BUILD_GCC=true
 BUILD_NEWLIB=true
 BUILD_GCC_SECOND=true
 
+# path to the logfile
 LOGFILE="`pwd`/build.log"
 
-export PATH="$PATH:$PREFIX/bin"
+# variables to check if we are running a debian distribution
+LSBRELEASE="`lsb_release -a`"
+SEARCH_UBUNTU="Ubuntu"
+SEARCH_DEBIAN="Debian"
+DEB=false
 
+# temp variables export
+export PATH="$PATH:$PREFIX/bin"
+export DEVKITXENON="/usr/local/xenon"
+export PATH="$PATH:\$DEVKITXENON/bin:\$DEVKITXENON/usr/bin"
+
+# function to compile and install libxenon
 function libxenon_install
 {
 	rm -rf free60 &>/dev/null
@@ -38,8 +49,8 @@ function libxenon_install
 		cp  free60/devkitxenon/app.lds free60/devkitxenon/rules $PREFIX/
 		# startup crt fix
 		cp free60/libxenon/startup/xenon/crt1.o /usr/local/xenon/xenon/lib/
-		cp free60/libxenon/startup/xenon/crti.o /usr/local/xenon/xenon/lib/
-		cp free60/libxenon/startup/xenon/crtn.o /usr/local/xenon/xenon/lib/
+		cp free60/libxenon/ports/xenon/crti.o /usr/local/xenon/xenon/lib/
+		cp free60/libxenon/ports/xenon/crtn.o /usr/local/xenon/xenon/lib/
 		echo
 		echo -e "libxenon installled successfully"
 		echo
@@ -181,18 +192,59 @@ function cube
 
 function all_done
 {
+	RED='\e[0;31m'
+	NC='\e[0m'
+
+	echo
 	echo -e "All done, your xenon toolchain is located here : $PREFIX"
 	echo
-	echo -e "Please add the following path to your login script (~/.bashrc)"
+	echo -e "${RED}Please add the following path to your login script (~/.bashrc)"
 	echo
 	echo -e "export DEVKITXENON=\"/usr/local/xenon\""
 	echo -e "export PATH=\"\$PATH:\$DEVKITXENON/bin:\$DEVKITXENON/usr/bin\""
+	echo -e "${NC}"
 }
 
-## start ##
+function check_debian
+{
+	if `echo $LSBRELEASE | grep "$SEARCH_UBUNTU" >> $LOGFILE 2>&1`
+	then
+  		DEB=true
+	fi
+
+	if `echo $LSBRELEASE | grep "$SEARCH_DEBIAN" >> $LOGFILE 2>&1`
+	then
+  		DEB=true
+	fi
+}
+
+function check_build-essential
+{
+	echo -e "Ubuntu or Debian is detected."
+	dpkg -s build-essential >> $LOGFILE 2>&1
+
+	if [ $? -eq 1 ]; then
+		echo -e "The build-essential package was not detected on your system"
+		echo -e "To build the toolchain you need to download and install the build-essential package."
+		echo -e "Do you want this script to do it for you ? (y/n)"
+		read answer >> $LOGFILE 2>&1
+		if [ "$answer" == "y" ]; then
+			echo -e "Please wait while installing build-essential..."
+			sudo apt-get install build-essential >> $LOGFILE 2>&1
+		fi
+	else
+		echo -e "The build-essential package was detected on your system"
+	fi
+}
+
+# start
 rm $LOGFILE &>/dev/null
 
 if [ "$1" == "toolchain" ]; then
+	check_debian
+	if $DEB; then
+		check_build-essential
+	fi
 	toolchain_install
 	libxenon_install
 	all_done
@@ -201,7 +253,6 @@ elif [ "$1" == "libxenon" ]; then
 elif [ "$1" == "cube" ]; then
 	cube
 else
-	echo
 	echo -e "Usage:"
 	echo -e "\"$0 toolchain\" (install toolchain + libxenon)"
 	echo -e "\"$0 libxenon\" (install or update libxenon)"
