@@ -1,4 +1,5 @@
-
+#ifndef __input_h
+#define __input_h
 
 struct controller_data_s
 {
@@ -10,3 +11,5 @@ struct controller_data_s
 int get_controller_data(struct controller_data_s *d, int port);
 
 void set_controller_data(int port, const struct controller_data_s *d);
+
+#endif
