@@ -94,7 +94,7 @@ uint32_t ana_1024x768 [] = {
 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // b8
 0xffffffff, 0xffffffff, 0x00000000, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // c0
 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // c8
-0x000551d4, 0x000551d4, 0x002cfe1f, 0x00205218, 0x00115a17, 0x00000000, 0x00000060, 0x00000000,  // d0
+0x000551d4, 0x000551d4, 0x002cfe1f, 0x00205218, 0x00115a17, 0x00000060, 0x000000f0, 0x00000000,  // d0
 0x00000007, 0x0001ee60, 0x00000002, 0x00000004, 0x000042aa, 0xffffffff, 0xffffffff, 0xffffffff,  // d8
 0x00000000, 0x00000000, 0x00000000, 0x8436f666, 0x0000001b, 0xffffffff, 0xffffffff, 0xffffffff,  // e0
 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // e8
@@ -305,10 +305,12 @@ void xenos_init_ana_new(uint32_t *mode_ana)
 	for (i = 1; i < 8; ++i)
 	{
 		uint32_t old;
-		xenon_smc_ana_read(addr_0[i], &old);
+//		xenon_smc_ana_read(addr_0[i], &old);
 //		require(!xenon_smc_ana_write(addr_0[i], val[i]), ana_error);
 		require(!xenon_smc_ana_write(addr_0[i], mode_ana[addr_0[i]]), ana_error);
-		xenon_smc_ana_read(addr_0[i], &tmp);
+		if (addr_0[i] == 0xd6)
+			udelay(1000);
+//		xenon_smc_ana_read(addr_0[i], &tmp);
 	}
 	
 	require(!xenon_smc_ana_write(0, 0x60), ana_error);
