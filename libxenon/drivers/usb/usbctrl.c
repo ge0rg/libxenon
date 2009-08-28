@@ -71,6 +71,7 @@ typedef struct usbctrl_softc_s {
 	int uhid_ipipe;
 	int uhid_ipipemps;
 	int uhid_devtype;
+	int is_wireless;
 	uint8_t *uhid_imsg;
 	uint8_t uhid_lastmsg[UBR_KBD_MAX];
 	uint32_t uhid_shiftflags;
@@ -96,12 +97,26 @@ usb_driver_t usbctrl_driver = {
 	*			 0
 	********************************************************************* */
 
+
+// from wireless:
+//08 80 82 00 40 01 02 20 00 07 05 82 03 20 00 02 07 05 02 03 
+//00 0f 00 f0 f0 cc 56 57 9e c0 53 7f c9 00 00 05 13 e7 20 1d 
+//00 00 00 f0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+//00 f8 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+//00 00 00 13 e2 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+//00 00 00 f0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+//00 01 00 f0 00 13 00 00 00 00 4f fc 1e 06 88 07 f6 f7 00 00 
+//00 00 00 f0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+//00 01 00 f0 00 13 00 00 00 00 9d fd 1e 06 88 07 f6 f7 00 00 
+//00 00 00 f0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+//00 01 00 f0 00 13 00 00 00 00 9d fd ce 04 88 07 f6 f7 00 00 
+
 static int usbctrl_ireq_callback(usbreq_t *ur)
 {
 	usbctrl_softc_t *uhid = (ur->ur_dev->ud_private);
 	
 /*	int i;
-	for (i = 0; i < 20; ++i)
+	for (i = 0; i < uhid->uhid_ipipemps; ++i)
 		printf("%02x ", ur->ur_buffer[i]);
 	printf("\n");  */
 	
@@ -117,6 +132,14 @@ static int usbctrl_ireq_callback(usbreq_t *ur)
 	struct controller_data_s c;
 	unsigned char *b = ur->ur_buffer;
 	
+	if (uhid->is_wireless)
+	{
+		if (b[5] == 0x13)
+			b += 4;
+		else
+			goto ignore;
+	}
+
 	c.s1_x = (b[7] << 8) | b[6];
 	c.s1_y = (b[9] << 8) | b[8];
 	c.s2_x = (b[11] << 8) | b[10];
@@ -143,6 +166,7 @@ static int usbctrl_ireq_callback(usbreq_t *ur)
 	
 	set_controller_data(0, &c);
 
+ignore:
 	usb_queue_request(ur);
 
 	return 0;
@@ -215,6 +239,8 @@ static int usbctrl_attach(usbdev_t *dev,usb_driver_t *drv)
 		printf("couldn't find descriptor!\n");
 		return 0;
 	}
+	
+	softc->is_wireless = GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x291;
 
 	/*
 	 * Allocate a DMA buffer
