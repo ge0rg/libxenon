@@ -2,7 +2,7 @@
      SECTIONS
      {
 			. = 0x80000000;
-      .text : {  *(.except*); *(.text*); *(.init*); }
+      .text : {  *(.except*); *(.pagetable); *(.text*); *(.init*); }
 
       .data : { *(.data*) }
       .sdata : { *(.sdata*) }
