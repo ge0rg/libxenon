@@ -10,6 +10,7 @@ extern "C" {
 void xenon_sound_init(void);
 void xenon_sound_submit(void *data, int len);
 int xenon_sound_get_free(void);
+int xenon_sound_get_unplayed(void);
 
 #ifdef __cplusplus
 };

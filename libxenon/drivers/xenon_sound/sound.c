@@ -86,3 +86,20 @@ int xenon_sound_get_free(void)
 		av += buffer_len;
 	return av;
 }
+
+int xenon_sound_get_unplayed(void)
+{
+	uint32_t reg = read32(snd_base + 4);
+	
+	int rptr_descr = reg & 0x1f;
+	int last_valid_descr = (reg & 0x1f00) >> 8;
+	int cur_len = (reg >> 16) & 0xFFFF;
+	
+	int l = last_valid_descr - rptr_descr;
+	if (l < 0)
+		l += 0x20;
+	l *= 0x800;
+	l += cur_len;
+	
+	return l;
+}
