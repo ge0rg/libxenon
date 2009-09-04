@@ -5,7 +5,8 @@ static void tdelay(uint64_t i)
 {
 	uint64_t t = mftb();
 	t += i;
-	while (mftb() < t);
+	while (mftb() < t) asm volatile("or 31,31,31");
+	asm volatile("or 2,2,2");
 }
 
 void udelay(int u)
