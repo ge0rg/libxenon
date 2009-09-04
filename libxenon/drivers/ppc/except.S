@@ -1,5 +1,5 @@
 .section ".except"
-#define DEBUG 1
+// #define DEBUG 1
 #define PAGE_BITS 12
 #define TLB_Index_Hint 0x3b2
 #define TLB_Index 0x3b3
@@ -11,11 +11,23 @@
 #define REG_CTR 33
 #define REG_CR 34
 #define REG_XER 35
+#define DEBUG_LOCK 36
 
 .extern pagetable
 
 .globl exc_base
 exc_base:
+
+.globl secondary_lock
+secondary_lock:
+	.long 0
+
+.globl secondary_alive
+secondary_alive:
+	.long 0
+
+debug_lock:
+	.long 0
 
 #define DO_EXCEPT(addr, fnc) \
 . = exc_base + addr;  \
@@ -28,7 +40,26 @@ std %r4, OFF_REG(4)(%r31); \
 li %r3, addr; \
 b fnc
 
-DO_EXCEPT(0x00000100, ex_reset);
+// DO_EXCEPT(0x00000100, ex_reset);
+
+ . = exc_base + 0x100
+
+mfspr   %r3, 0x3F1
+li      %r4, 3
+rldimi  %r3, %r4, 58,4
+rldimi  %r3, %r4, 38,25
+sync
+mtspr   0x3F1, %r3
+sync
+isync
+mflr %r7
+mtsrr0  %r7
+mtsrr1  %r8
+rfid
+
+mr %r2, %r2
+blr
+
 DO_EXCEPT(0x00000200, ex_machine_check);
 DO_EXCEPT(0x00000300, ex_dsi);
 DO_EXCEPT(0x00000380, ex_data_segment);
@@ -481,12 +512,11 @@ ex_reserved:
 ex_thermal:
 
 dump:
-
-mfsprg1 %r31
-std %r1, OFF_REG(1)(%r31)
-std %r2, OFF_REG(2)(%r31)
-std %r3, OFF_REG(3)(%r31)
-std %r4, OFF_REG(4)(%r31)
+	mfsprg1 %r31
+//std %r1, OFF_REG(1)(%r31)
+//std %r2, OFF_REG(2)(%r31)
+//std %r3, OFF_REG(3)(%r31)
+//std %r4, OFF_REG(4)(%r31)
 
 	std %r0, OFF_REG(0)(%r31)
 	std %r5, OFF_REG(5)(%r31)
@@ -519,9 +549,26 @@ std %r4, OFF_REG(4)(%r31)
 	std %r4, OFF_REG(31)(%r31)
 	mflr %r4
 	std %r4, OFF_REG(REG_LR)(%r31)
-page_fault:
 
+//	li %r3, debug_lock@l
+//	bl lock
 
+	bl puthex
+
+	li %r3, '\n'
+	bl putc
+
+dump_from_pagefault:
+
+	li %r3, 'P'
+	bl putc
+	li %r3, 'I'
+	bl putc
+	li %r3, 'R'
+	bl putc
+	li %r3, '='
+	bl putc
+	mfspr %r3, 1023
 	bl puthex
 
 	li %r3, '\n'
@@ -536,6 +583,20 @@ page_fault:
 	li %r3, '='
 	bl putc
 	mfsrr0 %r3
+	bl puthex
+
+	li %r3, '\n'
+	bl putc
+
+	li %r3, 'l'
+	bl putc
+	li %r3, 'r'
+	bl putc
+	li %r3, ' '
+	bl putc
+	li %r3, '='
+	bl putc
+	ld %r4, OFF_REG(REG_LR)(%r31)
 	bl puthex
 
 	li %r3, '\n'
@@ -606,6 +667,8 @@ page_fault:
 	bl putc
 	li %r3, 'L'
 	bl putc
+	li %r3, debug_lock@l
+	bl unlock
 
  	b .
 
@@ -621,7 +684,7 @@ putc:
   lwz %r3, 0x1018(%r4)
   rlwinm. %r3, %r3, 0, 6, 6
   beq 1b
-
+2:
   blr
 
 ex_interrupt:
@@ -673,6 +736,27 @@ ex_interrupt:
 	bl putc
 
 	b except_return
+
+page_fault:
+
+	li %r3, 'S'
+	bl putc
+	li %r3, 'I'
+	bl putc
+	li %r3, 'G'
+	bl putc
+	li %r3, 'S'
+	bl putc
+	li %r3, 'E'
+	bl putc
+	li %r3, 'G'
+	bl putc
+	li %r3, 'V'
+	bl putc
+	li %r3, '\n'
+	bl putc
+	b dump_from_pagefault
+
 
 puthex:
 	mflr 0
