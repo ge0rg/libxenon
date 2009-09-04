@@ -33,9 +33,13 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/xenos/xenos.o \
 	../../drivers/xenon_smc/xenon_smc.o \
 	../../drivers/xenon_smc/xenon_gpio.o \
+	../../drivers/xenon_soc/cpusleep.o \
+	../../drivers/xenon_soc/xenon_power.o \
+	../../drivers/xenon_sound/sound.o \
 	../../drivers/pci/io.o \
 	../../drivers/time/time.o \
 	../../drivers/ppc/cache.o \
+	../../drivers/ppc/atomic.o \
 	../../drivers/ppc/vm.o \
 	../../drivers/ppc/except.o \
 	../../drivers/usb/ohci.o \
@@ -54,7 +58,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/fat/fat.o \
 	../../drivers/console/console.o
 
-OBJS_MAIN = main.o ffs_content.o test.o xee.o engine.o exception.o
+OBJS_MAIN = main.o ffs_content.o xee.o engine.o exception.o
 
 TARGETS=main.elf32
 
