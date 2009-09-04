@@ -15,6 +15,7 @@ void xenon_thread_startup(void);
 
 void xenon_make_it_faster(int speed);
 int  xenon_run_thread_task(int thread, void *stack, void *task);
+void xenon_sleep_thread(int thread);
 
 #ifdef __cplusplus
 };

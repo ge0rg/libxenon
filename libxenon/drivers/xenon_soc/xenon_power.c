@@ -72,7 +72,7 @@ void xenon_set_speed(int new_speed)
 	std(cpuregs + 0x50, ld(cpuregs + 0x50) &~ 0x200000000ULL);
 	std(cpuregs + 0x60, ld(cpuregs + 0x60) | (1ULL << 33));
 
-	write32(0xe1020004, read32(0xe1020004) | 1);
+//	write32(0xe1020004, read32(0xe1020004) | 1);
 
 	udelay(1);
 
@@ -105,11 +105,12 @@ int xenon_run_thread_task(int thread, void *stack, void *task)
 	return 0;
 }
 
+static unsigned char stack[5 * 0x1000];
+
 void xenon_make_it_faster(int speed)
 {
 	if (secondary_alive != 0x3f)
 		xenon_thread_startup();
-	unsigned char stack[5 * 0x1000];
 	printf(" * Make it faster by making it sleep...\n");
 	int i;
 	for (i = 1; i < 6; ++i)
@@ -140,4 +141,9 @@ void xenon_thread_startup(void)
 {
 	secondary_lock = 4 | 16; /* start primary threads */
 	while (secondary_alive != 0x3f); /* wait until all are alive */
+}
+
+void xenon_sleep_thread(int thread)
+{
+	xenon_run_thread_task(thread, stack + thread * 0x1000 - 0x100, xenon_thread_sleep);
 }
