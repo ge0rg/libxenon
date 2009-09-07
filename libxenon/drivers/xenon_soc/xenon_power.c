@@ -81,10 +81,65 @@ void xenon_set_speed(int new_speed)
 	std(irq + 8, 0x78);
 
 	uint64_t v = ld(cpuregs + 0x188);
+
+	int default_vid = (v >> 56) & 0x3F;
+	
 	v &= ~0xC007ULL;
 	v |= new_speed & 7;
 	v |= 0xFF0000;
 	v |= 8;
+	std(cpuregs + 0x188, v);
+	
+	v = ld(cpuregs + 0x188);
+	
+	/*
+		The CPU VID outputs connect directly to the 
+		ADP3190A chip. This allows a Vcore voltage
+		from 0.83V to 1.6V.
+		
+		The formula to calculate the output voltage is:
+		
+		if VID <= 0x14:
+			Vcore = 0.8375V + (0x14 - VID) * 0.0225V
+		else:
+			Vcore = 1.1000V + (0x3D - VID) * 0.0225V
+		
+		To simplify this, we define a "normalized VID"
+		
+		if VID < 0x15:
+			nVID = VID + 0x3E
+		else:
+			nVID = VID
+		
+		Each chip has a (fuse-burned?) VID. An offset to 
+		that VID is stored in the configuration data, and 
+		is added to this value.
+		
+		nVID_final = nVID_fused + VID_delta
+		
+		Then nVID has to be converted back to a VID, and 
+		written.
+	*/
+
+	printf(" * default VID: %02x\n", default_vid);
+	
+	if (default_vid < 0x15)
+		default_vid += 0x3e;
+	
+	int delta = 0x84; /* should come from config area */
+
+	int new_vid = default_vid + delta - 0x80;
+	
+	if (new_vid >= 0x3e)
+		new_vid -= 0x3e;
+	
+	printf(" * using new VID: %02x\n", new_vid);
+
+	v &= ~0xBF08ULL;
+	v |= new_vid << 8;
+	v |= 0x4000;
+	v |= 0xFF << 24;
+
 	std(cpuregs + 0x188, v);
 
 	cpusleep();
