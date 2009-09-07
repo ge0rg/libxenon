@@ -19,20 +19,23 @@ void xenon_sound_init(void)
 	static unsigned char smc_snd[32] = {0x8d, 1, 1};
 	xenon_smc_send_message(smc_snd);
 
-	uint32_t *descr = malloc(0x20 * 8);
+	uint32_t *descr = memalign(256, 0x20 * 8);
 	int descr_base = ((int)descr) & 0x1FFFFFFF;
 	
 	buffer_len = 64*1024;
-	buffer = malloc(buffer_len);
+	buffer = memalign(256, buffer_len);
+	memset(buffer, 0, buffer_len);
+	memdcbst(buffer, buffer_len);
 	
 	int buffer_base = ((int)buffer) & 0x1fffffff;
 	
 	int i;
 	for (i = 0; i < 0x20; ++i)
 	{
-		descr[i * 2] = bswap32(buffer_base + 0x800 * i);
-		descr[i * 2 + 1] = bswap32(0x80000000 | 0x800);
+		descr[i * 2] = bswap32(buffer_base + (buffer_len/0x20) * i);
+		descr[i * 2 + 1] = bswap32(0x80000000 | (buffer_len/0x20 - 1));
 	}
+
 	memdcbst(descr, 0x20 * 2 * 4);
 
 	write32(snd_base + 8, 0);
@@ -40,7 +43,7 @@ void xenon_sound_init(void)
 	write32(snd_base + 0, descr_base);
 	write32(snd_base + 8, 0x1d08001c);
 	write32(snd_base + 0xC, 0x1c);
-	write32(snd_base + 8, read32(snd_base) | 0x1000000);
+//	write32(snd_base + 8, read32(snd_base) | 0x1000000);
 	
 	wptr = 0;
 }
@@ -63,8 +66,8 @@ void xenon_sound_submit(void *data, int len)
 		if (wptr == buffer_len)
 			wptr = 0;
 	}
-	int cur_descr = wptr / 0x800;
-
+	int cur_descr = wptr / (buffer_len/0x20);
+	
 	write32(snd_base + 4, cur_descr << 8);
 	write32(snd_base + 8, read32(snd_base) | 0x1000000);
 }
@@ -80,7 +83,7 @@ int xenon_sound_get_free(void)
 	if (rptr_descr == last_valid_descr && !cur_len)
 		return buffer_len;
 
-	int rptr = rptr_descr * 0x800;
+	int rptr = rptr_descr * (buffer_len/0x20);
 	int av = rptr - wptr;
 	if (av < 0)
 		av += buffer_len;
@@ -98,7 +101,7 @@ int xenon_sound_get_unplayed(void)
 	int l = last_valid_descr - rptr_descr;
 	if (l < 0)
 		l += 0x20;
-	l *= 0x800;
+	l *= (buffer_len/0x20);
 	l += cur_len;
 	
 	return l;
