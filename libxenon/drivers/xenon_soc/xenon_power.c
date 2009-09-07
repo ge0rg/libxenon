@@ -82,7 +82,7 @@ void xenon_set_speed(int new_speed)
 
 	uint64_t v = ld(cpuregs + 0x188);
 
-	int default_vid = (v >> 56) & 0x3F;
+	int base_vid = (v >> 48) & 0x3F;
 	
 	v &= ~0xC007ULL;
 	v |= new_speed & 7;
@@ -96,44 +96,67 @@ void xenon_set_speed(int new_speed)
 		The CPU VID outputs connect directly to the 
 		ADP3190A chip. This allows a Vcore voltage
 		from 0.83V to 1.6V.
-		
+
 		The formula to calculate the output voltage is:
-		
+
 		if VID <= 0x14:
-			Vcore = 0.8375V + (0x14 - VID) * 0.0225V
+			Vcore = 0.8375V + (0x14 - VID) * 0.0125V
 		else:
-			Vcore = 1.1000V + (0x3D - VID) * 0.0225V
-		
+			Vcore = 1.1000V + (0x3D - VID) * 0.0125V
+
 		To simplify this, we define a "normalized VID"
-		
+
 		if VID < 0x15:
 			nVID = VID + 0x3E
 		else:
 			nVID = VID
-		
+
 		Each chip has a (fuse-burned?) VID. An offset to 
 		that VID is stored in the configuration data, and 
 		is added to this value.
-		
+
 		nVID_final = nVID_fused + VID_delta
-		
+
 		Then nVID has to be converted back to a VID, and 
 		written.
+
+		An example from a box running the KK hack:
+
+		The 0x61188 value says: 382c00000000b001
+
+		The "Base VID" (=VID_fused) here is 0x2C, 
+		the "current VID" (=VID_final) is 0x30.
+		The speed ratio is 1 (=full speed).
+
+		The Delta data stored in the flash config is 
+
+		Delta = 0x80, 0x84
+
+		So:
+
+		Current_VID = Base_VID + Delta[1] - 0x80
+
+		It seems that the CPU runs stable with much less voltage, but
+		this would require a bit more effort to make this sure.
 	*/
 
-	printf(" * default VID: %02x\n", default_vid);
+	int vlt = 11000 + (0x3D - ((base_vid < 0x15) ? base_vid + 0x3E : base_vid)) * 125;
+
+	printf(" * default VID: %02x (%d.%04dV)\n", base_vid, vlt / 10000, vlt % 10000);
 	
-	if (default_vid < 0x15)
-		default_vid += 0x3e;
+	if (base_vid < 0x15)
+		base_vid += 0x3e;
 	
 	int delta = 0x84; /* should come from config area */
 
-	int new_vid = default_vid + delta - 0x80;
+	int new_vid = base_vid + delta - 0x80;
 	
 	if (new_vid >= 0x3e)
 		new_vid -= 0x3e;
+
+	vlt = 11000 + (0x3D - ((new_vid < 0x15) ? new_vid + 0x3E : new_vid)) * 125;
 	
-	printf(" * using new VID: %02x\n", new_vid);
+	printf(" * using new VID: %02x (%d.%04dV)\n", new_vid, vlt / 10000, vlt % 10000);
 
 	v &= ~0xBF08ULL;
 	v |= new_vid << 8;
