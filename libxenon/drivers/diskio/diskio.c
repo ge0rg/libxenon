@@ -5,6 +5,7 @@
 #include <fat/fat.h>
 #include <malloc.h>
 #include <dirent.h>
+#include <errno.h>
 
 #define MAX_DEVICES 16
 
@@ -14,9 +15,15 @@ int _fat_read(struct vfs_file_s *file, void *dst, size_t len)
 {
 	struct fat_context * fat = file->priv[0];
 	int res = fat_read(fat, dst, len);
-	if (res >= 0)
-		file->offset += res;
-	return res;
+	if (!res)
+	{
+		file->offset += len;
+		return len;
+	} else
+	{
+		errno = EIO;
+		return -1;
+	}
 }
 
 int _fat_fstat(struct vfs_file_s *file, struct stat *buf)
