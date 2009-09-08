@@ -10,7 +10,7 @@ ifeq ($(strip $(DEVKITXENON)),)
 $(error "please set DEVKITXENON")
 endif
 
-CFLAGS = -Wall  -O2 -I. -DBYTE_ORDER=BIG_ENDIAN \
+CFLAGS = -Wall  -Os -I. -DBYTE_ORDER=BIG_ENDIAN \
 	-I ../../drivers -I ../../include -Wall  \
 	-m32 -fno-pic -mpowerpc64 \
 	-I ../../drivers/nocfe -D_CFE_=1 -DENDIAN_BIG=1
@@ -27,36 +27,40 @@ LDFLAGS = -L$(DEVKITXENON)/usr/lib -lxenon -lstdc++ -lm -m32
 LIBOBJS = crti.o crtn.o \
 	../../startup/xenon/startup_from_xell.o \
 	../../startup/xenon/crt1.o \
+	../../drivers/console/console.o \
+	../../drivers/diskio/diskio.o \
+	../../drivers/fat/fat.o \
+	../../drivers/input/input.o \
+	../../drivers/newlib/closedir.o \
 	../../drivers/newlib/newlib.o \
-	../../drivers/xenon_uart/xenon_uart.o \
-	../../drivers/xenos/xe.o \
-	../../drivers/xenos/xenos.o \
-	../../drivers/xenon_smc/xenon_smc.o \
-	../../drivers/xenon_smc/xenon_gpio.o \
-	../../drivers/xenon_soc/cpusleep.o \
-	../../drivers/xenon_soc/xenon_power.o \
-	../../drivers/xenon_sound/sound.o \
+	../../drivers/newlib/opendir.o \
+	../../drivers/newlib/readdir.o \
+	../../drivers/newlib/telldir.o \
+	../../drivers/nocfe/lib_malloc.o \
+	../../drivers/nocfe/lib_queue.o \
 	../../drivers/pci/io.o \
-	../../drivers/time/time.o \
-	../../drivers/ppc/cache.o \
 	../../drivers/ppc/atomic.o \
-	../../drivers/ppc/vm.o \
+	../../drivers/ppc/cache.o \
 	../../drivers/ppc/except.o \
+	../../drivers/ppc/vm.o \
+	../../drivers/time/time.o \
 	../../drivers/usb/ohci.o \
+	../../drivers/usb/usbctrl.o \
 	../../drivers/usb/usbd.o \
 	../../drivers/usb/usbdebug.o \
 	../../drivers/usb/usbdevs.o \
 	../../drivers/usb/usbhid.o \
-	../../drivers/usb/usbctrl.o \
 	../../drivers/usb/usbhub.o \
 	../../drivers/usb/usbmain.o \
-	../../drivers/nocfe/lib_malloc.o \
-	../../drivers/nocfe/lib_queue.o \
 	../../drivers/usb/usbmass.o \
-	../../drivers/diskio/diskio.o \
-	../../drivers/input/input.o \
-	../../drivers/fat/fat.o \
-	../../drivers/console/console.o
+	../../drivers/xenon_smc/xenon_gpio.o \
+	../../drivers/xenon_smc/xenon_smc.o \
+	../../drivers/xenon_soc/cpusleep.o \
+	../../drivers/xenon_soc/xenon_power.o \
+	../../drivers/xenon_sound/sound.o \
+	../../drivers/xenon_uart/xenon_uart.o \
+	../../drivers/xenos/xe.o \
+	../../drivers/xenos/xenos.o
 
 OBJS_MAIN = main.o ffs_content.o xee.o engine.o exception.o
 
