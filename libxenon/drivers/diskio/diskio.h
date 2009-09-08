@@ -21,6 +21,7 @@ struct bdev
 	lba_t offset;
 	struct bdev_ops *ops;
 	int disabled; /* used when USB device is unplugged */
+	void *mount;
 };
 
 struct bdev *register_bdev(void *ctx, struct bdev_ops *ops, const char *name);

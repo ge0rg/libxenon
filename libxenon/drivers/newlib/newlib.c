@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <newlib/vfs.h>
+
 struct ffs_s
 {
 	const char *filename;
@@ -14,15 +16,94 @@ struct ffs_s
 
 struct ffs_s __attribute__((weak)) ffs_files[] = {{0,0,0}};
 
-#define MAXFD 32
+#define MAXFD    64
+#define MAXMOUNT 16
 
-static struct fd_s
+struct mount_s;
+
+size_t vfs_default_lseek(struct vfs_file_s *file, size_t offset, int whence)
 {
-	int open;
-	int ffs_entry;
-	off_t offset;
-	int write;
-} fd_array[MAXFD] = {{1, -1}, {1, -1}, {1, -1}}; // stdin, stdout, stderr
+	switch (whence)
+	{
+	case 0:
+		file->offset = offset;
+		break;
+	case 1:
+		file->offset += offset;
+		break;
+	case 2:
+		file->offset = file->filesize + offset;
+		break;
+	}
+	if (file->offset < 0)
+		file->offset = 0;
+	if (file->offset >= file->filesize)
+		file->offset = file->filesize;
+	return file->offset;
+}
+
+			/* /dev/console */
+void (*stdout_hook)(const char *text, int len) = 0;
+
+extern void putch(unsigned char c);
+
+ssize_t vfs_console_write(struct vfs_file_s *file, const void *src, size_t len)
+{
+	if (stdout_hook)
+		stdout_hook(src, len);
+	size_t i;
+	for (i = 0; i < len; ++i)
+		putch(((const char*)src)[i]);
+	return len;
+}
+
+int vfs_console_isatty(struct vfs_file_s *file)
+{
+	return 1;
+}
+
+struct vfs_fileop_s vfs_console_ops = {.write = vfs_console_write, .isatty = vfs_console_isatty};
+
+int vfs_console_open(struct vfs_file_s *file, struct mount_s *mount, const char *filename, int oflags, int perm)
+{
+	if (!strcmp(filename, "console"))
+	{
+		file->ops = &vfs_console_ops;
+		return 0;
+	}
+	return -ENOENT;
+}
+
+static struct mount_s mounts[MAXMOUNT] = {
+	{"/dev/", vfs_console_open},
+};
+
+struct mount_s *mount(const char *mountpoint, int (*vfs_open)(struct vfs_file_s *file, struct mount_s *mount, const char *filename, int oflags, int perm))
+{
+	int i;
+	for (i = 0; i < MAXMOUNT; ++i)
+	{
+		if (!mounts[i].vfs_open)
+		{
+			strcpy(mounts[i].mountpoint, mountpoint);
+			mounts[i].vfs_open = vfs_open;
+			return &mounts[i];
+		}
+	}
+	return 0;
+}
+
+void umount(struct mount_s *mount)
+{
+	int i = mount - mounts;
+	*mounts[i].mountpoint = 0;
+}
+
+static struct vfs_file_s fd_array[MAXFD] = { 
+	[0] = {.ops = &vfs_console_ops},
+	[1] = {.ops = &vfs_console_ops},
+	[2] = {.ops = &vfs_console_ops},
+};
 
 extern unsigned char heap_begin;
 unsigned char *heap_ptr;
@@ -37,149 +118,120 @@ void * sbrk(ptrdiff_t incr)
 	return res;
 }
 
-extern void putch(unsigned char c);
-
-static inline int is_valid_and_open_fd(int fd)
+static inline struct vfs_file_s *is_valid_and_open_fd(int fd)
 {
-	return fd >= 0 && fd < MAXFD && fd_array[fd].open;
+	return (fd >= 0 && fd < MAXFD && fd_array[fd].ops) ? &fd_array[fd] : 0;
 }
-
-void (*stdout_hook)(const char *text, int len) = 0;
 
 ssize_t write(int fildes, const void *buf, size_t nbyte)
 {
-//	printf("write(%d, %p, %ld)=", fildes, buf, nbyte);
-	if (!is_valid_and_open_fd(fildes))
+	struct vfs_file_s *file = is_valid_and_open_fd(fildes);
+	
+	if (!file)
 	{
-//		printf("[EBADF]\n");
 		errno = EBADF;
 		return -1;
 	}
-	if (isatty(fildes))
+	
+	ssize_t res = file->ops->write ? file->ops->write(file, buf, nbyte) : -EPERM;
+	if (res < 0)
 	{
-		const char *p = buf;
-
-		if (stdout_hook)
-			stdout_hook(p, nbyte);
-
-		int i = 0;
-		while (nbyte--)
-		{
-			putch(*p++);
-			i++;
-		}
-//		printf("%d\n", i);
-		return i;
+		errno = -res;
+		return -1;
 	} else
-	{
-		printf("*** WRITE %d\n", fildes);
-		int i;
-		for (i = 0; i < nbyte; ++i)
-			printf("%02x ", ((unsigned char*)buf)[i]);
-		printf("\n");
-		return nbyte;
-	}
-//	printf("[EPERM]\n");
-	errno = EPERM;
-	return -1;
+		return res;
 }
 
 int close(int fildes)
 {
-//	printf("close(%d)\n", fildes);
-	if (!is_valid_and_open_fd(fildes))
+	struct vfs_file_s *file = is_valid_and_open_fd(fildes);
+	
+	if (!file)
 	{
 		errno = EBADF;
 		return -1;
 	}
-	if (fd_array[fildes].write)
-		printf("*** CLOSE %d\n", fildes);
+	
+	if (file->ops->close)
+		file->ops->close(file);
 
-	fd_array[fildes].open = 0;
+	memset(file, 0, sizeof(*file));
+
 	return 0;
 }
 
 int fstat(int fildes, struct stat *buf)
 {
-	buf->st_mode = S_IFCHR; 
-	buf->st_blksize = 0;
-	return 0;
+	struct vfs_file_s *file = is_valid_and_open_fd(fildes);
+	
+	if (!file)
+	{
+		errno = EBADF;
+		return -1;
+	}
+	
+	if (file->ops->fstat)
+		return file->ops->fstat(file, buf);
+	else
+	{
+		buf->st_mode = S_IFCHR;
+		buf->st_blksize = 0;
+		return 0;
+	}
 }
 
 int isatty(int fildes)
 {
-	if (!is_valid_and_open_fd(fildes))
+	struct vfs_file_s *file = is_valid_and_open_fd(fildes);
+	
+	if (!file)
 	{
 		errno = EBADF;
 		return -1;
 	}
-	return fd_array[fildes].ffs_entry == -1; // stdout
+	
+	if (file->ops->isatty)
+		return file->ops->isatty(file);
+	else
+		return 0;
 }
 
 off_t lseek(int fildes, off_t offset, int whence)
 {
-//	printf("lseek(%d, 0x%lx, %d)\n", fildes, offset, whence);
-	if (!is_valid_and_open_fd(fildes))
+	struct vfs_file_s *file = is_valid_and_open_fd(fildes);
+	
+	if (!file)
 	{
 		errno = EBADF;
 		return -1;
 	}
-
-	if (isatty(fildes))
+	
+	if (file->ops->lseek)
+		return file->ops->lseek(file, offset, whence);
+	else
 	{
 		errno = ESPIPE;
-		return ((off_t)-1);
+		return -1;
 	}
-	
-	size_t filesize = ffs_files[fd_array[fildes].ffs_entry].size;
-	
-	switch (whence)
-	{
-	case 0:
-		fd_array[fildes].offset = offset;
-		break;
-	case 1:
-		fd_array[fildes].offset += offset;
-		break;
-	case 2:
-		fd_array[fildes].offset = filesize + offset;
-		break;
-	}
-	if (fd_array[fildes].offset < 0)
-		fd_array[fildes].offset = 0;
-	if (fd_array[fildes].offset >= filesize)
-		fd_array[fildes].offset = filesize;
-	return fd_array[fildes].offset;
 }
 
 ssize_t read(int fildes, void *buf, size_t nbyte)
 {
-//	printf("read(%d, %p, %ld)=", fildes, buf, nbyte);
-	if (!is_valid_and_open_fd(fildes))
+	struct vfs_file_s *file = is_valid_and_open_fd(fildes);
+	
+	if (!file)
 	{
-//		printf("[EBADF]\n");
 		errno = EBADF;
 		return -1;
 	}
 	
-	if (isatty(fildes))
+	if (file->ops->read)
+		return file->ops->read(file, buf, nbyte);
+	else
 	{
-//		printf("[EIO]\n");
-		errno = EIO;
+		errno = EINVAL;
 		return -1;
 	}
-
-	size_t filesize = ffs_files[fd_array[fildes].ffs_entry].size;
-	off_t off = fd_array[fildes].offset;
-	
-	if (off + nbyte > filesize)
-		nbyte = filesize - off;
-	
-	memcpy(buf, ffs_files[fd_array[fildes].ffs_entry].content + off, nbyte);
-	fd_array[fildes].offset += nbyte;
-//	printf("%ld [%02x %02x %02x %02x]\n", nbyte, 
-//		((unsigned char*)buf)[0], ((unsigned char*)buf)[1], ((unsigned char*)buf)[2], ((unsigned char*)buf)[3]);
-	return nbyte;
 }
 
 void _exit(int status)
@@ -190,49 +242,48 @@ void _exit(int status)
 
 int open(const char *path, int oflag, ...)
 {
-	printf("open(\"%s\", 0x%x)=", path, oflag);
 	int fd = 0;
 	while (fd < MAXFD)
 	{
-		if (!fd_array[fd].open)
+		if (!fd_array[fd].ops)
 			break;
 		fd++;
 	}
 	if (fd == MAXFD)
 	{
-		printf("[EMFILE]\n");
 		errno = EMFILE;
 		return -1;
 	}
-
-	fd_array[fd].write = 0;
-
-	if (oflag & O_CREAT)
-	{
-		printf("\n*** CREATE %d, %s\n", fd, path);
-		fd_array[fd].ffs_entry = 0;
-		fd_array[fd].offset = 0;
-		fd_array[fd].open = 1;
-		fd_array[fd].write = 1;
-		return fd;
-	}
 	
-	unsigned int i;
-	for (i = 0; ffs_files[i].filename; ++i)
-		if (!strcmp(path, ffs_files[i].filename))
-			break;
-	if (!ffs_files[i].filename)
+	int i;
+	for (i = 0; i < MAXMOUNT; ++i)
 	{
-		printf("[ENOENT]\n");
-		errno = ENOENT;
+		const char *mpath = mounts[i].mountpoint;
+		if (*mpath && !strncmp(path, mpath, strlen(mpath)))
+			if (!mounts[i].vfs_open(&fd_array[fd], &mounts[i], path + strlen(mpath), oflag, 0))
+				return fd;
+	}
+	errno = ENOENT;
+	return -1;
+}
+
+int getdents (int fd, void *dp, int count)
+{
+	struct vfs_file_s *file = is_valid_and_open_fd(fd);
+	
+	if (!file)
+	{
+		errno = EBADF;
 		return -1;
 	}
-
-	fd_array[fd].ffs_entry = i;
-	fd_array[fd].offset = 0;
-	fd_array[fd].open = 1;
-	printf("%d\n", fd);
-	return fd;
+	
+	if (file->ops->getdents)
+		return file->ops->getdents(file, dp, count);
+	else
+	{
+		errno = EINVAL;
+		return -1;
+	}
 }
 
 pid_t getpid(void)

@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <diskio/diskio.h>
+#include <fat/fat.h>
 
 static inline uint16_t le16(const uint8_t *p)
 {
@@ -43,25 +44,23 @@ static inline uint32_t le32(const uint8_t *p)
 #define RAW_BUF 0x200
 #define MAX_SECTS 8
 static uint8_t raw_buf[RAW_BUF] __attribute__((aligned(32)));
+static uint32_t current = -1;
 
-static struct bdev *dev;
+static struct fat_context *current_ctx;
 
-static int raw_read(uint32_t sector)
+static int raw_read(struct fat_context * ctx, uint32_t sector)
 {
-	static uint32_t current = -1;
-
-	if (current == sector)
+	if (current_ctx == ctx && current == sector)
 		return 0;
 	current = sector;
+	current_ctx = ctx;
 	
-	return dev->ops->read(dev, raw_buf, sector, 1) < 0 ? : 0;
+	return ctx->dev->ops->read(ctx->dev, raw_buf, sector, 1) < 0 ? : 0;
 }
 
-static uint64_t partition_start_offset;
-
-static int read(uint8_t *data, uint64_t offset, uint32_t len)
+static int read(struct fat_context *ctx, uint8_t *data, uint64_t offset, uint32_t len)
 {
-	offset += partition_start_offset;
+	offset += ctx->partition_start_offset;
 
 	while (len) {
 		uint32_t buf_off = offset % RAW_BUF;
@@ -74,7 +73,7 @@ static int read(uint8_t *data, uint64_t offset, uint32_t len)
 			if (n > MAX_SECTS)
 				n = MAX_SECTS;
 				/* aligned */
-			err = dev->ops->read(dev, data, offset / RAW_BUF, n);
+			err = ctx->dev->ops->read(ctx->dev, data, offset / RAW_BUF, n);
 			if (err < n)
 				return err;
 			n *= RAW_BUF;
@@ -84,7 +83,7 @@ static int read(uint8_t *data, uint64_t offset, uint32_t len)
 			n = RAW_BUF - buf_off;
 			if (n > len)
 				n = len;
-			err = raw_read(offset / RAW_BUF);
+			err = raw_read(ctx, offset / RAW_BUF);
 			if (err)
 				return err;
 
@@ -100,67 +99,52 @@ static int read(uint8_t *data, uint64_t offset, uint32_t len)
 }
 
 
-static uint32_t bytes_per_cluster;
-static uint32_t root_entries;
-static uint32_t clusters;
-static uint32_t fat_type;	// 12, 16, or 32
-
-static uint64_t fat_offset;
-static uint64_t root_offset;
-static uint64_t data_offset;
-
-
-static uint32_t get_fat(uint32_t cluster)
+static uint32_t get_fat(struct fat_context *ctx, uint32_t cluster)
 {
 	uint8_t fat[4];
 
-	uint32_t offset_bits = cluster*fat_type;
-	int err = read(fat, fat_offset + offset_bits/8, 4);
+	uint32_t offset_bits = cluster*ctx->fat_type;
+	int err = read(ctx, fat, ctx->fat_offset + offset_bits/8, 4);
 	if (err)
 		return 0;
 
 	uint32_t res = le32(fat) >> (offset_bits % 8);
-	res &= (1 << fat_type) - 1;
+	res &= (1 << ctx->fat_type) - 1;
 	res &= 0x0fffffff;		// for FAT32
 
 	return res;
 }
 
-
-static uint64_t extent_offset;
-static uint32_t extent_len;
-static uint32_t extent_next_cluster;
-
-static void get_extent(uint32_t cluster)
+static void get_extent(struct fat_context *ctx, uint32_t cluster)
 {
-	extent_len = 0;
-	extent_next_cluster = 0;
+	ctx->extent_len = 0;
+	ctx->extent_next_cluster = 0;
 
 	if (cluster == 0) {	// Root directory.
-		if (fat_type != 32) {
-			extent_offset = root_offset;
-			extent_len = 0x20*root_entries;
+		if (ctx->fat_type != 32) {
+			ctx->extent_offset = ctx->root_offset;
+			ctx->extent_len = 0x20*ctx->root_entries;
 
 			return;
 		}
-		cluster = root_offset;
+		cluster = ctx->root_offset;
 	}
 
-	if (cluster - 2 >= clusters)
+	if (cluster - 2 >= ctx->clusters)
 		return;
 
-	extent_offset = data_offset + (uint64_t)bytes_per_cluster*(cluster - 2);
+	ctx->extent_offset = ctx->data_offset + (uint64_t)ctx->bytes_per_cluster*(cluster - 2);
 
 	for (;;) {
-		extent_len += bytes_per_cluster;
+		ctx->extent_len += ctx->bytes_per_cluster;
 
-		uint32_t next_cluster = get_fat(cluster);
+		uint32_t next_cluster = get_fat(ctx, cluster);
 
-		if (next_cluster - 2 >= clusters)
+		if (next_cluster - 2 >= ctx->clusters)
 			break;
 
 		if (next_cluster != cluster + 1) {
-			extent_next_cluster = next_cluster;
+			ctx->extent_next_cluster = next_cluster;
 			break;
 		}
 
@@ -169,41 +153,39 @@ static void get_extent(uint32_t cluster)
 }
 
 
-static int read_extent(uint8_t *data, uint32_t len)
+static int read_extent(struct fat_context *ctx, uint8_t *data, uint32_t len)
 {
 	while (len) {
-		if (extent_len == 0)
+		if (ctx->extent_len == 0)
 			return -1;
 
 		uint32_t this = len;
-		if (this > extent_len)
-			this = extent_len;
+		if (this > ctx->extent_len)
+			this = ctx->extent_len;
 
-		int err = read(data, extent_offset, this);
+		int err = read(ctx, data, ctx->extent_offset, this);
 		if (err)
 			return err;
 
-		extent_offset += this;
-		extent_len -= this;
+		ctx->extent_offset += this;
+		ctx->extent_len -= this;
 
 		data += this;
 		len -= this;
 
-		if (extent_len == 0 && extent_next_cluster)
-			get_extent(extent_next_cluster);
+		if (ctx->extent_len == 0 && ctx->extent_next_cluster)
+			get_extent(ctx, ctx->extent_next_cluster);
 	}
 
 	return 0;
 }
 
 
-int fat_read(void *data, uint32_t len)
+int fat_read(struct fat_context *ctx, void *data, uint32_t len)
 {
-	return read_extent(data, len);
+	return read_extent(ctx, data, len);
 }
 
-
-static uint8_t fat_name[11];
 
 static uint8_t ucase(char c)
 {
@@ -213,7 +195,7 @@ static uint8_t ucase(char c)
 	return c;
 }
 
-static const char *parse_component(const char *path)
+static const char *parse_component(struct fat_context *ctx, const char *path)
 {
 	uint32_t i = 0;
 
@@ -222,47 +204,48 @@ static const char *parse_component(const char *path)
 
 	while (*path && *path != '/' && *path != '.') {
 		if (i < 8)
-			fat_name[i++] = ucase(*path);
+			ctx->fat_name[i++] = ucase(*path);
 		path++;
 	}
 
 	while (i < 8)
-		fat_name[i++] = ' ';
+		ctx->fat_name[i++] = ' ';
 
 	if (*path == '.')
 		path++;
 
 	while (*path && *path != '/') {
 		if (i < 11)
-			fat_name[i++] = ucase(*path);
+			ctx->fat_name[i++] = ucase(*path);
 		path++;
 	}
 
 	while (i < 11)
-		fat_name[i++] = ' ';
+		ctx->fat_name[i++] = ' ';
 
-	if (fat_name[0] == 0xe5)
-		fat_name[0] = 0x05;
+	if (ctx->fat_name[0] == 0xe5)
+		ctx->fat_name[0] = 0x05;
 
 	return path;
 }
 
 
-uint32_t fat_file_size;
-
-int fat_open(const char *name)
+int fat_open(struct fat_context *ctx, const char *name)
 {
 	uint32_t cluster = 0;
 
-	while (*name) {
-		get_extent(cluster);
+	while (1) {
+		get_extent(ctx, cluster);
+		
+		if (!*name)
+			return 0;
 
-		name = parse_component(name);
+		name = parse_component(ctx, name);
 
-		while (extent_len) {
+		while (ctx->extent_len) {
 			uint8_t dir[0x20];
 
-			int err = read_extent(dir, 0x20);
+			int err = read_extent(ctx, dir, 0x20);
 			if (err)
 				return err;
 
@@ -274,17 +257,14 @@ int fat_open(const char *name)
 			if (dir[0x00] == 0xe5)	// deleted file
 				continue;
 
-			if (!!*name != !!(dir[0x0b] & 0x10))	// dir vs. file
-				continue;
-
-			if (memcmp(fat_name, dir, 11) == 0) {
+			if (memcmp(ctx->fat_name, dir, 11) == 0) {
 				cluster = le16(dir + 0x1a);
-				if (fat_type == 32)
+				if (ctx->fat_type == 32)
 					cluster |= le16(dir + 0x14) << 16;
 
 				if (*name == 0) {
-					fat_file_size = le32(dir + 0x1c);
-					get_extent(cluster);
+					ctx->fat_file_size = le32(dir + 0x1c);
+					get_extent(ctx, cluster);
 
 					return 0;
 				}
@@ -297,9 +277,8 @@ int fat_open(const char *name)
 	return -1;
 }
 
-
 #ifdef FAT_TEST
-static void print_dir_entry(uint8_t *dir)
+static void print_dir_entry(struct fat_context *ctx, uint8_t *dir)
 {
 	int i, n;
 
@@ -308,7 +287,7 @@ static void print_dir_entry(uint8_t *dir)
 	if (dir[0x00] == 0xe5)	// deleted file
 		return;
 
-	if (fat_type == 32) {
+	if (ctx->fat_type == 32) {
 		fprintf(stderr, "#%04x", le16(dir + 0x14));
 		fprintf(stderr, "%04x  ", le16(dir + 0x1a));
 	} else
@@ -338,21 +317,21 @@ static void print_dir_entry(uint8_t *dir)
 }
 
 
-int print_dir(uint32_t cluster)
+int print_dir(struct fat_context *ctx, uint32_t cluster)
 {
 	uint8_t dir[0x20];
 
-	get_extent(cluster);
+	get_extent(ctx, cluster);
 
-	while (extent_len) {
-		int err = read_extent(dir, 0x20);
+	while (ctx->extent_len) {
+		int err = read_extent(ctx, dir, 0x20);
 		if (err)
 			return err;
 
 		if (dir[0] == 0)
 			break;
 
-		print_dir_entry(dir);
+		print_dir_entry(ctx, dir);
 	}
 
 	return 0;
@@ -360,15 +339,15 @@ int print_dir(uint32_t cluster)
 #endif
 
 
-static int fat_init_fs(const uint8_t *sb)
+static int fat_init_fs(struct fat_context *ctx, const uint8_t *sb)
 {
 	uint32_t bytes_per_sector = le16(sb + 0x0b);
 	uint32_t sectors_per_cluster = sb[0x0d];
-	bytes_per_cluster = bytes_per_sector * sectors_per_cluster;
+	ctx->bytes_per_cluster = bytes_per_sector * sectors_per_cluster;
 
 	uint32_t reserved_sectors = le16(sb + 0x0e);
 	uint32_t fats = sb[0x10];
-	root_entries = le16(sb + 0x11);
+	ctx->root_entries = le16(sb + 0x11);
 	uint32_t total_sectors = le16(sb + 0x13);
 	uint32_t sectors_per_fat = le16(sb + 0x16);
 
@@ -384,37 +363,37 @@ static int fat_init_fs(const uint8_t *sb)
 	// XXX: We _do_ need to look at 2c
 
 	uint32_t fat_sectors = sectors_per_fat * fats;
-	uint32_t root_sectors = (0x20*root_entries + bytes_per_sector - 1)
+	uint32_t root_sectors = (0x20*ctx->root_entries + bytes_per_sector - 1)
 	                   / bytes_per_sector;
 
 	uint32_t fat_start_sector = reserved_sectors;
 	uint32_t root_start_sector = fat_start_sector + fat_sectors;
 	uint32_t data_start_sector = root_start_sector + root_sectors;
 
-	clusters = (total_sectors - data_start_sector) / sectors_per_cluster;
+	ctx->clusters = (total_sectors - data_start_sector) / sectors_per_cluster;
 
-	if (clusters < 0x0ff5)
-		fat_type = 12;
-	else if (clusters < 0xfff5)
-		fat_type = 16;
+	if (ctx->clusters < 0x0ff5)
+		ctx->fat_type = 12;
+	else if (ctx->clusters < 0xfff5)
+		ctx->fat_type = 16;
 	else
-		fat_type = 32;
+		ctx->fat_type = 32;
 
-	fat_offset = (uint64_t)bytes_per_sector*fat_start_sector;
-	root_offset = (uint64_t)bytes_per_sector*root_start_sector;
-	data_offset = (uint64_t)bytes_per_sector*data_start_sector;
+	ctx->fat_offset = (uint64_t)bytes_per_sector*fat_start_sector;
+	ctx->root_offset = (uint64_t)bytes_per_sector*root_start_sector;
+	ctx->data_offset = (uint64_t)bytes_per_sector*data_start_sector;
 
-	if (fat_type == 32)
-		root_offset = le32(sb + 0x2c);
+	if (ctx->fat_type == 32)
+		ctx->root_offset = le32(sb + 0x2c);
 
 #ifdef FAT_TEST
 	fprintf(stderr, "bytes_per_sector    = %08x\n", bytes_per_sector);
 	fprintf(stderr, "sectors_per_cluster = %08x\n", sectors_per_cluster);
 	fprintf(stderr, "bytes_per_cluster   = %08x\n", bytes_per_cluster);
 	fprintf(stderr, "root_entries        = %08x\n", root_entries);
-	fprintf(stderr, "clusters            = %08x\n", clusters);
-	fprintf(stderr, "fat_type            = %08x\n", fat_type);
-	fprintf(stderr, "fat_offset          = %012llx\n", fat_offset);
+	fprintf(stderr, "clusters            = %08x\n", ctx->clusters);
+	fprintf(stderr, "fat_type            = %08x\n", ctx->fat_type);
+	fprintf(stderr, "fat_offset          = %012llx\n", ctx->fat_offset);
 	fprintf(stderr, "root_offset         = %012llx\n", root_offset);
 	fprintf(stderr, "data_offset         = %012llx\n", data_offset);
 #endif
@@ -439,15 +418,15 @@ static int is_fat_fs(const uint8_t *sb)
 }
 
 
-int fat_init(struct bdev *_dev)
+int fat_init(struct fat_context *ctx, struct bdev *_dev)
 {
 	uint8_t buf[0x200];
 	int err;
 	
-	dev = _dev;
+	ctx->dev = _dev;
 
-	partition_start_offset = 0;
-	err = read(buf, 0, 0x200);
+	ctx->partition_start_offset = 0;
+	err = read(ctx, buf, 0, 0x200);
 	if (err)
 		return err;
 
@@ -455,20 +434,20 @@ int fat_init(struct bdev *_dev)
 		return -1;
 
 	if (is_fat_fs(buf))
-		return fat_init_fs(buf);
+		return fat_init_fs(ctx, buf);
 
 	// Maybe there's a partition table?  Let's try the first partition.
 	if (buf[0x01c2] == 0)
 		return -1;
 
-	partition_start_offset = 0x200ULL*le32(buf + 0x01c6);
+	ctx->partition_start_offset = 0x200ULL*le32(buf + 0x01c6);
 
-	err = read(buf, 0, 0x200);
+	err = read(ctx, buf, 0, 0x200);
 	if (err)
 		return err;
 
 	if (is_fat_fs(buf))
-		return fat_init_fs(buf);
+		return fat_init_fs(ctx, buf);
 
 	return -1;
 }
