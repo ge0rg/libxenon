@@ -15,7 +15,8 @@ int get_controller_data(struct controller_data_s *d, int port)
 
 void set_controller_data(int port, const struct controller_data_s *d)
 {
+	if (port >= 4)
+		return;
 	ctrl[port] = *d;
 	valid[port] = 1;
 }
-

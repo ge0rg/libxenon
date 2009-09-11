@@ -67,11 +67,13 @@ static int usbctrl_detach(usbdev_t *dev);
 
 #define UBR_KBD_MAX 20
 
+static int controller_mask = 0;
+
 typedef struct usbctrl_softc_s {
 	int uhid_ipipe;
 	int uhid_ipipemps;
 	int uhid_devtype;
-	int is_wireless;
+	int is_wireless, index;
 	uint8_t *uhid_imsg;
 	uint8_t uhid_lastmsg[UBR_KBD_MAX];
 	uint32_t uhid_shiftflags;
@@ -135,8 +137,11 @@ static int usbctrl_ireq_callback(usbreq_t *ur)
 	if (uhid->is_wireless)
 	{
 		if (b[5] == 0x13)
+		{
+			if (b[6] == 2) /* CHECKME: is this required for the Xbox racing wheel? */
+				b++;
 			b += 4;
-		else
+		} else
 			goto ignore;
 	}
 
@@ -164,7 +169,9 @@ static int usbctrl_ireq_callback(usbreq_t *ur)
 	c.left = !!(b[2] & 4);
 	c.right = !!(b[2] & 8);
 	
-	set_controller_data(0, &c);
+	c.logo = !!(b[3] & 0x4);
+	
+	set_controller_data(uhid->index, &c);
 
 ignore:
 	usb_queue_request(ur);
@@ -241,6 +248,12 @@ static int usbctrl_attach(usbdev_t *dev,usb_driver_t *drv)
 	}
 	
 	softc->is_wireless = GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x291;
+	
+	int i;
+	for (i = 0; controller_mask & (1<<i); ++i);
+	printf("attched controller %d\n", i);
+	softc->index = i;
+	controller_mask |= 1<<i;
 
 	/*
 	 * Allocate a DMA buffer
@@ -293,5 +306,10 @@ static int usbctrl_attach(usbdev_t *dev,usb_driver_t *drv)
 
 static int usbctrl_detach(usbdev_t *dev)
 {
+	usbctrl_softc_t *uhid = dev->ud_private;
+	
+	printf("detached controller %d\n", uhid->index);
+
+	controller_mask &= ~(1<<uhid->index);
 	return 0;
 }
