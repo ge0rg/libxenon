@@ -8,6 +8,7 @@ export CXX		:=	$(PREFIX)g++
 export AR		:=	$(PREFIX)ar
 export OBJCOPY	:=	$(PREFIX)objcopy
 
+LDSCRIPT := $(DEVKITXENON)/app.lds
 
 %.a:
 	@echo $(notdir $@)
@@ -36,7 +37,7 @@ export OBJCOPY	:=	$(PREFIX)objcopy
 
 %.elf:
 	@echo linking ... $(notdir $@)
-	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -n -T $(DEVKITXENON)/app.lds -o $@
+	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -n -T $(LDSCRIPT) -o $@
 
 %.elf32: %.elf
 	@echo converting ... $(notdir $@)
