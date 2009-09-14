@@ -47,7 +47,7 @@ LDSCRIPT := $(DEVKITXENON)/app.lds
 # canned command sequence for binary data
 #---------------------------------------------------------------------------------
 define bin2o
-	bin2s -a 32 $< | $(AS) -o $(@)
+	bin2s $< | $(AS) -a32 -o $(@)
 	echo "extern const u8" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"_end[];" > `(echo $(<F) | tr . _)`.h
 	echo "extern const u8" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> `(echo $(<F) | tr . _)`.h
 	echo "extern const u32" `(echo $(<F) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> `(echo $(<F) | tr . _)`.h
