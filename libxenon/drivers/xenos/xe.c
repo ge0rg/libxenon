@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <time/time.h>
 
-#define RINGBUFFER_BASE 0x08000000
+#define RINGBUFFER_BASE 0x18000000
 #define RINGBUFFER_SIZE 0x07000000
 
 #define RPTR_WRITEBACK 0x10000
@@ -114,12 +114,12 @@ void Xe_pRBCommitPrimary(struct XenosDevice *xe)
 	Xe_pSyncToDevice(xe, xe->rb_primary, RINGBUFFER_PRIMARY_SIZE * 4);
 	__asm__ ("sync");
 	w32(0x0714, xe->rb_primary_wptr);
-//	printf("committed to %08x\n", rb_primary_wptr);
+//	printf("committed to %08x\n", xe->rb_primary_wptr);
 }
 
 void Xe_pRBKickSegment(struct XenosDevice *xe, int base, int len)
 {
-//	printf("kick_segment: %x, len=%x\n", base, len * 4);
+//	printf("kick_segment: %x..%x, len=%x\n", base, base + len * 4, len * 4);
 	Xe_pSyncToDevice(xe, xe->rb_secondary + base * 4, len * 4);
 	Xe_pInvalidateGpuCache_Primary(xe, xe->rb_secondary_base + base * 4, len * 4 + 0x1000);
 	rput32p(0xc0013f00);
@@ -1789,6 +1789,7 @@ void TEXTURE_FETCH(u32 *dst, u32 base, int width, int height, int pitch, int til
 {
 	switch (format & XE_FMT_MASK)
 	{
+	case XE_FMT_8: pitch /= 32; break;
 	case XE_FMT_565: pitch /= 64; break;
 	case XE_FMT_16161616: pitch /= 256; break;
 	case XE_FMT_8888: pitch /= 128; break;
@@ -2571,6 +2572,7 @@ struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width
 	
 	switch (format & XE_FMT_MASK)
 	{
+	case XE_FMT_8: bypp = 1; break;
 	case XE_FMT_565: bypp = 2; break;
 	case XE_FMT_8888: bypp = 4; break;
 	case XE_FMT_16161616: bypp = 8; break;
@@ -2586,7 +2588,7 @@ struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width
 	surface->format = format;
 	surface->ptr_mip = 0;
 	surface->bypp = bypp;
-	surface->base = Xe_pAlloc(xe, &surface->ptr, height * pitch, 1024 * bypp); // 4k seems right
+	surface->base = Xe_pAlloc(xe, &surface->ptr, height * pitch, 4096);
 
 	return surface;
 }
@@ -3479,4 +3481,10 @@ fix_xxx:;
 		goto retry;
 worked:
 	printf("EDRAM %08x, %08x\n", var_1, var_2);
+}
+
+int Xe_IsVBlank(struct XenosDevice *xe)
+{
+//	printf("%08x\n", r32(0x6534));
+	return r32(0x6534) & 0x1000;
 }

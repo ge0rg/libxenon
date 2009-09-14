@@ -144,6 +144,7 @@ struct XenosShaderVertex
 
 	/* texture formats */
 #define XE_FMT_MASK          0x3F
+#define XE_FMT_8             2
 #define XE_FMT_8888          6
 #define XE_FMT_565           4
 #define XE_FMT_16161616      26
@@ -358,6 +359,8 @@ void Xe_SetPixelShaderConstantF(struct XenosDevice *xe, int start, const float *
 struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width, unsigned int height, unsigned int levels, int format, int tiled);
 void *Xe_Surface_LockRect(struct XenosDevice *xe, struct XenosSurface *surface, int x, int y, int w, int h, int flags);
 void Xe_Surface_Unlock(struct XenosDevice *xe, struct XenosSurface *surface);
+
+int Xe_IsVBlank(struct XenosDevice *xe);
 
 #ifdef __cplusplus
 };
