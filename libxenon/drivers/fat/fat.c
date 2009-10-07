@@ -1,7 +1,7 @@
 // Copyright 2009  Segher Boessenkool  <segher@kernel.crashing.org>
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 //     * Redistributions of source code must retain the above copyright
@@ -9,19 +9,19 @@
 //     * Redistributions in binary form must reproduce the above copyright
 //       notice, this list of conditions and the following disclaimer in the
 //       documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // hacked to fit into libxenon by Felix Domke <tmbinc@elitedvb.net>
 
 #include <stdint.h>
@@ -33,12 +33,12 @@ static inline uint16_t le16(const uint8_t *p)
 {
 	return p[0] | (p[1] << 8);
 }
-	
+
 static inline uint32_t le32(const uint8_t *p)
 {
 	return p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
 }
-		
+
 #include <stdio.h>
 
 #define RAW_BUF 0x200
@@ -54,7 +54,7 @@ static int raw_read(struct fat_context * ctx, uint32_t sector)
 		return 0;
 	current = sector;
 	current_ctx = ctx;
-	
+
 	return ctx->dev->ops->read(ctx->dev, raw_buf, sector, 1) < 0 ? : 0;
 }
 
@@ -65,10 +65,10 @@ static int read(struct fat_context *ctx, uint8_t *data, uint64_t offset, uint32_
 	while (len) {
 		uint32_t buf_off = offset % RAW_BUF;
 		uint32_t n;
-		
+
 		int err;
 		if (!buf_off && !((data - raw_buf)&31) && len >= RAW_BUF)
-		{	
+		{
 			n = len / RAW_BUF;
 			if (n > MAX_SECTS)
 				n = MAX_SECTS;
@@ -89,7 +89,7 @@ static int read(struct fat_context *ctx, uint8_t *data, uint64_t offset, uint32_
 
 			memcpy(data, raw_buf + buf_off, n);
 		}
-		
+
 		data += n;
 		offset += n;
 		len -= n;
@@ -229,17 +229,98 @@ static const char *parse_component(struct fat_context *ctx, const char *path)
 	return path;
 }
 
+/**
+Byte Offset 	Length 	Description
+0x00 	1 	Sequence Number
+0x01 	10 	Name characters (five UTF-16 characters)
+0x0b 	1 	Attributes (always 0x0F)
+0x0c 	1 	Reserved (always 0x00)
+0x0d 	1 	Checksum of DOS file name
+0x0e 	12 	Name characters (six UTF-16 characters)
+0x1a 	2 	First cluster (always 0x0000)
+0x1c 	4 	Name characters (two UTF-16 characters)
+*/
+static char oldlfn[256];
+static char *getLFN(uint8_t *dir)
+{
+	int i=1,j;
+	int SN=dir[00];
+	int end=0;
+
+	if(dir[00]>0x60)
+	{
+		return;
+	} //erreur
+
+	if(SN>0x40)//20 normalement
+	{
+		SN-=0x40;
+		memset (oldlfn,'0',256);
+	}
+	j=(SN-1)*(5+6+2);//13 caractere * SN
+
+	while(end==0)
+	{
+		oldlfn[j]=(dir[i]);
+		i+=2;
+		j++;
+		if(dir[i]==0xff)
+			end=1;
+		if(i==0x0b)
+			i=0x0e;
+		if(i==0x1a)
+			i=0x1c;
+		if(i>=0x20)
+			end=1;
+	}
+
+	if(SN==0x01)
+	{
+		return oldlfn;
+	}
+	else if(dir[00]>0x40)
+	{
+		oldlfn[j++]='\0';
+	}
+}
+
+char *getfilename(const char *longname)
+{
+	int i=0;
+	char *ret=malloc(256);//[256];
+
+	if(*longname=='/')
+		longname++;//si commence par /
+	while(*longname)
+	{
+		if ((*longname == '/'))
+		{
+			//Se debarasse du repertoire
+			//i=0;
+			break;
+		}
+		else
+			ret[i++]=*longname;
+
+		longname++;
+	}
+
+	ret[i++]='\0';
+	return ret;
+}
+
 
 int fat_open(struct fat_context *ctx, const char *name)
 {
 	uint32_t cluster = 0;
-
+	char longfilename[256],filename[256];
 	while (1) {
 		get_extent(ctx, cluster);
-		
+
 		if (!*name)
 			return 0;
 
+		strcpy(filename,getfilename(name));
 		name = parse_component(ctx, name);
 
 		while (ctx->extent_len) {
@@ -252,12 +333,19 @@ int fat_open(struct fat_context *ctx, const char *name)
 			if (dir[0] == 0)
 				return -1;
 
-			if (dir[0x0b] & 0x08)	// volume label or LFN
+			if (dir[0x0b] == 0x08)	// volume label or LFN
 				continue;
 			if (dir[0x00] == 0xe5)	// deleted file
 				continue;
 
-			if (memcmp(ctx->fat_name, dir, 11) == 0) {
+			if (dir[0x0b] == 0x0f) //LFN
+			{
+				strcpy(longfilename,getLFN(dir));// a arranger
+				continue;
+			}
+
+			//if (memcmp(ctx->fat_name, dir, 11) == 0) {
+			if(strcmp(longfilename,filename)==0) {
 				cluster = le16(dir + 0x1a);
 				if (ctx->fat_type == 32)
 					cluster |= le16(dir + 0x14) << 16;
@@ -422,7 +510,7 @@ int fat_init(struct fat_context *ctx, struct bdev *_dev)
 {
 	uint8_t buf[0x200];
 	int err;
-	
+
 	ctx->dev = _dev;
 
 	ctx->partition_start_offset = 0;

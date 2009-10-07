@@ -17,7 +17,7 @@ struct bdev_ops
 struct bdev
 {
 	void *ctx;
-	char name[32];
+	char name[256];
 	lba_t offset;
 	struct bdev_ops *ops;
 	int disabled; /* used when USB device is unplugged */
