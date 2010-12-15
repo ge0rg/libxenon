@@ -187,19 +187,11 @@ static unsigned char stack[5 * 0x1000];
 
 void xenon_make_it_faster(int speed)
 {
-	if (secondary_alive != 0x3f)
-		xenon_thread_startup();
-	printf(" * Make it faster by making it sleep...\n");
 	int i;
-	for (i = 1; i < 6; ++i)
-		while (xenon_run_thread_task(i, stack + i * 0x1000 - 0x100, xenon_thread_sleep));
 
-	for (i = 1; i < 6; ++i)
-		while (!thread_state[i])
-			xenon_yield();
+	printf(" * Make it faster by making it sleep...\n");
 
-	uint64_t save[6];
-	prepare_sleep(save);
+	xenon_set_single_thread_mode();
 
 	printf(" * Make it faster by making it consume more power...\n");
 
@@ -224,4 +216,22 @@ void xenon_thread_startup(void)
 void xenon_sleep_thread(int thread)
 {
 	xenon_run_thread_task(thread, stack + thread * 0x1000 - 0x100, xenon_thread_sleep);
+}
+
+
+void xenon_set_single_thread_mode(){
+	int i;
+
+	if (secondary_alive != 0x3f)
+		xenon_thread_startup();
+
+	for (i = 1; i < 6; ++i)
+		while (xenon_run_thread_task(i, stack + i * 0x1000 - 0x100, xenon_thread_sleep));
+
+	for (i = 1; i < 6; ++i)
+		while (!thread_state[i])
+			xenon_yield();
+
+	uint64_t save[6];
+	prepare_sleep(save);
 }
