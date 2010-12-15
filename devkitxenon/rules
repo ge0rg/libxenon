@@ -11,37 +11,37 @@ export OBJCOPY	:=	$(PREFIX)objcopy
 LDSCRIPT := $(DEVKITXENON)/app.lds
 
 %.a:
-	@echo $(notdir $@)
+	@echo [$(notdir $@)]
 	@rm -f $@
 	@$(AR) -rc $@ $^
 
 %.o: %.cpp
-	@echo $(notdir $<)
-	$(CXX) -MMD -MP -MF $(DEPSDIR)/$*.d $(CXXFLAGS) -c $< -o $@
+	@echo [$(notdir $<)]
+	@$(CXX) -MMD -MP -MF $(DEPSDIR)/$*.d $(CXXFLAGS) -c $< -o $@
 	
 %.o: %.c
-	@echo $(notdir $<)
-	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(CFLAGS) -c $< -o $@
+	@echo [$(notdir $<)]
+	@$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(CFLAGS) -c $< -o $@
 
 %.o: %.m
-	@echo $(notdir $<)
-	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(OBJCFLAGS) -c $< -o $@
+	@echo [$(notdir $<)]
+	@$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d $(OBJCFLAGS) -c $< -o $@
 
 %.o: %.s
-	@echo $(notdir $<)
-	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
+	@echo ($(notdir $<)]
+	@$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
 
 %.o: %.S
-	@echo $(notdir $<)
-	$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
+	@echo [$(notdir $<)]
+	@$(CC) -MMD -MP -MF $(DEPSDIR)/$*.d -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
 
 %.elf:
 	@echo linking ... $(notdir $@)
-	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -n -T $(LDSCRIPT) -o $@
+	@$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -n -T $(LDSCRIPT) -o $@
 
 %.elf32: %.elf
 	@echo converting ... $(notdir $@)
-	$(OBJCOPY) -O elf32-powerpc --adjust-vma 0x80000000 $< $@
+	@$(OBJCOPY) -O elf32-powerpc --adjust-vma 0x80000000 $< $@
 
 #---------------------------------------------------------------------------------
 # canned command sequence for binary data
