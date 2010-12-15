@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define PPC_TIMEBASE_FREQ (3192000000L/64)
+#define PPC_TIMEBASE_FREQ 50000000L
 
 static inline uint64_t mftb(void)
 {
