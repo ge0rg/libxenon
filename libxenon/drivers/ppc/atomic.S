@@ -43,6 +43,6 @@ lock:
 
 .globl unlock
 unlock:
-	li %r3, 0
+	li %r4, 0
 	stw %r4, 0(%r3)
 	blr
