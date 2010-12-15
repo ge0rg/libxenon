@@ -33,7 +33,7 @@ void xenon_sound_init(void)
 	for (i = 0; i < 0x20; ++i)
 	{
 		descr[i * 2] = bswap32(buffer_base + (buffer_len/0x20) * i);
-		descr[i * 2 + 1] = bswap32(0x80000000 | (buffer_len/0x20 - 1));
+		descr[i * 2 + 1] = bswap32(0x80000000 | (buffer_len/0x20));
 	}
 
 	memdcbst(descr, 0x20 * 2 * 4);
