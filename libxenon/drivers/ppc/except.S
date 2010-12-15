@@ -676,16 +676,30 @@ putc:
 	lis %r4, 0x8000
 	ori %r4, %r4, 0x200
 	rldicr  %r4, %r4, 32,31
-  oris  %r4, %r4, 0xea00
+	oris  %r4, %r4, 0xea00
 
-  slwi %r3, %r3, 24
-  stw %r3, 0x1014(%r4)
-1:
-  lwz %r3, 0x1018(%r4)
-  rlwinm. %r3, %r3, 0, 6, 6
-  beq 1b
-2:
-  blr
+	mtsprg3 %r3
+	cmplwi %r3,'\n'
+	bne notnl
+	
+	li %r3,'\r'
+	slwi %r3, %r3, 24
+	stw %r3, 0x1014(%r4)
+	1:
+		lwz %r3, 0x1018(%r4)
+		rlwinm. %r3, %r3, 0, 6, 6
+		beq 1b
+
+notnl:
+	mfsprg3 %r3
+
+	slwi %r3, %r3, 24
+	stw %r3, 0x1014(%r4)
+	1:
+		lwz %r3, 0x1018(%r4)
+		rlwinm. %r3, %r3, 0, 6, 6
+		beq 1b
+	blr
 
 ex_interrupt:
 	std %r0, OFF_REG(0)(%r31)
