@@ -1,3 +1,5 @@
+#include <xenos/xenos.h>
+
 #include <xenon_smc/xenon_smc.h>
 #include <xenon_smc/xenon_gpio.h>
 #include <pci/io.h>
@@ -280,14 +282,6 @@ uint32_t ana_1360x768[] = {
 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00000001, 0x00000000,  // f8
 };
 
-#define MODE_VGA_640x480  0
-#define MODE_VGA_1024x768 1
-#define MODE_PAL60        2
-#define MODE_480p         3
-#define MODE_PAL50        4
-#define MODE_VGA_1280x768 5
-#define MODE_VGA_1360x768 6
-
 struct mode_s
 {
 	uint32_t *ana;
@@ -380,7 +374,7 @@ struct mode_s
 		.total_height = 795,
 		.vsync_offset = 24,
 		.active_height = 768,
-		.width = 1360,
+		.width = 1376,
 		.height = 768,
 		.is_progressive = 1,
 		.rgb = 1,
@@ -1332,22 +1326,22 @@ void xenos_edram_init(void)
 
 void xenos_autoset_mode(void)
 {
-	int mode = MODE_PAL60;
+	int mode = VIDEO_MODE_PAL60;
 	int avpack = xenon_smc_read_avpack();
 	printf("AVPACK detected: %02x\n", avpack);
 	switch (avpack&0xF)
 	{
 	case 0x3: // normal (composite)
-		mode = MODE_PAL60;
+		mode = VIDEO_MODE_PAL60;
 		break;
 	case 0xF: // HDTV
-		mode = MODE_PAL60; // is fine for that, too.
+		mode = VIDEO_MODE_PAL60; // is fine for that, too.
 		break;
 	case 0xb: // VGA
-		mode = MODE_VGA_1024x768;
+		mode = VIDEO_MODE_VGA_1024x768;
 		break;
 	case 0xC: // no AV pack, revert to composite.
-		mode = MODE_PAL60;
+		mode = VIDEO_MODE_PAL60;
 		break;
 	default:
 		printf("unsupported AVPACK!\n");
@@ -1372,7 +1366,7 @@ void xenos_autoset_mode(void)
 	xenos_set_mode(&xenos_modes[mode]);
 }
 
-void xenos_init(void)
+void xenos_init(int videoMode)
 {
 	xenos_init_phase0();
 	xenos_init_phase1();
@@ -1380,7 +1374,10 @@ void xenos_init(void)
 	xenon_gpio_set(0, 0x2300);
 	xenon_gpio_set_oe(0, 0x2300);
 
-	xenos_autoset_mode();
+	if (videoMode<0)
+		xenos_autoset_mode();
+	else
+		xenos_set_mode(&xenos_modes[videoMode]);
 
 	xenon_smc_ana_write(0xdf, 0);
 	xenos_write32(0x652c, 0x00000300);

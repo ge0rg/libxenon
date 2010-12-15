@@ -1,9 +1,13 @@
 #ifndef __xe_h
 #define __xe_h
 
+#include <xetypes.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define XE_MAX_INDICES_PER_DRAW 65535
 
 #define SHADER_TYPE_PIXEL 1
 #define SHADER_TYPE_VERTEX 0
@@ -60,9 +64,6 @@ extern "C" {
 #define XE_STENCILOP_INVERT      5
 #define XE_STENCILOP_INCR        6
 #define XE_STENCILOP_DECR        7
-
-typedef unsigned int u32;
-typedef unsigned short u16;
 
 struct XenosLock
 {

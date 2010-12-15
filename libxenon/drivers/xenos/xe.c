@@ -10,9 +10,10 @@
 #include <xenon_smc/xenon_smc.h>
 #include <stdint.h>
 #include <time/time.h>
+#include <debug.h>
 
-#define RINGBUFFER_BASE 0x18000000
-#define RINGBUFFER_SIZE 0x07000000
+#define RINGBUFFER_BASE 0x10000000
+#define RINGBUFFER_SIZE 0x0F000000
 
 #define RPTR_WRITEBACK 0x10000
 #define SCRATCH_WRITEBACK 0x10100
@@ -203,14 +204,14 @@ void Xe_pDrawNonIndexed(struct XenosDevice *xe, int num_points, int primtype)
 
 void Xe_pDrawIndexedPrimitive(struct XenosDevice *xe, int primtype, int num_points, u32 indexbuffer, u32 indexbuffer_size, int indextype)
 {
-	assert(num_points < 65536);
+	assert(num_points <= XE_MAX_INDICES_PER_DRAW);
 	int type = 0;
 	
 	rput32(0xc0032201);
 		rput32(0x00000000);
 		rput32(0x00000000 | (type << 6) | primtype | (num_points << 16) | (indextype << 11));
 		rput32(indexbuffer);
-		rput32(indexbuffer_size | 0x40000000);
+		rput32((indexbuffer_size | 0x40000000) << indextype);
 }
 
 void Xe_pSetIndexOffset(struct XenosDevice *xe, int offset)
@@ -1224,7 +1225,7 @@ struct XenosShader *Xe_LoadShader(struct XenosDevice *xe, const char *filename)
 	fseek(f, 0, SEEK_END);
 	int size = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	
+
 	void *m = malloc(size);
 	fread(m, size, 1, f);
 	fclose(f);
@@ -2296,7 +2297,11 @@ void Xe_pSetState(struct XenosDevice *xe)
 
 void Xe_SetTexture(struct XenosDevice *xe, int index, struct XenosSurface *tex)
 {
-	TEXTURE_FETCH(xe->fetch_constants + index * 6, tex->ptr, tex->width - 1, tex->height - 1, tex->pitch, tex->tiled, tex->format, tex->ptr_mip, 2);
+	if (tex!=NULL)
+		TEXTURE_FETCH(xe->fetch_constants + index * 6, tex->ptr, tex->width - 1, tex->height - 1, tex->pitch, tex->tiled, tex->format, tex->ptr_mip, 2);
+	else
+		memset(xe->fetch_constants + index * 6,0,24);
+
 	Xe_DirtyFetch(xe, index + index * 3, 3);
 }
 
