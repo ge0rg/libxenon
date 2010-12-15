@@ -145,7 +145,7 @@ extern void *ptov(uint32_t x);
  * Debug message macro
  */
 
-// #define _OHCI_DEBUG_
+//#define _OHCI_DEBUG_
 
 #ifdef _OHCI_DEBUG_
 #define OHCIDEBUG(x) x
@@ -1593,6 +1593,7 @@ static int ohci_xfer(usbbus_t *bus,usb_ept_t *uept,usbreq_t *ur)
      * request type.
      */
 
+
 //    pktlen = ept->ep_mps;
     pktlen = OHCI_TD_MAX_DATA - 16;
 
@@ -1641,11 +1642,11 @@ static int ohci_xfer(usbbus_t *bus,usb_ept_t *uept,usbreq_t *ur)
 
 #ifdef _OHCI_DEBUG_
     if (ohcidebug > 1) {
-	printf(">> Queueing xfer addr %d pipe %d ED %08X ptr %016llX length %d\n",
+	printf(">> Queueing xfer addr %d pipe %d ED %08X ptr %016X length %d\n",
 	       ur->ur_dev->ud_address,
 	       ur->ur_pipe->up_num,
 	       ept->ep_phys,
-	       (uint64_t) (uintptr_t) ptr,
+	       ptr,
 	       len);
 //	ohci_dumped(softc,ed);
 	}

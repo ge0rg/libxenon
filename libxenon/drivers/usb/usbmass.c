@@ -338,20 +338,23 @@ int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
 int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
 				hsaddr_t buffer)
 {
-    uint8_t *cbwcsw;
+    usbreq_t *ur1;
+    usbreq_t *ur2;
+    usbreq_t *ur3;
+
     uint8_t *sector;
     usbmass_cbw_t *cbw;
     usbmass_csw_t *csw;
-    usbmass_softc_t *softc;
-    int res;
+	
+	usbmass_softc_t *softc;
+	int res;
 
     softc = (usbmass_softc_t *) dev->ud_private;
 
-    cbwcsw = KMALLOC(64,32);
     sector = (uint8_t *) HSADDR2PTR(buffer);		/* XXX not 64-bit compatible */
 
-    cbw = (usbmass_cbw_t *) cbwcsw;
-    csw = (usbmass_csw_t *) cbwcsw;
+    cbw = (usbmass_cbw_t *) KMALLOC(sizeof(usbmass_cbw_t),32);
+    csw = (usbmass_csw_t *) KMALLOC(sizeof(usbmass_csw_t),32);
 
     /*
      * Fill in the fields of the CBW
@@ -380,41 +383,56 @@ int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
      * Send the CBW 
      */
 
-    res = usb_make_sync_request(dev,softc->umass_outpipe,(uint8_t *) cbw,
+    ur1 = usb_make_request(dev,softc->umass_outpipe,(uint8_t *) cbw,
 				sizeof(usbmass_cbw_t),UR_FLAG_OUT);
-    if (res == 4) {
-	usbmass_stall_recovery(dev);
-	KFREE(cbwcsw);
-	return -1;
-	}
 
+	usb_queue_request(ur1);
 
-    /*
+	/*
      * Get the data
      */
 
-    res = usb_make_sync_request(dev,softc->umass_inpipe,sector,
+	ur2 = usb_make_request(dev,softc->umass_inpipe,sector,
 				512*seccnt,UR_FLAG_IN | UR_FLAG_SHORTOK);
-    if (res == 4) {
-	usbmass_stall_recovery(dev);
-	KFREE(cbwcsw);
-	return -1;
-	}
-
+	
+	usb_queue_request(ur2);
 
     /*
      * Get the Status
      */
 
     memset(csw,0,sizeof(usbmass_csw_t));
-    res = usb_make_sync_request(dev,softc->umass_inpipe,(uint8_t *) csw,
+    ur3 = usb_make_request(dev,softc->umass_inpipe,(uint8_t *) csw,
 				sizeof(usbmass_csw_t),UR_FLAG_IN);
+
+	usb_queue_request(ur3);
+
+	res=usb_wait_request(ur1);
+	usb_free_request(ur1);
     if (res == 4) {
-	usbmass_stall_recovery(dev);
-	KFREE(cbwcsw);
-	return -1;
+		usbmass_stall_recovery(dev);
+		KFREE(cbw);
+		KFREE(csw);
+		return -1;
 	}
 
+	res=usb_wait_request(ur2);
+	usb_free_request(ur2);
+    if (res == 4) {
+		usbmass_stall_recovery(dev);
+		KFREE(cbw);
+		KFREE(csw);
+		return -1;
+	}
+
+	res=usb_wait_request(ur3);
+	usb_free_request(ur3);
+    if (res == 4) {
+		usbmass_stall_recovery(dev);
+		KFREE(cbw);
+		KFREE(csw);
+		return -1;
+	}
 
 #if 0
     printf("CSW: Signature=%08X  Tag=%08X  Residue=%08X  Status=%02X\n",
@@ -426,7 +444,8 @@ int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
 
     res = (csw->bCSWStatus == USBMASS_CSW_PASS) ? 0 : -1;
 
-    KFREE(cbwcsw);
+	KFREE(cbw);
+	KFREE(csw);
 
     return res;
 
@@ -1104,8 +1123,11 @@ static int usbdisk_close(cfe_devctx_t *ctx)
 
 #endif
 
+#define MAX_SECTOR_PER_REQUEST 8
+
 int usbmass_read(struct bdev *dev, void *data, lba_t lba, int num)
 {
+	char * p = (char *)data;
 	usbmass_softc_t *softc = dev->ctx;
 	lba += dev->offset;
 	
@@ -1113,11 +1135,14 @@ int usbmass_read(struct bdev *dev, void *data, lba_t lba, int num)
 	while (num)
 	{
 		int tl = num;
-		if (usbmass_read_sector(softc->dev, lba, num, PTR2HSADDR(data)))
+		if (tl>MAX_SECTOR_PER_REQUEST) tl=MAX_SECTOR_PER_REQUEST;
+		if (usbmass_read_sector(softc->dev, lba, tl, PTR2HSADDR(p)))
 			break;
-		data += tl;
+
+		p += tl*512;
 		num -= tl;
 		r += tl;
+		lba += tl;
 	}
 	
 	return r;

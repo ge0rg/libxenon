@@ -243,7 +243,7 @@ int usb_init(void)
 
 #if 0
 	usb_noisy = 1;
-	ohcidebug = 1;
+	ohcidebug = 2;
 #endif
 
 	usb_init_one_ohci(0xea002000);

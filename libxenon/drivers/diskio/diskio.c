@@ -1,130 +1,87 @@
 #include <diskio/diskio.h>
+#include <diskio/disk_rb.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <newlib/vfs.h>
-#include <fat/fat.h>
+#include <fat/fat_rb.h>
+#include <fat/file_rb.h>
+#include <iso9660/iso9660.h>
 #include <malloc.h>
-#include <dirent.h>
+#include <newlib/dirent.h>
 #include <errno.h>
 
-#define MAX_DEVICES 16
+#define MAX_DEVICES NUM_DRIVES
 
 struct bdev devices[MAX_DEVICES];
 
+off_t _fat_lseek(struct vfs_file_s *file, size_t offset, int whence)
+{
+	int fd = (int)file->priv[0];
+	return rb_lseek(fd,offset,whence);
+}
+
+
 int _fat_read(struct vfs_file_s *file, void *dst, size_t len)
 {
-	struct fat_context * fat = file->priv[0];
-	int res = fat_read(fat, dst, len);
-	if (!res)
-	{
-		file->offset += len;
-		return len;
-	} else
-	{
-		errno = EIO;
-		return -1;
-	}
+	int fd = (int)file->priv[0];
+	return rb_read(fd,dst,len);
 }
 
 int _fat_fstat(struct vfs_file_s *file, struct stat *buf)
 {
-	struct fat_context * fat = file->priv[0];
-	buf->st_size = fat->fat_file_size;
+	int fd = (int)file->priv[0];
+	buf->st_size = rb_filesize(fd);
+	buf->st_mode = S_IFREG;
+	buf->st_blksize = 65536;
 	return 0;
 }
 
 void _fat_close(struct vfs_file_s *file)
 {
-	struct fat_context * fat = file->priv[0];
-	free(fat);
+	int fd = (int)file->priv[0];
+	rb_close(fd);
 }
 
-int _fat_getdents (struct vfs_file_s *file, void *dp, int count)
-{
-	struct fat_context * fat = file->priv[0];
-	struct dirent *d = dp;
-	
-	int ret = 0;
-	
-	while (count >= sizeof(*d))
-	{
-		uint8_t dir[0x20];
-		if (fat_read(fat, dir, 0x20))
-			break;
-		if (dir[0x0b] & 0x08)	// volume label or LFN
-			continue;
-		if (dir[0x00] == 0xe5)	// deleted file
-			continue;
-		if (dir[0x00] == 0)
-			break;
-
-//		uint16_t date = le16(dir + 0x18);
-//		uint16_t time = le16(dir + 0x16);
-//	uint8_t attr = dir[0x0b];
-		char name[8+3+1+2];
-
-		int n;
-		for (n = 8; n && dir[n - 1] == ' '; n--);
-		memcpy(name, dir, n);
-		name[n] = 0;
-		
-		int m;
-		for (m = 3; m && dir[8 + m - 1] == ' '; m--);
-		if (m)
-		{
-			name[n] = '.';
-			memcpy(name + n + 1, dir + 8, m);
-			name[n+m+1] = 0;
-		}
-
-		d->d_ino = 1;
-		d->d_namlen = strlen(name) + 1;
-		d->d_reclen = sizeof(*d); // - NAME_MAX + d->d_namlen;
-		d->d_type = (dir[0x0b] & 0x10) ? DT_DIR : DT_REG;
-		strcpy(d->d_name, name);
-		
-		ret += d->d_reclen;
-		d->d_off = ret;
-		count -= d->d_reclen;
-		d = ((void*)d) + d->d_reclen;
-	}
-	
-	return ret;
-}
-
-struct vfs_fileop_s vfs_fat_ops = {.read = _fat_read, .fstat = _fat_fstat, .close = _fat_close, .getdents = _fat_getdents};
+struct vfs_fileop_s vfs_fat_file_ops = {.read = _fat_read, .lseek = _fat_lseek, .fstat = _fat_fstat, .close = _fat_close};
 
 int _fat_open(struct vfs_file_s *file, struct mount_s *mount, const char *filename, int oflags, int perm)
 {
-	struct fat_context * fat = malloc(sizeof(struct fat_context));
-	memset(fat, 0, sizeof(*fat));
+	int fd=rb_open(mount->index,filename,oflags);
 	
-	file->priv[0] = fat;
-	struct bdev *bdev = mount->priv[0];
+	file->priv[0] = (void *) fd;
+	file->ops = &vfs_fat_file_ops;
 
-	if (fat_init(fat, bdev) < 0)
-	{
-		free(fat);
-		return -1;
-	}
-	
-	if (fat_open(fat, filename) < 0)
-	{
-		free(fat);
-		return -1;
-	}
-
-	file->ops = &vfs_fat_ops;
-	
-	return 0;
+	return fd < 0;
 }
+
+void _fat_mount(struct mount_s *mount, struct bdev * device)
+{
+	mount->priv[0] = device;
+	fat_init();
+	disk_mount(device->index,mount->index);
+}
+
+void _fat_umount(struct mount_s *mount)
+{
+	fat_unmount(mount->index,true);
+}
+
+struct vfs_mountop_s vfs_fat_mount_ops = {.open = _fat_open, .mount = _fat_mount, .umount = _fat_umount};
 
 typedef int (vfs_open_call)(struct vfs_file_s *, struct mount_s *, const char *, int, int);
 
-vfs_open_call *determine_filesystem (struct bdev *dev)
+struct vfs_mountop_s *determine_filesystem (struct bdev *dev)
 {
-	printf(" * trying to make sense of %s, let's assume it's FAT\n", dev->name);
-	return _fat_open;
+	printf(" * trying to make sense of %s, ", dev->name);
+
+	if(!strcmp(dev->name,"dvd")){
+		printf("let's assume it's iso9660\n");
+		return &vfs_iso9660_mount_ops;
+	}else{
+		printf("let's assume it's fat\n");
+		return &vfs_fat_mount_ops;
+	}
 }
 
 struct bdev *register_bdev(void *ctx, struct bdev_ops *ops, const char *name)
@@ -137,20 +94,22 @@ struct bdev *register_bdev(void *ctx, struct bdev_ops *ops, const char *name)
 	}
 	if (i == MAX_DEVICES)
 		return 0;
+
+	devices[i].index = i;
 	devices[i].ctx = ctx;
 	strcpy(devices[i].name, name); /* strlen(name)>=16 and i'll kill you! */
 	devices[i].ops = ops;
+
 	printf("registered new device: %s\n", name);
 	
 	struct bdev *bdev = devices + i;
-	
+
 	char mountpoint[18];
 	snprintf(mountpoint, 18, "%s:", name);
-	vfs_open_call *vfs_open = determine_filesystem(bdev);
+	struct vfs_mountop_s *vfs_ops = determine_filesystem(bdev);
 	
-	struct mount_s *m = mount(mountpoint, vfs_open);
+	struct mount_s *m = mount(mountpoint, vfs_ops, bdev);
 	bdev->mount = m;
-	m->priv[0] = bdev;
 	
 	return bdev;
 }
@@ -167,8 +126,8 @@ struct bdev *register_bdev_child(struct bdev *parent, lba_t offset, int index)
 
 void unregister_bdev(struct bdev *bdev)
 {
-	bdev->disabled = 1;
 	umount(bdev->mount);
+	bdev->ops = NULL;
 }
 
 struct bdev *bdev_open(const char *name)

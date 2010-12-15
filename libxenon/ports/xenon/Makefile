@@ -10,7 +10,8 @@ ifeq ($(strip $(DEVKITXENON)),)
 $(error "please set DEVKITXENON")
 endif
 
-CFLAGS = -Wall  -Os -I. -DBYTE_ORDER=BIG_ENDIAN \
+CFLAGS = -mcpu=cell -mtune=cell -O2 \
+	-Wall -I. -DBYTE_ORDER=BIG_ENDIAN \
 	-I ../../drivers -I ../../include -Wall  \
 	-m32 -fno-pic -mpowerpc64 \
 	-I ../../drivers/nocfe -D_CFE_=1 -DENDIAN_BIG=1
@@ -29,13 +30,14 @@ LIBOBJS = crti.o crtn.o \
 	../../startup/xenon/crt1.o \
 	../../drivers/console/console.o \
 	../../drivers/diskio/diskio.o \
-	../../drivers/fat/fat.o \
+	../../drivers/diskio/disk_rb.o \
+	../../drivers/diskio/dvd.o \
+	../../drivers/fat/fat_rb.o \
+	../../drivers/fat/file_rb.o \
+	../../drivers/fat/dir_rb.o \
+	../../drivers/iso9660/iso9660.o \
 	../../drivers/input/input.o \
-	../../drivers/newlib/closedir.o \
 	../../drivers/newlib/newlib.o \
-	../../drivers/newlib/opendir.o \
-	../../drivers/newlib/readdir.o \
-	../../drivers/newlib/telldir.o \
 	../../drivers/nocfe/lib_malloc.o \
 	../../drivers/nocfe/lib_queue.o \
 	../../drivers/pci/io.o \
@@ -53,6 +55,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/usb/usbhub.o \
 	../../drivers/usb/usbmain.o \
 	../../drivers/usb/usbmass.o \
+	../../drivers/utils/unicode_rb.o \
 	../../drivers/xenon_smc/xenon_gpio.o \
 	../../drivers/xenon_smc/xenon_smc.o \
 	../../drivers/xenon_soc/cpusleep.o \
@@ -76,16 +79,20 @@ ffs_content.c: genffs.py files/ps.psu files/vs.vsu
 	python genffs.py > ffs_content.c
 
 .c.o:
-	$(CC) -c $(CFLAGS) $*.c -o $*.o
+	@echo [$(notdir $<)]
+	@$(CC) -c $(CFLAGS) $*.c -o $*.o
 
 .cpp.o:
-	$(CXX) -c $(CXXFLAGS) $*.cpp -o $*.o
+	@echo [$(notdir $<)]
+	@$(CXX) -c $(CXXFLAGS) $*.cpp -o $*.o
 
 %.o: %.S
-	$(CC) $(AFLAGS) -c $*.S -o $*.o
+	@echo [$(notdir $<)]
+	@$(CC) $(AFLAGS) -c $*.S -o $*.o
 
 %.o: %.s
-	$(CC) $(AFLAGS) -c $*.s -o $*.o
+	@echo [$(notdir $<)]
+	@$(CC) $(AFLAGS) -c $*.s -o $*.o
 
 main.elf: main.lds $(OBJS_MAIN) crt0.o crt1.o crti.o crtn.o
 	$(CC) -n -T $< -o $@ $(OBJS_MAIN) $(LDFLAGS)  -Wl,-Map -Wl,main.map  -L $(LIBDIR32)
@@ -100,7 +107,7 @@ libxenon.a: $(LIBOBJS)
 
 run:
 	cp main.elf32 /tftpboot/xenon
-	/home/dev360/run
+#	/home/dev360/run
 
 install: libxenon.a
 	mkdir -p $(DEVKITXENON)/usr/lib/

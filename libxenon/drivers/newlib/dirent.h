@@ -26,13 +26,6 @@ typedef struct _dirdesc {
 
 # define __dirfd(dp)	((dp)->dd_fd)
 
-DIR *opendir(const char *);
-struct dirent *readdir(DIR *);
-void rewinddir(DIR *);
-int closedir(DIR *);
-void seekdir(DIR *dir, long loc);
-long telldir(DIR *dir);
-
 #include <sys/types.h>
 
 #include <limits.h>

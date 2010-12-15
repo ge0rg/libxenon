@@ -2,6 +2,7 @@
 #define __newlib_vfs_h
 
 #include <sys/stat.h>
+#include <diskio/diskio.h>
 
 struct vfs_file_s
 {
@@ -19,17 +20,26 @@ struct vfs_fileop_s
 	int (*isatty)(struct vfs_file_s *file);
 	void (*close)(struct vfs_file_s *file);
 	int (*fstat)(struct vfs_file_s *file, struct stat *buf);
-	int (*getdents)(struct vfs_file_s *file, void *dp, int count);
+};
+
+struct vfs_mountop_s
+{
+	int (*open)(struct vfs_file_s *file, struct mount_s *mount, const char *filename, int oflags, int perm);
+	void (*mount)(struct mount_s *mount, struct bdev * device);
+	void (*umount)(struct mount_s *mount);
 };
 
 struct mount_s
 {
+	int index;
 	char mountpoint[32];
-	int (*vfs_open)(struct vfs_file_s *file, struct mount_s *mount, const char *filename, int oflags, int perm);
+
+	struct vfs_mountop_s *ops;
+
 	void *priv[8];
 };
 
-struct mount_s *mount(const char *mountpoint, int (*vfs_open)(struct vfs_file_s *file, struct mount_s *mount, const char *filename, int oflags, int perm));
+struct mount_s *mount(const char *mountpoint, struct vfs_mountop_s *ops, struct bdev * device);
 void umount(struct mount_s *mount);
 
 #endif

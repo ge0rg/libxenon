@@ -4,8 +4,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <debug.h>
 
+#include <fat/fat_rb.h>
+#include <fat/file_rb.h>
 #include <newlib/vfs.h>
+#include <xenon_soc/xenon_power.h>
 
 struct ffs_s
 {
@@ -16,8 +20,8 @@ struct ffs_s
 
 struct ffs_s __attribute__((weak)) ffs_files[] = {{0,0,0}};
 
-#define MAXFD    64
-#define MAXMOUNT 16
+#define MAXFD    MAX_OPEN_FILES
+#define MAXMOUNT NUM_VOLUMES
 
 struct mount_s;
 
@@ -41,6 +45,7 @@ size_t vfs_default_lseek(struct vfs_file_s *file, size_t offset, int whence)
 		file->offset = file->filesize;
 	return file->offset;
 }
+
 
 			/* /dev/console */
 void (*stdout_hook)(const char *text, int len) = 0;
@@ -74,19 +79,25 @@ int vfs_console_open(struct vfs_file_s *file, struct mount_s *mount, const char 
 	return -ENOENT;
 }
 
+struct vfs_mountop_s vfs_console_mount_ops = {.open = vfs_console_open};
+
 static struct mount_s mounts[MAXMOUNT] = {
-	{"/dev/", vfs_console_open},
+	{0, "/dev/", &vfs_console_mount_ops},
 };
 
-struct mount_s *mount(const char *mountpoint, int (*vfs_open)(struct vfs_file_s *file, struct mount_s *mount, const char *filename, int oflags, int perm))
+struct mount_s *mount(const char *mountpoint, struct vfs_mountop_s *ops, struct bdev * device)
 {
 	int i;
 	for (i = 0; i < MAXMOUNT; ++i)
 	{
-		if (!mounts[i].vfs_open)
+		if (!mounts[i].ops)
 		{
 			strcpy(mounts[i].mountpoint, mountpoint);
-			mounts[i].vfs_open = vfs_open;
+			mounts[i].index = i;
+			mounts[i].ops = ops;
+
+			if (mounts[i].ops->mount) mounts[i].ops->mount(&mounts[i],device);
+						
 			return &mounts[i];
 		}
 	}
@@ -95,8 +106,8 @@ struct mount_s *mount(const char *mountpoint, int (*vfs_open)(struct vfs_file_s 
 
 void umount(struct mount_s *mount)
 {
-	int i = mount - mounts;
-	*mounts[i].mountpoint = 0;
+	if (mounts->ops->umount) mount->ops->umount(mount);
+	mount->ops=NULL;
 }
 
 static struct vfs_file_s fd_array[MAXFD] = { 
@@ -234,10 +245,17 @@ ssize_t read(int fildes, void *buf, size_t nbyte)
 	}
 }
 
+extern void return_to_xell();
+
 void _exit(int status)
 {
-	printf("exit: %d\n", status);
-	while (1);
+	printf("[Exit] with code %d\n", status);
+#if 0
+	getch();
+	xenon_set_single_thread_mode();
+	return_to_xell();
+#endif
+	for(;;);
 }
 
 int open(const char *path, int oflag, ...)
@@ -260,30 +278,11 @@ int open(const char *path, int oflag, ...)
 	{
 		const char *mpath = mounts[i].mountpoint;
 		if (*mpath && !strncmp(path, mpath, strlen(mpath)))
-			if (!mounts[i].vfs_open(&fd_array[fd], &mounts[i], path + strlen(mpath), oflag, 0))
+			if (!mounts[i].ops->open(&fd_array[fd], &mounts[i], path + strlen(mpath), oflag, 0))
 				return fd;
 	}
 	errno = ENOENT;
 	return -1;
-}
-
-int getdents (int fd, void *dp, int count)
-{
-	struct vfs_file_s *file = is_valid_and_open_fd(fd);
-	
-	if (!file)
-	{
-		errno = EBADF;
-		return -1;
-	}
-	
-	if (file->ops->getdents)
-		return file->ops->getdents(file, dp, count);
-	else
-	{
-		errno = EINVAL;
-		return -1;
-	}
 }
 
 pid_t getpid(void)
@@ -294,4 +293,9 @@ pid_t getpid(void)
 int kill(pid_t pid, int sig)
 {
 	return 0;
+}
+
+int unlink(const char *file)
+{
+	return -1;
 }

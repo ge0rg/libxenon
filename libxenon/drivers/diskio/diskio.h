@@ -16,11 +16,11 @@ struct bdev_ops
 
 struct bdev
 {
+	int index;
 	void *ctx;
 	char name[32];
 	lba_t offset;
 	struct bdev_ops *ops;
-	int disabled; /* used when USB device is unplugged */
 	void *mount;
 };
 
