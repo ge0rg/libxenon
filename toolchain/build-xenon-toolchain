@@ -41,18 +41,18 @@ function libxenon_install
 	RETVAL=$?
 
 	if [ $RETVAL -eq 1 ]; then
-		echo -e "Downloading libxenon..."
-		git clone git://free60.git.sourceforge.net/gitroot/free60/free60 >> $LOGFILE 2>&1
+#		echo -e "Downloading libxenon..."
+#		git clone git://free60.git.sourceforge.net/gitroot/free60/free60 >> $LOGFILE 2>&1
 		echo -e "Building libxenon..."
-		make -C free60/libxenon/ports/xenon libxenon.a >> $LOGFILE 2>&1
-		make -C free60/libxenon/ports/xenon install >> $LOGFILE 2>&1
-		cp  free60/devkitxenon/app.lds free60/devkitxenon/rules $PREFIX/
+		make -C ../libxenon/ports/xenon libxenon.a >> $LOGFILE 2>&1 || exit 0
+		make -C ../libxenon/ports/xenon install >> $LOGFILE 2>&1 || exit 0
+		cp  ../devkitxenon/app.lds ../devkitxenon/rules $PREFIX/
 		# startup crt fix
-		cp free60/libxenon/startup/xenon/crt1.o /usr/local/xenon/xenon/lib/
-		cp free60/libxenon/ports/xenon/crti.o /usr/local/xenon/xenon/lib/
-		cp free60/libxenon/ports/xenon/crtn.o /usr/local/xenon/xenon/lib/
+		cp ../libxenon/startup/xenon/crt1.o /usr/local/xenon/xenon/lib/
+		cp ../libxenon/ports/xenon/crti.o /usr/local/xenon/xenon/lib/
+		cp ../libxenon/ports/xenon/crtn.o /usr/local/xenon/xenon/lib/
 		echo
-		echo -e "libxenon installled successfully"
+		echo -e "libxenon installed successfully"
 		echo
 	else
 		echo
@@ -130,7 +130,7 @@ function toolchain_install
 	tar xfz $NEWLIB.tar.gz >> $LOGFILE 2>&1 && cat newlib.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
 	cd build
 	echo -e "Configuring newlib..."
-	../$NEWLIB/configure --target=$TARGET --prefix=$PREFIX  --enable-multilib   --disable-nls >> $LOGFILE 2>&1 || exit 0
+	../$NEWLIB/configure --target=$TARGET --prefix=$PREFIX  --enable-multilib   --disable-nls CFLAGS='-DHAVE_BLKSIZE' >> $LOGFILE 2>&1 || exit 0
 	echo -e "Building newlib, this could take a while..."
 	make $PARALLEL >> $LOGFILE 2>&1 || exit 0
 	make install >> $LOGFILE 2>&1 || exit 0
