@@ -126,4 +126,4 @@ endif
 
 run: $(OUTPUT).elf32
 	cp $(OUTPUT).elf32 /tftpboot/xenon
-	/home/dev360/run
+#	/home/dev360/run

@@ -88,7 +88,7 @@ static unsigned char shader_3d_vs[] = {
 
 int main(void)
 {
-	xenos_init();
+	xenos_init(VIDEO_MODE_AUTO);
 	console_init();
 	printf("Hello, world!\n");
 	struct XenosDevice _xe, *xe;
