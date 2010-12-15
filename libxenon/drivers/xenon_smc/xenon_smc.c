@@ -143,7 +143,7 @@ void xenon_smc_set_led(int override, int value)
 
 void xenon_smc_power_shutdown(void)
 {
-	uint8_t buf[16] = {0x82, 0x11, 0x01};
+	uint8_t buf[16] = {0x82, 0x01};
 	xenon_smc_send_message(buf);
 }
 
