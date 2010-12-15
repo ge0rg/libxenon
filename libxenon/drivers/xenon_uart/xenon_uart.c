@@ -4,6 +4,8 @@
 
 void putch(unsigned char c)
 {
+	if (c=='\n') putch('\r');
+
 	while (!((*(volatile uint32_t*)(BASE + 0x18))&0x02000000));
 	*(volatile uint32_t*)(BASE + 0x14) = (c << 24) & 0xFF000000;
 }
@@ -19,7 +21,7 @@ int kbhit(void)
 	return !!(status & 0x01000000);
 }
 
-int getchar(void)
+int getch(void)
 {
 	while (!kbhit());
 	return (*(volatile uint32_t*)(BASE + 0x10)) >> 24;
