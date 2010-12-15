@@ -3,6 +3,7 @@
 #define hid6 1017
 #define lpidr 319
 #define pir 1023
+#define hrmor 313
 .globl _start
 
 .align 8
@@ -130,6 +131,9 @@ after_slb:
 b32:
 	bl call_ctors
 	bl main
+
+	bl _exit
+	
 	b .
 
 .globl wait
@@ -161,4 +165,61 @@ secondary:
 	bctrl
 
 	b 1b
-	
+
+.globl return_to_xell
+return_to_xell:
+        	/* Init regs */
+	lis	%r5,0xc810
+	lis	%r6,0x9c00
+
+		/* Copy from Flash, src = %r5, dst = %r6 */
+	lis	%r4,1 /* 256k */
+	mtctr   %r4
+
+	1:	lwz     %r8,0(%r5)		//Memcopy
+		stw     %r8,0(%r6)
+		dcbst   %r0,%r6		//Flush cache to ram
+		icbi	%r0,%r6
+		sync	0
+		isync
+		addi    %r6,%r6,4
+		addi    %r5,%r5,4
+		bdnz    1b
+
+		/* Clear IR/DR, set 64 bit mode and jump to Xell*/
+	li	%r4,0x30
+	mfmsr	%r3
+	andc	%r3,%r3,%r4
+	lis 	%r4,0x8000
+	rldicr	%r4,%r4,32,31
+	or	%r3,%r3,%r4
+	mtsrr1	%r3
+
+	lis	%r3,0x8000
+	rldicr	%r3,%r3,32,31
+	oris 	%r3,%r3,0x1c00
+	ori	%r3,%r3,0x194 /* HACK: offset to a jump to main(), as start() won't work because of the stupid hardcoded hrmor in Xell... */
+	mtsrr0	%r3
+
+
+		/* HACK: as I call main() directly, i need to clear BSS and setup stack too... */
+	li	%r3,0
+	lis	%r6,0x9c08
+	lis	%r4,0x8
+	mtctr   %r4
+	1:
+		stw 	%r3,0(%r6)
+		stw 	%r3,4(%r6)
+		stw 	%r3,8(%r6)
+		stw 	%r3,12(%r6)
+		dcbf    %r0,%r6
+		addi	%r6,%r6,0x10
+          	bdnz	1b
+
+	li %sp, 0
+	oris %sp, %sp, 0x8000
+	rldicr %sp, %sp, 32,31
+	oris %sp, %sp, 0x1e00
+	subi %sp, %sp, 0x80
+
+	rfid
