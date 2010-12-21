@@ -1600,7 +1600,7 @@ void Xe_Init(struct XenosDevice *xe)
 	Xe_pWriteReg(xe, 0x15e0, 0x1234567);
 	
 	Xe_pGInit(xe);
-	
+
 	Xe_pInvalidateGpuCache(xe, RINGBUFFER_BASE, RINGBUFFER_SIZE);
 }
 
@@ -1619,15 +1619,21 @@ void Xe_SetRenderTarget(struct XenosDevice *xe, struct XenosSurface *rt)
 	int tiles_per_line = (xe->vp_xres + tile_size_x - 1) / tile_size_x;
 	tiles_per_line += 1;
 	tiles_per_line &= ~1;
-	
+
 	int tiles_height = (xe->vp_yres + tile_size_y - 1) / tile_size_y;
 
 	// what about 64bit targets?
 
 	xe->edram_pitch = tiles_per_line * tile_size_x;
 	xe->edram_hizpitch = tiles_per_line * tile_size_x;
-	xe->edram_color0base = 0;
+
+#if 1
+ 	xe->edram_color0base = 0;
 	xe->edram_depthbase = tiles_per_line * tiles_height;
+#else
+	xe->edram_color0base = tiles_per_line * tiles_height;
+	xe->edram_depthbase = 0;
+#endif
 }
 
 void Xe_pSetEDRAMLayout(struct XenosDevice *xe)
@@ -1658,7 +1664,7 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 	rput32(0x00002104); 
 		rput32(0x0000000f); // colormask 
 	rput32(0x0005210f); 
-		rput32(0x44000000); rput32(0x44000000); 
+		rput32(0x44000000); rput32(0x44000000);
 		rput32(0xc3b40000); rput32(0x43b40000); 
 		rput32(0x3f800000); rput32(0x00000000); 
 
@@ -1791,6 +1797,7 @@ void TEXTURE_FETCH(u32 *dst, u32 base, int width, int height, int pitch, int til
 	switch (format & XE_FMT_MASK)
 	{
 	case XE_FMT_8: pitch /= 32; break;
+	case XE_FMT_5551: pitch /= 64; break;
 	case XE_FMT_565: pitch /= 64; break;
 	case XE_FMT_16161616: pitch /= 256; break;
 	case XE_FMT_8888: pitch /= 128; break;
@@ -2267,9 +2274,9 @@ void Xe_pSetState(struct XenosDevice *xe)
 	{
 		Xe_pSetSurfaceClip(xe, 0, 0, 0, 0, xe->vp_xres, xe->vp_yres);
 		Xe_pSetEDRAMLayout(xe);
-		rput32(0x0000200d); 
+		rput32(0x0000200d);
 			rput32(0x00000000);
-		rput32(0x00012100); 
+		rput32(0x00012100);
 			rput32(0x00ffffff);
 			rput32(0x00000000);
 		rput32(0x00002104);
@@ -2341,7 +2348,7 @@ struct XenosVertexBuffer *Xe_VBPoolAlloc(struct XenosDevice *xe, int size)
 		}
 		vbp = &vb->next;
 	}
-	
+
 	return Xe_CreateVertexBuffer(xe, size);
 }
 
@@ -2493,7 +2500,7 @@ void Xe_DrawPrimitive(struct XenosDevice *xe, int type, int start, int primitive
 
 	Xe_pSetIndexOffset(xe, start); /* ?? */
 	cnt = Xe_pCalcVtxCount(xe, type, primitive_count);
-	Xe_pDrawNonIndexed(xe, 6, 4); // cnt, type);
+	Xe_pDrawNonIndexed(xe, cnt, type);
 }
 
 void Xe_SetStreamSource(struct XenosDevice *xe, int index, struct XenosVertexBuffer *vb, int offset, int stride)
@@ -2578,6 +2585,7 @@ struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width
 	switch (format & XE_FMT_MASK)
 	{
 	case XE_FMT_8: bypp = 1; break;
+	case XE_FMT_5551: bypp = 2; break;
 	case XE_FMT_565: bypp = 2; break;
 	case XE_FMT_8888: bypp = 4; break;
 	case XE_FMT_16161616: bypp = 8; break;

@@ -147,6 +147,7 @@ struct XenosShaderVertex
 #define XE_FMT_MASK          0x3F
 #define XE_FMT_8             2
 #define XE_FMT_8888          6
+#define XE_FMT_5551          3
 #define XE_FMT_565           4
 #define XE_FMT_16161616      26
 #define XE_FMT_ARGB          0x80
