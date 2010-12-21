@@ -1627,7 +1627,7 @@ void Xe_SetRenderTarget(struct XenosDevice *xe, struct XenosSurface *rt)
 	xe->edram_pitch = tiles_per_line * tile_size_x;
 	xe->edram_hizpitch = tiles_per_line * tile_size_x;
 
-#if 1
+#if 0
  	xe->edram_color0base = 0;
 	xe->edram_depthbase = tiles_per_line * tiles_height;
 #else
