@@ -65,6 +65,15 @@ extern "C" {
 #define XE_STENCILOP_INCR        6
 #define XE_STENCILOP_DECR        7
 
+#define XE_TEXADDR_WRAP                   0
+#define XE_TEXADDR_MIRROR                 1
+#define XE_TEXADDR_CLAMP                  2
+#define XE_TEXADDR_MIRRORONCE             3
+#define XE_TEXADDR_BORDER_HALF            4
+#define XE_TEXADDR_MIRRORONCE_BORDER_HALF 5
+#define XE_TEXADDR_BORDER                 6
+#define XE_TEXADDR_MIRRORONCE_BORDER      7
+
 struct XenosLock
 {
 	void *start;
@@ -173,7 +182,10 @@ struct XenosSurface
 	int width, height, pitch, tiled, format;
 	u32 ptr, ptr_mip;
 	int bypp;
-	
+
+    int use_filtering;
+    int u_addressing,v_addressing;
+    	
 	void *base;
 
 	struct XenosLock lock;
@@ -224,7 +236,7 @@ struct XenosDevice
 #define DIRTY_ALU      0x0001
 #define DIRTY_FETCH    0x0002
 #define DIRTY_CLIP     0x0004
-#define DRITY_INTEGER  0x0008
+#define DIRTY_INTEGER  0x0008
 #define DIRTY_CONTROL  0x0010
 #define DIRTY_SHADER   0x0020
 #define DIRTY_MISC     0x0040
