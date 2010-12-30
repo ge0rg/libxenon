@@ -5,7 +5,7 @@
 
 TARGET=xenon
 PREFIX=/usr/local/xenon # Install location of your final toolchain
-PARALLEL="-j 2"		# Or: PARALLEL=""
+PARALLEL=""		# Or: PARALLEL="-j 2"
 
 BINUTILS=binutils-2.19.1
 GCC=gcc-4.4.0
