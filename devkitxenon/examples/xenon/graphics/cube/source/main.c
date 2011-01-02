@@ -4,6 +4,7 @@
 #include <string.h>
 #include <xenos/xe.h>
 #include <xenos/xenos.h>
+#include <xenos/edram.h>
 #include <console/console.h>
 #include "engine.h"
 #include "xee.h"
@@ -14,8 +15,6 @@ uint64_t ld(volatile void *addr)
 	asm volatile ("ld %0, 0(%1)" : "=r" (l) : "r" (addr));
 	return l;
 }
-
-extern void do_edram_foo(struct XenosDevice *xe, int complete);
 
 		/* simple 3d */
 static unsigned char shader_3d_ps[] = {
@@ -166,13 +165,14 @@ int main(void)
 	memcpy(i, cube_indices, sizeof(cube_indices));
 	Xe_IB_Unlock(xe, ib);
 
+		/* init EDRAM, this needs to be done right before beginning the first frame */
+	edram_init(xe);
+
 		/* stats */
 	int f = 0;
 	int framecount = 0;
 	printf("render..\n");
 	
-	do_edram_foo(xe, 1);
-
 	console_close();
 
 	while (1)
