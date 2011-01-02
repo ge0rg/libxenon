@@ -774,7 +774,7 @@ void xenos_init(int videoMode)
     printf("Xenos GPU ID=%08x ", xenos_id);
 
     xenos_type = (xenos_id>>16)!=0x5821; // jasper ?
-    printf(xenos_type?"(pre-Jasper)\n":"(Jasper)\n");
+    printf(xenos_type?"(Jasper)\n":"(pre-Jasper)\n");
 
     xenos_init_phase0();
 	xenos_init_phase1();

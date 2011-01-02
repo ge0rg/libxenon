@@ -590,11 +590,11 @@ int edram_compare_crc(uint32_t *crc)
 
 void edram_init_state1(void)
 {
-	xenos_write32(0x214, xenos_type ? 0x1e : 0x1a);
+    xenos_write32(0x214, xenos_id<0x5831 ? 0x1e : 0x15);
 	xenos_write32(0x3C00, (xenos_read32(0x3c00) &~ 0x003f0000) | 0x100000);
 	int v = (edram_read(0x4000) &~ 4) | 0x2A;
 	edram_write(0x4000, v);
-	edram_write(0x4001, xenos_type ? 0x31: 0x2709f1);
+	edram_write(0x4001, xenos_id<0x5821 ? 0x2709f1 : 0x31);
 	v = (v &~ 0x20) | 0xC;
 	edram_write(0x4000, v);
 	v &= ~0xC;
@@ -602,7 +602,7 @@ void edram_init_state1(void)
 	edram_write(0xFFFF, 1);
 	v |= 4;
 	edram_write(0x4000, v);
-	edram_write(0x4001, xenos_type ? 0x31 : 0x2709f1);
+	edram_write(0x4001, xenos_id<0x5821 ? 0x2709f1 : 0x31);
 	v &= ~0x4C;
 	edram_write(0x4000, v);
 	edram_write(0xFFFF, 1);
