@@ -770,7 +770,7 @@ void xenos_autoset_mode(void)
 
 void xenos_init(int videoMode)
 {
-    xenos_id=__builtin_bswap32(*(u32*)0xd0010000);
+    xenos_id=read32(0xd0010000);
     printf("Xenos GPU ID=%08x ", xenos_id);
 
     xenos_type = (xenos_id>>16)!=0x5821; // jasper ?
