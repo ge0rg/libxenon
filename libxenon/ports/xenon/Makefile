@@ -10,7 +10,8 @@ ifeq ($(strip $(DEVKITXENON)),)
 $(error "please set DEVKITXENON")
 endif
 
-CFLAGS = -mcpu=cell -mtune=cell -O2 \
+CFLAGS = -mcpu=cell -mtune=cell -Os \
+	-ffunction-sections -fdata-sections \
 	-Wall -I. -DBYTE_ORDER=BIG_ENDIAN \
 	-I ../../drivers -I ../../include -Wall  \
 	-m32 -fno-pic -mpowerpc64 \
@@ -23,7 +24,7 @@ CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -fpermissive -Wno-sign-compare -W
 	-Werror=pointer-to-int-cast -Wno-unknown-pragmas  -Wno-unused-value -Wno-unused-variable 
 
 AFLAGS = -Iinclude -m32 
-LDFLAGS = -L$(DEVKITXENON)/usr/lib -lxenon -lstdc++ -lm -m32
+LDFLAGS = -L$(DEVKITXENON)/usr/lib -lxenon -lstdc++ -lm -m32 -Wl,--gc-sections
 
 LIBOBJS = crti.o crtn.o \
 	../../startup/xenon/startup_from_xell.o \
