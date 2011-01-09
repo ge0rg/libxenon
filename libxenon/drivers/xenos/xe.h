@@ -179,7 +179,7 @@ struct XenosVBFFormat
 
 struct XenosSurface
 {
-	int width, height, pitch, tiled, format;
+	int width, height, wpitch, hpitch, tiled, format;
 	u32 ptr, ptr_mip;
 	int bypp;
 

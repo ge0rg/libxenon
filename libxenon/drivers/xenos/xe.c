@@ -955,7 +955,7 @@ void Xe_Init(struct XenosDevice *xe)
 	xe->rb = xe->rb_primary = (void*)(RINGBUFFER_BASE | 0x80000000);
 	
 	xe->tex_fb.ptr = r32(0x6110);
-	xe->tex_fb.pitch = r32(0x6120) * 4;
+	xe->tex_fb.wpitch = r32(0x6120) * 4;
 	xe->tex_fb.width = r32(0x6134);
 	xe->tex_fb.height = r32(0x6138);
 	xe->tex_fb.bypp = 4;
@@ -1067,8 +1067,8 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 	int pitch;
 	switch (surface->format & XE_FMT_MASK)
 	{
-	case XE_FMT_8888: pitch = surface->pitch / 4; break;
-	case XE_FMT_16161616: pitch = surface->pitch / 8; break;
+	case XE_FMT_8888: pitch = surface->wpitch / 4; break;
+	case XE_FMT_16161616: pitch = surface->wpitch / 8; break;
 	default: Xe_Fatal(xe, "unsupported resolve target format");
 	}
 	rput32(0x00032318); 
@@ -1142,7 +1142,7 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 
 	rput32(0xc0004600); rput32(0x00000006); 
 	rput32(0x00002007); rput32(0x00000000); 
-	Xe_pInvalidateGpuCacheAll(xe, surface->ptr, surface->pitch * surface->height);
+	Xe_pInvalidateGpuCacheAll(xe, surface->ptr, surface->wpitch * surface->height);
 
 	rput32(0x0000057e); rput32(0x00010001); 
 	rput32(0x00002318); rput32(0x00000000);
@@ -1700,7 +1700,7 @@ void Xe_pSetState(struct XenosDevice *xe)
 void Xe_SetTexture(struct XenosDevice *xe, int index, struct XenosSurface *tex)
 {
 	if (tex!=NULL)
-        TEXTURE_FETCH(xe->fetch_constants + index * 6, tex->ptr, tex->width - 1, tex->height - 1, tex->pitch, tex->tiled, tex->format, tex->ptr_mip, 2, tex->use_filtering, tex->u_addressing, tex->v_addressing);
+        TEXTURE_FETCH(xe->fetch_constants + index * 6, tex->ptr, tex->width - 1, tex->height - 1, tex->wpitch, tex->tiled, tex->format, tex->ptr_mip, 2, tex->use_filtering, tex->u_addressing, tex->v_addressing);
 	else
 		memset(xe->fetch_constants + index * 6,0,24);
 
@@ -1987,16 +1987,18 @@ struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width
 	}
 	assert(bypp);
 	
-	int pitch = (width * bypp + 127) &~127;
+	int wpitch = (width * bypp + 127) &~127;
+	int hpitch = (height + 31) &~31;
 	
 	surface->width = width;
 	surface->height = height;
-	surface->pitch = pitch;
+	surface->wpitch = wpitch;
+	surface->hpitch = hpitch;
 	surface->tiled = tiled;
 	surface->format = format;
 	surface->ptr_mip = 0;
 	surface->bypp = bypp;
-	surface->base = Xe_pAlloc(xe, &surface->ptr, height * pitch, 4096);
+    surface->base = Xe_pAlloc(xe, &surface->ptr, hpitch * wpitch, 4096);
 
     surface->use_filtering = 1;
     surface->u_addressing = XE_TEXADDR_WRAP;
@@ -2019,8 +2021,14 @@ void *Xe_Surface_LockRect(struct XenosDevice *xe, struct XenosSurface *surface, 
 	if (!h)
 		h = surface->height;
 
-	int offset = y * surface->pitch + x * surface->bypp;
-	int size = h * surface->pitch;
+	int offset = y * surface->wpitch + x * surface->bypp;
+	int size = h * surface->wpitch;
+    
+    if (surface->height != surface->hpitch) {
+        //TODO: find a better way to handle this
+        offset = 0;
+        size = surface->hpitch * surface->wpitch;
+    }
 
 	Xe_pLock(xe, &surface->lock, surface->base + offset, surface->ptr + offset, size, flags);
 	return surface->base + offset;
