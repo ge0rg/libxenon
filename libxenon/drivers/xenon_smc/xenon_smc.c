@@ -1,3 +1,4 @@
+#include "xenon_smc.h"
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -5,7 +6,7 @@
 
 #define SMC_BASE 0xea001000
 
-void xenon_smc_send_message(unsigned char *msg)
+void xenon_smc_send_message(const unsigned char *msg)
 {
 /*	printf("SEND: ");
 	int i;
@@ -100,12 +101,13 @@ int xenon_smc_ana_write(uint8_t addr, uint32_t val)
 	xenon_smc_receive_response(buf);
 	if (buf[1] != 0)
 	{
-		printf("xenon_smc_read_smbus failed, addr=%02x, err=%d\n", addr, buf[1]);
+		printf("xenon_smc_ana_write failed, addr=%02x, err=%d\n", addr, buf[1]);
 		return -1;
 	}
 	
 	return 0;
 }
+
 int xenon_smc_ana_read(uint8_t addr, uint32_t *val)
 {
 	uint8_t buf[16];
@@ -122,10 +124,60 @@ int xenon_smc_ana_read(uint8_t addr, uint32_t *val)
 	xenon_smc_receive_response(buf);
 	if (buf[1] != 0)
 	{
-		printf("xenon_smc_read_smbus failed, addr=%02x, err=%d\n", addr, buf[1]);
+		printf("xenon_smc_ana_read failed, addr=%02x, err=%d\n", addr, buf[1]);
 		return -1;
 	}
 	*val = buf[4] | (buf[5] << 8) | (buf[6] << 16) | (buf[7] << 24);
+	return 0;
+}
+
+int xenon_smc_i2c_write(uint16_t addr, uint8_t val)
+{
+	uint8_t buf[16];
+    memset(buf, 0, 16);
+	
+	int tmp=(addr>=0x200)?0x3d:0x39;
+
+    buf[0] = 0x11;
+	buf[1] = 0x20;
+	buf[3] = tmp | 0x80; //3d
+	
+	buf[6] = addr & 0xff; //3a
+	buf[7] = val;
+
+	xenon_smc_send_message(buf);
+
+	xenon_smc_receive_response(buf);
+	if (buf[1] != 0)
+	{
+		printf("xenon_smc_i2c_write failed, addr=%04x, err=%d\n", addr, buf[1]);
+		return -1;
+	}
+	
+	return 0;
+}
+
+int xenon_smc_i2c_read(uint16_t addr, uint8_t *val)
+{
+	uint8_t buf[16];
+	memset(buf, 0, 16);
+
+    int tmp=(addr>=0x200)?0x3d:0x39;
+
+	buf[0] = 0x11; //40
+	buf[1] = 0x10;//((addr-0x1d0)>0x25)?0x10:0x11; //3f
+	buf[2] = 1; //3e
+	buf[3] = buf[5] = tmp | 0x80; //3d 3b
+    buf[6] = addr & 0xff; //3a
+	
+	xenon_smc_send_message(buf);
+	xenon_smc_receive_response(buf);
+	if (buf[1] != 0)
+	{
+		printf("xenon_smc_i2c_read failed, addr=%04x, err=%d\n", addr, buf[1]);
+		return -1;
+	}
+	*val = buf[3];
 	return 0;
 }
 
