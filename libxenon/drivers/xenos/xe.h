@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+#include <nocfe/lib_malloc.h>
+
 #define XE_MAX_INDICES_PER_DRAW 65535
 
 #define SHADER_TYPE_PIXEL 1
@@ -243,6 +245,7 @@ struct XenosDevice
 	int dirty;
 
 		/* private */
+    mempool_t mempool;
 	u32 rb_secondary_base;
 	volatile void *rb, *rb_primary, *rb_secondary;
 	int rb_primary_wptr, rb_secondary_wptr;
@@ -253,7 +256,6 @@ struct XenosDevice
 	struct XenosSurface tex_fb;
 	
 	struct XenosSurface *rt;
-	int alloc_ptr;
 	int last_wptr;
 	
 	int vp_xres, vp_yres;
@@ -356,7 +358,10 @@ void Xe_DrawPrimitive(struct XenosDevice *xe, int type, int start, int primitive
 void Xe_SetStreamSource(struct XenosDevice *xe, int index, struct XenosVertexBuffer *vb, int offset, int stride);
 
 struct XenosIndexBuffer *Xe_CreateIndexBuffer(struct XenosDevice *xe, int length, int format);
+void Xe_DestroyIndexBuffer(struct XenosDevice *xe, struct XenosIndexBuffer *ib);
+
 struct XenosVertexBuffer *Xe_CreateVertexBuffer(struct XenosDevice *xe, int length);
+void Xe_DestroyVertexBuffer(struct XenosDevice *xe, struct XenosVertexBuffer *vb);
 
 #define XE_LOCK_READ 1
 #define XE_LOCK_WRITE 2
@@ -370,7 +375,11 @@ void Xe_IB_Unlock(struct XenosDevice *xe, struct XenosIndexBuffer *ib);
 void Xe_SetVertexShaderConstantF(struct XenosDevice *xe, int start, const float *data, int count); /* count = number of 4 floats */
 void Xe_SetPixelShaderConstantF(struct XenosDevice *xe, int start, const float *data, int count); /* count = number of 4 floats */
 
+void Xe_SetVertexShaderConstantB(struct XenosDevice *xe, int index, int value);
+void Xe_SetPixelShaderConstantB(struct XenosDevice *xe, int index, int value);
+
 struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width, unsigned int height, unsigned int levels, int format, int tiled);
+void Xe_DestroyTexture(struct XenosDevice *xe, struct XenosSurface *surface);
 void *Xe_Surface_LockRect(struct XenosDevice *xe, struct XenosSurface *surface, int x, int y, int w, int h, int flags);
 void Xe_Surface_Unlock(struct XenosDevice *xe, struct XenosSurface *surface);
 

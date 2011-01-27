@@ -14,13 +14,19 @@
 #include <debug.h>
 
 #define RINGBUFFER_BASE 0x10000000
-#define RINGBUFFER_SIZE 0x0F000000
+#define RINGBUFFER_SIZE 0x0E000000
+
+#define RINGBUFFER_RESERVED_ZONE 0x20000
+
+#define MEMPOOL_BASE (RINGBUFFER_BASE+RINGBUFFER_RESERVED_ZONE)
+#define MEMPOOL_SIZE (RINGBUFFER_SIZE-RINGBUFFER_RESERVED_ZONE)
 
 #define RPTR_WRITEBACK 0x10000
 #define SCRATCH_WRITEBACK 0x10100
 
 #define RINGBUFFER_PRIMARY_SIZE (0x8000/4)
-#define RINGBUFFER_SECONDARY_SIZE (0x100000/4)
+#define RINGBUFFER_SECONDARY_SIZE (0x400000/4)
+#define RINGBUFFER_SECONDARY_GUARD (0x200000/4)
 
 #define RADEON_CP_PACKET0               0x00000000
 #define RADEON_ONE_REG_WR                (1 << 15)
@@ -59,20 +65,23 @@ void Xe_pSyncFromDevice(struct XenosDevice *xe, volatile void *data, int len)
 
 void *Xe_pAlloc(struct XenosDevice *xe, u32 *phys, int size, int align)
 {
-	void *r;
+    void *r;
 	if (!align)
 		align = size;
-	xe->alloc_ptr += (-xe->alloc_ptr) & (align-1);
-	xe->alloc_ptr += align;
-	r = ((void*)xe->rb) + xe->alloc_ptr;
 
-	if (phys)
-		*phys = RINGBUFFER_BASE + xe->alloc_ptr;
-	xe->alloc_ptr += size;
-//	printf("Xe_pAlloc: at %d kb\n", xe->alloc_ptr / 1024);
-	if (xe->alloc_ptr > (RINGBUFFER_SIZE))
-		Xe_Fatal(xe, "FATAL: out of memory. (alloc_ptr: %d kb, RINGBUFFER_SIZE: %d kb)\n", xe->alloc_ptr / 1024, RINGBUFFER_SIZE / 1024);
-	return r;
+    r=kmalloc(&xe->mempool,size,align);
+    if (!r)
+        Xe_Fatal(xe, "out of memory\n");
+
+    if (phys)
+        *phys = (u32) r &~ 0x80000000;
+
+    return r;
+}
+
+void Xe_pFree(struct XenosDevice *xe, void * ptr)
+{
+    kfree(&xe->mempool,ptr);
 }
 
 void Xe_pInvalidateGpuCache_Primary(struct XenosDevice *xe, int base, int size)
@@ -109,11 +118,9 @@ void Xe_pRBKickSegment(struct XenosDevice *xe, int base, int len)
 		rput32p(xe->rb_secondary_base + base * 4); rput32p(len);
 }
 
-#define RINGBUFFER_SECONDARY_GUARD 0x20000
-
 void Xe_pRBKick(struct XenosDevice *xe)
 {
-//	printf("kick: wptr = %x, last_wptr = %x\n", rb_secondary_wptr, last_wptr);
+//	printf("kick: wptr = %x, last_wptr = %x\n", xe->rb_secondary_wptr, xe->last_wptr);
 	
 	Xe_pRBKickSegment(xe, xe->last_wptr, xe->rb_secondary_wptr - xe->last_wptr);
 
@@ -951,8 +958,13 @@ int Xe_GetShaderLength(struct XenosDevice *xe, void *sh)
 void Xe_Init(struct XenosDevice *xe)
 {
 	memset(xe, 0, sizeof(*xe));
-	xe->regs = (void*)0xec800000;
-	xe->rb = xe->rb_primary = (void*)(RINGBUFFER_BASE | 0x80000000);
+
+    xe->regs = (void*)0xec800000;
+    xe->rb = xe->rb_primary = (void*)(RINGBUFFER_BASE | 0x80000000);
+
+    unsigned char * poolbase=xe->rb+0x20000;
+
+    kmeminit(&xe->mempool,(unsigned char *)(MEMPOOL_BASE | 0x80000000),MEMPOOL_SIZE);
 	
 	xe->tex_fb.ptr = r32(0x6110);
 	xe->tex_fb.wpitch = r32(0x6120) * 4;
@@ -964,21 +976,6 @@ void Xe_Init(struct XenosDevice *xe)
 	xe->tex_fb.tiled = 1;
 	
 	printf("Framebuffer %d x %d @ %08x\n", xe->tex_fb.width, xe->tex_fb.height, xe->tex_fb.ptr);
-
-#if 0
-	time_t t = time(0);
-	while (t == time(0));
-	t = time(0) + 10;
-	int nr = 0;
-	while (t > time(0))
-	{
-		memcpy(rb, rb + RINGBUFFER_SIZE / 2, RINGBUFFER_SIZE / 2);
-		++nr;
-	}
-	
-	printf("%d kB/s (%d)\n", nr * (RINGBUFFER_SIZE/1024)/2 / 10, nr);
-	return 0;
-#endif
 
 	u32 rb_primary_phys = Xe_pRBAlloc(xe);
 
@@ -1244,7 +1241,8 @@ void Xe_pStuff(struct XenosDevice *xe)
 void Xe_Fatal(struct XenosDevice *xe, const char *fmt, ...)
 {
 	va_list arg;
-	va_start(arg, fmt);
+	printf("[xe] Fatal error: ");
+    va_start(arg, fmt);
 	vprintf(fmt, arg);
 	va_end(arg);
 	abort();
@@ -1726,6 +1724,12 @@ struct XenosVertexBuffer *Xe_CreateVertexBuffer(struct XenosDevice *xe, int size
 	return vb;
 }
 
+void Xe_DestroyVertexBuffer(struct XenosDevice *xe, struct XenosVertexBuffer *vb)
+{
+    Xe_pFree(xe,vb->base);
+    free(vb);
+}
+
 struct XenosVertexBuffer *Xe_VBPoolAlloc(struct XenosDevice *xe, int size)
 {
 	struct XenosVertexBuffer **vbp = &xe->vb_pool;
@@ -1924,6 +1928,12 @@ struct XenosIndexBuffer *Xe_CreateIndexBuffer(struct XenosDevice *xe, int length
 	return ib;
 }
 
+void Xe_DestroyIndexBuffer(struct XenosDevice *xe, struct XenosIndexBuffer *ib)
+{
+    Xe_pFree(xe,ib->base);
+    free(ib);
+}
+
 void *Xe_VB_Lock(struct XenosDevice *xe, struct XenosVertexBuffer *vb, int offset, int size, int flags)
 {
 	Xe_pLock(xe, &vb->lock, vb->base + offset, vb->phys_base + offset, size, flags);
@@ -1971,6 +1981,34 @@ void Xe_SetPixelShaderConstantF(struct XenosDevice *xe, int start, const float *
 //	}
 }
 
+void Xe_SetVertexShaderConstantB(struct XenosDevice *xe, int index, int value)
+{
+    int bit=1<<(index&0x1f);
+    int block=index>>5;
+
+    if (value)
+        xe->integer_constants[block] |= bit;
+    else
+        xe->integer_constants[block] &= ~bit;
+
+    xe->dirty |= DIRTY_INTEGER;
+}
+
+void Xe_SetPixelShaderConstantB(struct XenosDevice *xe, int index, int value)
+{
+    index += 128;
+    
+    u32 bit=1<<(index&0x1f);
+    u32 block=index>>5;
+
+    if (value)
+        xe->integer_constants[block] |= bit;
+    else
+        xe->integer_constants[block] &= ~bit;
+
+    xe->dirty |= DIRTY_INTEGER;
+}
+
 struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width, unsigned int height, unsigned int levels, int format, int tiled)
 {
 	struct XenosSurface *surface = malloc(sizeof(struct XenosSurface));
@@ -2005,6 +2043,12 @@ struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width
     surface->v_addressing = XE_TEXADDR_WRAP;
 
 	return surface;
+}
+
+void Xe_DestroyTexture(struct XenosDevice *xe, struct XenosSurface *surface)
+{
+    Xe_pFree(xe,surface->base);
+    free(surface);
 }
 
 void *Xe_Surface_LockRect(struct XenosDevice *xe, struct XenosSurface *surface, int x, int y, int w, int h, int flags)
