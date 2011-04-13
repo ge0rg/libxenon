@@ -31,6 +31,10 @@ void unregister_bdev(struct bdev *bdev);
 
 struct bdev *bdev_open(const char *name);
 
+int bdev_enum(int handle, const char **name); // return value=-1 means last call returned the last item
+                                              // first call: pass handle=-1, next calls: pass handle=previous return value
+                                              // name: pass the address of a variable that will recieve the name as char *
+
 #ifdef __cplusplus
 };
 #endif

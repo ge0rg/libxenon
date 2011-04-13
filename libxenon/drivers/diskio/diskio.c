@@ -138,3 +138,16 @@ struct bdev *bdev_open(const char *name)
 			return devices + i;
 	return 0;
 }
+
+int bdev_enum(int handle, const char **name)
+{
+    do{
+        ++handle;
+    }while(handle<MAX_DEVICES && !devices[handle].ops);
+
+    if (handle>=MAX_DEVICES) return -1;
+
+    if (name) *name=devices[handle].name;
+
+    return handle;
+}
