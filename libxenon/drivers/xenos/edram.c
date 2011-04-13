@@ -14,7 +14,6 @@ extern void xenos_write32(int reg, uint32_t val);
 extern uint32_t xenos_read32(int reg);
 
 extern u32 xenos_id;
-extern u32 xenos_type;
 
 u32 edram_id=0,edram_rev=0;
 
@@ -120,7 +119,7 @@ int edram_p2(int r3, int r4, int r5, int r6, int r7, int r8, int r9, int r10)
 	while (xenos_read32(0x3c4c));
 	
 	edram_write(0x4000, 0xC0);
-	xenos_write32(0x3c90, 0);
+	if (xenos_id<0x5841) xenos_write32(0x3c90, 0);
 	xenos_write32(0x3c00, xenos_read32(0x3c00) | 0x800000);
 //	assert(xenos_read32(0x3c00) == 0x8900000);
 	xenos_write32(0x0214, xenos_read32(0x0214) | 0x80000000);
@@ -290,7 +289,7 @@ int edram_p2(int r3, int r4, int r5, int r6, int r7, int r8, int r9, int r10)
 		// bb734
 
 	int *data6;
-    data6 = (xenos_type==0 && edram_rev>=0x10) || (xenos_type==1 && edram_rev>=0x20) ? data6_new : data6_old;
+    data6 = (xenos_id==0x5821 && edram_rev>=0x10) || (xenos_id!=0x5821 && edram_rev>=0x20) ? data6_new : data6_old;
 	
 	for (chip = 0; chip < 9; ++chip)
 	{
@@ -590,7 +589,7 @@ int edram_compare_crc(uint32_t *crc)
 
 void edram_init_state1(void)
 {
-    xenos_write32(0x214, xenos_id<0x5831 ? 0x1e : 0x15);
+    if (xenos_id<0x5841) xenos_write32(0x214, xenos_id<0x5831 ? 0x1e : 0x15);
 	xenos_write32(0x3C00, (xenos_read32(0x3c00) &~ 0x003f0000) | 0x100000);
 	int v = (edram_read(0x4000) &~ 4) | 0x2A;
 	edram_write(0x4000, v);

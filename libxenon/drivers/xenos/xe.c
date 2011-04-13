@@ -304,7 +304,7 @@ void Xe_pReset(struct XenosDevice *xe)
 	Xe_pInit1(xe);
 }
 
-void Xe_pInit0(struct XenosDevice *xe, u32 buffer_base, u32 size_in_l2qw)
+void Xe_pResetCP(struct XenosDevice *xe, u32 buffer_base, u32 size_in_l2qw)
 {
 	w32(0x07d8, 0x1000FFFF);
 	udelay(2000);
@@ -355,7 +355,7 @@ void Xe_pSetup(struct XenosDevice *xe, u32 buffer_base, u32 buffer_size, const u
 	w32(0x3214, 7);
 	w32(0x3294, 1);
 	w32(0x3408, 0x800);
-	Xe_pInit0(xe, buffer_base, buffer_size);
+	Xe_pResetCP(xe, buffer_base, buffer_size);
 	Xe_pWaitReady(xe);
 }
 
@@ -370,7 +370,7 @@ void Xe_pMasterInit(struct XenosDevice *xe, u32 buffer_base)
 	Xe_pSetup(xe, buffer_base, 0xC, xenos_ucode0, xenos_ucode1);
 
 	w32(0x07d4, 0);
-	w32(0x07d4, 1);
+    w32(0x07d4, 1);
 
 	w32(0x2054, 0x1E);
 	w32(0x2154, 0x1E);

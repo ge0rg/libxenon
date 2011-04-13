@@ -14,7 +14,7 @@
 
 #define FB_BASE 0x1e000000
 
-u32 xenos_id=0,xenos_type=0;
+u32 xenos_id=0; // 5841=slim, 5831=jasper, 5821=zephyr/falcon?, 5811=xenon?
 
 void xenos_write32(int reg, uint32_t val)
 {
@@ -719,35 +719,68 @@ void xenos_init_phase0(void)
 
 void xenos_init_phase1(void)
 {
+    if (xenos_id>=0x5841){
+        uint32_t v,v2;
+        
+        v = xenos_read32(0x0218) & 0xFE7FFFFF;
+        xenos_write32(0x0218,v);
+        xenos_read32(0x0218);
 
-	uint32_t v;
-	xenos_write32(0x0244, 0x20000000); // 
-	v = 0x200c0011;
-	xenos_write32(0x0244, v);
-	udelay(1000);
-	v &=~ 0x20000000;
-	xenos_write32(0x0244, v);
-	udelay(1000);
-	
-	assert(xenos_read32(0x0244) == 0xc0011);
+        v2 = 0xa058a34;
 
-	xenos_write32(0x0218, 0);
+        xenos_write32(0x244,v2);
+
+        v &= 0xFFFFF803;
+        v |= 0x388;
+        xenos_write32(0x0218,v);
+        xenos_read32(0x0218);
+        udelay(1000);
+
+        v2 |= 1;
+        xenos_write32(0x244,v2);
+        xenos_read32(0x244);
+        udelay(1000);
+
+        v |= 0x1000000;
+        xenos_write32(0x0218,v);
+        xenos_read32(0x0218);
+
+        xenos_write32(0x0218,xenos_read32(0x0218) & 0xFFFFFFFE);
+    }else{
+        uint32_t v;
+        xenos_write32(0x0244, 0x20000000); //
+        v = 0x200c0011;
+        xenos_write32(0x0244, v);
+        udelay(1000);
+        v &=~ 0x20000000;
+        xenos_write32(0x0244, v);
+        udelay(1000);
+
+        assert(xenos_read32(0x0244) == 0xc0011);
+
+        xenos_write32(0x0218, 0);
+    }
+
 	xenos_write32(0x3c04, 0xe);
 	xenos_write32(0x00f4, 4);
 	
-	int gpu_clock = xenos_read32(0x0210);
-	int mem_clock = xenos_read32(0x284);
-	int edram_clock = xenos_read32(0x244);
-	int fsb_clock = xenos_read32(0x248);
-	assert(gpu_clock == 9);
-	printf("GPU Clock at %d MHz\n", 50 * ((gpu_clock & 0xfff)+1) / (((gpu_clock >> 12) & 0x3f)+1));
-	printf("MEM Clock at %d MHz\n", 50 * ((mem_clock & 0xfff)+1) / (((mem_clock >> 12) & 0x3f)+1));
-	printf("EDRAM Clock at %d MHz\n", 100 * ((edram_clock & 0xfff)+1) / (((edram_clock >> 12) & 0x3f)+1));
-	printf("FSB Clock at %d MHz\n", 100 * ((fsb_clock & 0xfff)+1) / (((fsb_clock >> 12) & 0x3f)+1));
-	
+    if (xenos_id>=0x5841){
+    	xenos_write32(0x0204, 0x947FF386);
+        xenos_write32(0x0208, 0x3FC7C2);
+    }else{
+        int gpu_clock = xenos_read32(0x0210);
+        int mem_clock = xenos_read32(0x284);
+        int edram_clock = xenos_read32(0x244);
+        int fsb_clock = xenos_read32(0x248);
+        assert(gpu_clock == 9);
+        printf("GPU Clock at %d MHz\n", 50 * ((gpu_clock & 0xfff)+1) / (((gpu_clock >> 12) & 0x3f)+1));
+        printf("MEM Clock at %d MHz\n", 50 * ((mem_clock & 0xfff)+1) / (((mem_clock >> 12) & 0x3f)+1));
+        printf("EDRAM Clock at %d MHz\n", 100 * ((edram_clock & 0xfff)+1) / (((edram_clock >> 12) & 0x3f)+1));
+        printf("FSB Clock at %d MHz\n", 100 * ((fsb_clock & 0xfff)+1) / (((fsb_clock >> 12) & 0x3f)+1));
 
-	xenos_write32(0x0204, 0x400300); // 4400380 for jasper
-	xenos_write32(0x0208, 0x180002);
+        xenos_write32(0x0204, (xenos_id<0x5821)?0x4000300:0x4400380);
+        xenos_write32(0x0208, 0x180002);
+    }
 	
 	xenos_write32(0x01a8, 0);
 	xenos_write32(0x0e6c, 0x0c0f0000);
@@ -1018,11 +1051,8 @@ void xenos_autoset_mode(void)
 
 void xenos_init(int videoMode)
 {
-    xenos_id=read32(0xd0010000);
-    printf("Xenos GPU ID=%08x ", xenos_id);
-
-    xenos_type = (xenos_id>>16)!=0x5821; // jasper ?
-    printf(xenos_type?"(Jasper)\n":"(pre-Jasper)\n");
+    xenos_id=read32(0xd0010000)>>16;
+    printf("Xenos GPU ID=%04x\n", xenos_id);
 
     xenos_init_phase0();
 	xenos_init_phase1();
