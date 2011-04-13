@@ -601,9 +601,16 @@ void main(int argc,char *argv[])
 
 
 static unsigned char heap[1*1024*1024];
+static int kmem_init_done=0;
 
 void kmem_init(void)
 {
-	mempool_t *pool = &kmempool;
+    if(kmem_init_done){
+        printf("Calling kmem_init() before usb_init() is deprecated.\n");
+        return;
+    }
+    kmem_init_done=1;
+
+    mempool_t *pool = &kmempool;
 	kmeminit(pool, heap, sizeof(heap));
 }

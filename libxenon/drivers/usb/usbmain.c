@@ -45,8 +45,8 @@
     ********************************************************************* */
 
 
-#include "cfe.h"
-#include "lib_physio.h"
+#include <nocfe/cfe.h>
+#include <nocfe/lib_physio.h>
 
 #if CFG_PCI
 #include "pcireg.h"
@@ -67,6 +67,7 @@ extern int ohcidebug;				/* OHCI debug control */
 extern int usb_noisy;				/* USBD debug control */
 
 int ui_init_usbcmds(void);			/* forward */
+void kmem_init(void);
 
 /*  *********************************************************************
     *  Globals
@@ -236,6 +237,8 @@ int usb_init(void)
 	initdone = 1;
 
 	usb_buscnt = 0;
+
+    kmem_init();
 
 #if CFG_PCI
 	usb_init_pci_ohci();
