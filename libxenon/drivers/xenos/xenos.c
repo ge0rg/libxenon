@@ -2,6 +2,7 @@
 
 #include <xenon_smc/xenon_smc.h>
 #include <xenon_smc/xenon_gpio.h>
+#include <xenon_nand/xenon_config.h>
 #include <pci/io.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +10,8 @@
 #include <string.h>
 #include <assert.h>
 #include <xetypes.h>
+
+#include "xenon_nand/xenon_config.h"
 
 #define require(x, label) if (!(x)) { printf("%s:%d [%s]\n", __FILE__, __LINE__, #x); goto label; }
 
@@ -456,6 +459,42 @@ uint32_t ana_yuv_720p[] = {
 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00000000, 0x00000000, 0x00010001, 0x00000000,  // f8
 };
 
+uint32_t ana_ntsc_480i[] = {
+0x00000051, 0x00000003, 0x00000000, 0x00000007, 0x00000000, 0xffffffff, 0xe880a916, 0x07001482,  // 00
+0x00180005, 0x00000029, 0x00000000, 0xffffffff, 0xd8000000, 0x00000001, 0x3c0ffc40, 0x064b0000,  // 08
+0x24900300, 0x9789e029, 0x00674700, 0x74a8030c, 0x00299039, 0x2651b20d, 0x67672323, 0x0300ebff,  // 10
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // 18
+0x02540f38, 0x0e600002, 0x02540409, 0x00000002, 0x02540000, 0x03310002, 0xc68250c3, 0x0f348d50,  // 20
+0x1f07a1d7, 0x1bf6817a, 0x0068361b, 0x00642c10, 0x071375b2, 0x06bb5bb2, 0x00f835fa, 0x077f95bb,  // 28
+0x0743b9e9, 0x07d7fe09, 0xfafafbfc, 0xfe011714, 0x100c0804, 0xc0000000, 0x00000000, 0x00000000,  // 30
+0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,  // 38
+0x00000000, 0x00000000, 0x00000000, 0x00000000, 0xc0000000, 0x00000000, 0x00000000, 0x00000000,  // 40
+0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,  // 48
+0x00000000, 0x00000000, 0x00000000, 0x40001e18, 0x0e030e0c, 0x09636439, 0x63093737, 0x40003964,  // 50
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // 58
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // 60
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xdeadbeef, 0x00000000, 0x00000000,  // 68
+0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x638fe262, 0x00385b53, 0x00000000,  // 70
+0x00000000, 0x00000000, 0xdeadbeef, 0x00000000, 0x00000000, 0xffffffff, 0xffffffff, 0x00000034,  // 78
+0xffffffff, 0xffffffff, 0x00000000, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // 80
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // 88
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // 90
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // 98
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // a0
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // a8
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // b0
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // b8
+0xffffffff, 0xffffffff, 0x00000000, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // c0
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x020c804e, 0x08e84014, 0x00000014,  // c8
+0x00055a9d, 0x001f4a9f, 0x002cfe1f, 0x09832017, 0x0990e00e, 0x00000060, 0x00000060, 0x00000004,  // d0
+0x0000000f, 0x00000020, 0x00000002, 0x00000004, 0x000042aa, 0xffffffff, 0xffffffff, 0x00000000,  // d8
+0x89250000, 0x00000000, 0x00000000, 0x8436f666, 0x0000001b, 0xffffffff, 0xffffffff, 0xffffffff,  // e0
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // e8
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,  // f0
+0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x00000000, 0x00000000, 0x00010001, 0x00000000,  // f8
+};
+
+
 struct mode_s
 {
 	uint32_t *ana;
@@ -619,7 +658,20 @@ struct mode_s
 		.is_progressive = 1,
 		.composite_sync = 1,
 	},
-	};
+	{
+	.ana = ana_ntsc_480i,
+		.total_width = 780,
+		.hsync_offset = 80,
+		.real_active_width = 640,
+		.total_height = 525,
+		.vsync_offset = 38,
+		.active_height = 480/2,
+		.is_progressive = 0,
+		.width = 640,
+		.height = 480/2,
+		.composite_sync = 1,
+	},
+};
 
 void xenos_init_ana_new(uint32_t *mode_ana, int hdmi)
 {
@@ -684,7 +736,7 @@ void xenos_init_ana_new(uint32_t *mode_ana, int hdmi)
 
     // digital video stuff
 
-	int addr_1[] = {3, 6, 7, 8, 0xc, 0xd, 0x10, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17};
+	int addr_1[] = {3, 6, 7, 8, 0xc, 0xd, 0xe, 0xf, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17};
 
 	for (i = 0; i < sizeof(addr_1)/sizeof(int); ++i)
 		xenos_ana_write(addr_1[i], mode_ana[addr_1[i]]);
@@ -833,80 +885,78 @@ void xenos_ana_preinit(void)
 
 void xenos_set_mode_f1(struct mode_s *mode)
 {
-	xenos_write32(0x60e8, 1);
-	xenos_write32(0x6cbc, 3);
-	xenos_write32(0x60ec, 0);
-	xenos_write32(0x6020, 0);
+	xenos_write32(D1CRTC_UPDATE_LOCK, 1);
+	xenos_write32(DCP_LB_DATA_GAP_BETWEEN_CHUNK, 3);
+	xenos_write32(D1CRTC_DOUBLE_BUFFER_CONTROL, 0);
+	xenos_write32(D1CRTC_V_TOTAL, 0);
 
 	int interlace_factor = mode->is_progressive ? 1 : 2;
-	
-	xenos_write32(0x6000, mode->total_width - 1);
-	xenos_write32(0x6010, mode->total_height - 1);
-	xenos_write32(0x6004, (mode->hsync_offset << 16) | (mode->real_active_width + mode->hsync_offset));
-	xenos_write32(0x6014, (mode->vsync_offset << 16) | (mode->active_height * interlace_factor + mode->vsync_offset));
-	xenos_write32(0x6008, 0x100000);
+
+	xenos_write32(D1CRTC_H_TOTAL, mode->total_width - 1);
+	xenos_write32(D1CRTC_H_SYNC_B, mode->total_height - 1);
+	xenos_write32(D1CRTC_H_BLANK_START_END, (mode->hsync_offset << 16) | (mode->real_active_width + mode->hsync_offset));
+	xenos_write32(D1CRTC_H_SYNC_B_CNTL, (mode->vsync_offset << 16) | (mode->active_height * interlace_factor + mode->vsync_offset));
+	xenos_write32(D1CRTC_H_SYNC_A, 0x100000);
 	xenos_write32(0x6018, 0x60000);
-	xenos_write32(0x6030, mode->is_progressive ? 0 : 1);
-	xenos_write32(0x600c, 0);
+	xenos_write32(D1CRTC_V_SYNC_B, mode->is_progressive ? 0 : 1);
+	xenos_write32(D1CRTC_H_SYNC_A_CNTL, 0);
 	xenos_write32(0x601c, 0);
 
-	xenos_write32(0x604c, 0);
-	xenos_write32(0x6050, 0);
-	xenos_write32(0x6044, 0);
-	xenos_write32(0x6048, 0);
+	xenos_write32(D1CRTC_MVP_INBAND_CNTL_CAP, 0);
+	xenos_write32(D1CRTC_MVP_INBAND_CNTL_INSERT, 0);
+	xenos_write32(D1CRTC_MVP_FIFO_STATUS, 0);
+	xenos_write32(D1CRTC_MVP_SLAVE_STATUS, 0);
 
-	xenos_write32(0x60e8, 0);
+	xenos_write32(D1CRTC_UPDATE_LOCK, 0);
 }
-
-
 
 void xenos_set_mode_f2(struct mode_s *mode)
 {
 	int interlace_factor = mode->is_progressive ? 1 : 2;
-	
-	xenos_write32(0x6144, 1);
-	xenos_write32(0x6120, mode->width); /* pitch */
-	xenos_write32(0x6104, 2);
-	xenos_write32(0x6108, 0); /* lut override */
-	xenos_write32(0x6124, 0);
-	xenos_write32(0x6128, 0);
-	xenos_write32(0x612c, 0);
-	xenos_write32(0x6130, 0);
-	xenos_write32(0x6134, mode->width);
-	xenos_write32(0x6138, mode->active_height * interlace_factor);
-	xenos_write32(0x6110, FB_BASE);
-	xenos_write32(0x6120, mode->width);
-	xenos_write32(0x6100, 1);
-	xenos_write32(0x6144, 0);
+
+	xenos_write32(D1GRPH_UPDATE, 1);
+	xenos_write32(D1GRPH_PITCH, mode->width); /* pitch */
+	xenos_write32(D1GRPH_CONTROL, 2);
+	xenos_write32(D1GRPH_LUT_SEL, 0); /* lut override */
+	xenos_write32(D1GRPH_SURFACE_OFFSET_X, 0);
+	xenos_write32(D1GRPH_SURFACE_OFFSET_Y, 0);
+	xenos_write32(D1GRPH_X_START, 0);
+	xenos_write32(D1GRPH_Y_START, 0);
+	xenos_write32(D1GRPH_X_END, mode->width);
+	xenos_write32(D1GRPH_Y_END, mode->active_height * interlace_factor);
+	xenos_write32(D1GRPH_PRIMARY_SURFACE_ADDRESS, FB_BASE);
+	xenos_write32(D1GRPH_PITCH, mode->width);
+	xenos_write32(D1GRPH_ENABLE, 1);
+	xenos_write32(D1GRPH_UPDATE, 0);
 
 			/* scaler update */
-	xenos_write32(0x65cc, 1);
-	xenos_write32(0x6590, 0);
+	xenos_write32(AVIVO_D1SCL_UPDATE, 1);
+	xenos_write32(AVIVO_D1SCL_SCALER_ENABLE , 0);
 	xenos_write32(0x2840, FB_BASE);
 	xenos_write32(0x2844, mode->width);
 	xenos_write32(0x2848, 0x80000);
-	
-	xenos_write32(0x6580, 0); /* viewport */
-	xenos_write32(0x6584, (mode->width << 16) | (mode->active_height * interlace_factor));
+
+	xenos_write32(AVIVO_D1MODE_VIEWPORT_START , 0); /* viewport */
+	xenos_write32(AVIVO_D1MODE_VIEWPORT_SIZE, (mode->width << 16) | (mode->active_height * interlace_factor));
 	xenos_write32(0x65e8, (mode->width >> 2) - 1);
-	xenos_write32(0x6528, mode->is_progressive ? 0 : 1);
+	xenos_write32(AVIVO_D1MODE_DATA_FORMAT, mode->is_progressive ? 0 : 1);
 	xenos_write32(0x6550, 0xff);
 	xenos_write32(0x6524, 0x300);
 	xenos_write32(0x65d0, 0x100);
-	xenos_write32(0x6148, 1);
-	
-	xenos_write32(0x6594, 0x905);
-	xenos_write32(0x6584, (mode->width << 16) | (mode->height * interlace_factor));
+	xenos_write32(D1GRPH_FLIP_CONTROL, 1);
+
+	xenos_write32(AVIVO_D1SCL_SCALER_TAP_CONTROL, 0x905);
+	xenos_write32(AVIVO_D1MODE_VIEWPORT_SIZE, (mode->width << 16) | (mode->height * interlace_factor));
 	xenos_write32(0x65e8, (mode->width / 4) - 1);
-	xenos_write32(0x6580, 0);
-	xenos_write32(0x612c, 0);
-	xenos_write32(0x6130, 0);
-	xenos_write32(0x6434, mode->width);
-	xenos_write32(0x6138, mode->height * interlace_factor);
-	xenos_write32(0x6044, 0);
-	xenos_write32(0x6048, 0);
-	xenos_write32(0x604c, 0);
-	xenos_write32(0x6050, 0);
+	xenos_write32(AVIVO_D1MODE_VIEWPORT_START, 0);
+	xenos_write32(D1GRPH_X_START, 0);
+	xenos_write32(D1GRPH_Y_START, 0);
+	xenos_write32(D1GRPH_X_END, mode->width);
+	xenos_write32(D1GRPH_Y_END, mode->height * interlace_factor);
+	xenos_write32(D1CRTC_MVP_FIFO_STATUS, 0);
+	xenos_write32(D1CRTC_MVP_SLAVE_STATUS, 0);
+	xenos_write32(D1CRTC_MVP_INBAND_CNTL_CAP, 0);
+	xenos_write32(D1CRTC_MVP_INBAND_CNTL_INSERT, 0);
 	xenos_write32(0x65a0, 0);
 	xenos_write32(0x65b4, 0x01000000);
 	xenos_write32(0x65c4, 0x01000000);
@@ -915,14 +965,14 @@ void xenos_set_mode_f2(struct mode_s *mode)
 	xenos_write32(0x65b8, 0x00060000);
 	xenos_write32(0x65c8, 0x00040000);
 	xenos_write32(0x65dc, 0);
-	xenos_write32(0x65cc, 0);
-	
-	xenos_write32(0x64C0, 0);
-	xenos_write32(0x6488, 0);
-	xenos_write32(0x6484, 0);
-	xenos_write32(0x649C, 7);
-	xenos_write32(0x64a0, 1);
-	while (!(xenos_read32(0x64a0) & 2));
+	xenos_write32(AVIVO_D1SCL_UPDATE, 0);
+
+	xenos_write32(DC_LUTA_CONTROL, 0);
+	xenos_write32(DC_LUT_RW_INDEX, 0);
+	xenos_write32(DC_LUT_RW_MODE, 0);
+	xenos_write32(DC_LUT_WRITE_EN_MASK, 7);
+	xenos_write32(DC_LUT_AUTOFILL, 1);
+	while (!(xenos_read32(DC_LUT_AUTOFILL) & 2));
 }
 
 void xenos_set_mode(struct mode_s *mode)
@@ -935,7 +985,6 @@ void xenos_set_mode(struct mode_s *mode)
 	xenos_write32(0x04a0, 0x100);
 	printf(" . ana enable\n");
     xenos_init_ana_new(mode->ana,mode->hdmi);
-//	xenos_init_ana();
 	xenos_write32(0x7900, 1);
 
 	printf(" . f1\n");
@@ -947,105 +996,117 @@ void xenos_set_mode(struct mode_s *mode)
 	
 	if (!mode->composite_sync)
 	{
-		xenos_write32(0x6038, 0x04010040);
-		xenos_write32(0x603c, 0);
-		xenos_write32(0x6040, 0x04010040); 
+		xenos_write32(D1CRTC_MVP_CONTROL1, 0x04010040);
+		xenos_write32(D1CRTC_MVP_CONTROL2, 0);
+		xenos_write32(D1CRTC_MVP_FIFO_CONTROL, 0x04010040);
 	} else
 	{
-		xenos_write32(0x6038, 0x20000200);
-		xenos_write32(0x603c, 0x20010200);
-		xenos_write32(0x6040, 0x20010200);
+		xenos_write32(D1CRTC_MVP_CONTROL1, 0x20000200);
+		xenos_write32(D1CRTC_MVP_CONTROL2, 0x20010200);
+		xenos_write32(D1CRTC_MVP_FIFO_CONTROL, 0x20010200);
 	}
 	xenos_write32(0x793c, 0);
 	xenos_write32(0x7938, 0x700);
 
-	
-	xenos_write32(0x6024, 0x04010040);
-	xenos_write32(0x6054, 0x00010002);
-	xenos_write32(0x6058, 0xec02414a);
 
-	xenos_write32(0x6060, 0x000000ec);
-	xenos_write32(0x6064, 0x014a00ec);
-	xenos_write32(0x6068, 0x00d4014a);
-	xenos_write32(0x6110, FB_BASE);
+	xenos_write32(AVIVO_D1CRTC_V_BLANK_START_END, 0x04010040);
+	xenos_write32(D1CRTC_MVP_INBAND_CNTL_INSERT_TIMER, 0x00010002);
+	xenos_write32(D1CRTC_MVP_BLACK_KEYER, 0xec02414a);
+
+	xenos_write32(D1CRTC_TRIGA_CNTL, 0x000000ec);
+	xenos_write32(D1CRTC_TRIGA_MANUAL_TRIG, 0x014a00ec);
+	xenos_write32(D1CRTC_TRIGB_CNTL, 0x00d4014a);
+	xenos_write32(D1GRPH_PRIMARY_SURFACE_ADDRESS, FB_BASE);
 
 
 	if (!mode->rgb)
 	{
-		xenos_write32(0x6380, 0x00000001);
-		xenos_write32(0x6384, 0x00702000);
-		xenos_write32(0x6388, 0x87a26000);
-		xenos_write32(0x638c, 0x87ede000);
-		xenos_write32(0x6390, 0x02008000);
-		xenos_write32(0x6394, 0x00418000);
-		xenos_write32(0x6398, 0x0080a000);
-		xenos_write32(0x639c, 0x00192000);
-		xenos_write32(0x63a0, 0x00408000);
-		xenos_write32(0x63a4, 0x87da4000);
-		xenos_write32(0x63a8, 0x87b5e000);
-		xenos_write32(0x63ac, 0x00702000);
-		xenos_write32(0x63b0, 0x02008000);
+		xenos_write32(D1GRPH_COLOR_MATRIX_TRANSFORMATION_CNTL, 0x00000001);
+		xenos_write32(D1COLOR_MATRIX_COEF_1_1, 0x00702000);
+		xenos_write32(D1COLOR_MATRIX_COEF_1_2, 0x87a26000);
+		xenos_write32(D1COLOR_MATRIX_COEF_1_3, 0x87ede000);
+		xenos_write32(D1COLOR_MATRIX_COEF_1_4, 0x02008000);
+		xenos_write32(D1COLOR_MATRIX_COEF_2_1, 0x00418000);
+		xenos_write32(D1COLOR_MATRIX_COEF_2_2, 0x0080a000);
+		xenos_write32(D1COLOR_MATRIX_COEF_2_3, 0x00192000);
+		xenos_write32(D1COLOR_MATRIX_COEF_2_4, 0x00408000);
+		xenos_write32(D1COLOR_MATRIX_COEF_3_1, 0x87da4000);
+		xenos_write32(D1COLOR_MATRIX_COEF_3_2, 0x87b5e000);
+		xenos_write32(D1COLOR_MATRIX_COEF_3_3, 0x00702000);
+		xenos_write32(D1COLOR_MATRIX_COEF_3_4, 0x02008000);
 		xenos_write32(0x63b4, 0x00000000);
 	} else
 	{
-		xenos_write32(0x6380, 0x00000001);
-		xenos_write32(0x6384, 0x00db4000);
-		xenos_write32(0x6388, 0x00000000);
-		xenos_write32(0x638c, 0x00000000);
-		xenos_write32(0x6390, 0x00408000);
-		xenos_write32(0x6394, 0x00000000);
-		xenos_write32(0x6398, 0x00db4000);
-		xenos_write32(0x639c, 0x00000000);
-		xenos_write32(0x63a0, 0x00408000);
-		xenos_write32(0x63a4, 0x00000000);
-		xenos_write32(0x63a8, 0x00000000);
-		xenos_write32(0x63ac, 0x00db4000);
-		xenos_write32(0x63b0, 0x00408000);
+		xenos_write32(D1GRPH_COLOR_MATRIX_TRANSFORMATION_CNTL, 0x00000001);
+		xenos_write32(D1COLOR_MATRIX_COEF_1_1, 0x00db4000);
+		xenos_write32(D1COLOR_MATRIX_COEF_1_2, 0x00000000);
+		xenos_write32(D1COLOR_MATRIX_COEF_1_3, 0x00000000);
+		xenos_write32(D1COLOR_MATRIX_COEF_1_4, 0x00408000);
+		xenos_write32(D1COLOR_MATRIX_COEF_2_1, 0x00000000);
+		xenos_write32(D1COLOR_MATRIX_COEF_2_2, 0x00db4000);
+		xenos_write32(D1COLOR_MATRIX_COEF_2_3, 0x00000000);
+		xenos_write32(D1COLOR_MATRIX_COEF_2_4, 0x00408000);
+		xenos_write32(D1COLOR_MATRIX_COEF_3_1, 0x00000000);
+		xenos_write32(D1COLOR_MATRIX_COEF_3_2, 0x00000000);
+		xenos_write32(D1COLOR_MATRIX_COEF_3_3, 0x00db4000);
+		xenos_write32(D1COLOR_MATRIX_COEF_3_4, 0x00408000);
 		xenos_write32(0x63b4, 0x00000000);
 	}
 
-    if (mode->hdmi) xenon_smc_ana_write(0,0x2c1);
+	if (mode->hdmi) xenon_smc_ana_write(0,0x2c1);
 }
 
 void xenos_autoset_mode(void)
 {
-	int mode = VIDEO_MODE_PAL60;
+	int mode;
+	int region = xenon_config_get_avregion();
 	int avpack = xenon_smc_read_avpack();
-	printf("AVPACK detected: %02x\n", avpack);
-	switch (avpack&0xF)
+
+	switch (region)
 	{
-	case 0x3: // normal (composite)
-		mode = VIDEO_MODE_PAL60;
+	case AVREGION_NTSCJ:
+	case AVREGION_NTSCM:
+		mode = VIDEO_MODE_NTSC;
 		break;
-	case 0xF: // HDTV
-        mode = (avpack&0x40)?VIDEO_MODE_YUV_720P:VIDEO_MODE_HDMI_720P;
+	case AVREGION_PAL50:
+		mode = VIDEO_MODE_PAL50;
 		break;
-	case 0xb: // VGA
-		mode = VIDEO_MODE_VGA_1024x768;
-		break;
-	case 0xC: // no AV pack, revert to composite.
+	case AVREGION_PAL60:
 		mode = VIDEO_MODE_PAL60;
 		break;
 	default:
-		printf("unsupported AVPACK!\n");
-		{
-			int table[] = {0xf, 0x1, 0x3, 0x7};
-			xenon_smc_set_led(1, 0xff);
-			mdelay(1000);
-			xenon_smc_set_led(1, table[(avpack>>6) & 3]);
-			mdelay(1000);
-			xenon_smc_set_led(1, table[(avpack>>4) & 3]);
-			mdelay(1000);
-			xenon_smc_set_led(1, table[(avpack>>2) & 3]);
-			mdelay(1000);
-			xenon_smc_set_led(1, table[(avpack>>0) & 3]);
-			mdelay(1000);
-			xenon_smc_set_led(1, 0xff);
-			mdelay(1000);
-			xenon_smc_set_led(0, 0);
-		}
+		mode = VIDEO_MODE_PAL60;
 		break;
 	}
+
+	printf("AVPACK detected: %02x\n", avpack);
+
+	switch (avpack)
+	{
+	case 0x13: // HDMI_AUDIO
+	case 0x14: // HDMI_AUDIO - GHETTO MOD
+	case 0x1C: // HDMI_AUDIO - GHETTO MOD
+	case 0x1F: // HDMI
+		mode = VIDEO_MODE_HDMI_720P;
+		break;
+	case 0x43: // COMPOSITE - TV MODE
+	case 0x47: // SCART
+	case 0x54: // COMPOSITE + S-VIDEO
+	case 0x57: // NORMAL COMPOSITE
+		break;
+	case 0x0F: // COMPONENT
+	case 0x4F: // COMPOSITE - HD MODE
+		mode = VIDEO_MODE_YUV_720P;
+		break;
+	case 0x5B: // VGA
+	case 0x59: // also vga
+	case 0x1B: // this fixes a generic vga adapter, was under HDMI
+		mode = VIDEO_MODE_VGA_1024x768;
+		break;
+	default:
+		break;
+	}
+	
 	xenos_set_mode(&xenos_modes[mode]);
 }
 
@@ -1060,11 +1121,13 @@ void xenos_init(int videoMode)
 	xenon_gpio_set(0, 0x2300);
 	xenon_gpio_set_oe(0, 0x2300);
 
-    if (videoMode<0)
+    if (videoMode<0){
+		xenon_config_init();
 		xenos_autoset_mode();
+	}
 	else
 		xenos_set_mode(&xenos_modes[videoMode]);
 
 	xenon_smc_ana_write(0xdf, 0);
-	xenos_write32(0x652c, 0x00000300);
+	xenos_write32(AVIVO_D1MODE_DESKTOP_HEIGHT, 0x00000300);
 }
