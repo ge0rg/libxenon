@@ -30,6 +30,7 @@
 #include <string.h>
 #include <ppc/cache.h>
 #include "font_8x16.h"
+#include "console.h"
 
 static int console_width, console_height,
     console_size;
@@ -78,27 +79,12 @@ static void console_draw_char(const int x, const int y, const unsigned char c) {
 }
 
 static void console_clrscr(const unsigned int bgra) {
-#if 0
 	unsigned int *fb = (unsigned int*)console_fb;
 	int count = console_width * console_height;
 	while (count--)
 		*fb++ = bgra;
-#else
-	memset(console_fb, bgra, console_size*4);
-	memdcbst(console_fb, console_size*4);
-#endif
-}
 
-static void console_clrscr_alt(const unsigned int bgra) {
-//#if 0
-	unsigned int *fb = (unsigned int*)console_fb;
-	int count = console_width * console_height;
-	while (count--)
-		*fb++ = bgra;
-//#else
-	//memset(console_fb, bgra, console_size*4);
 	memdcbst(console_fb, console_size*4);
-//#endif
 
 	cursor_x=0;
 	cursor_y=0;
@@ -136,7 +122,7 @@ void console_newline() {
 	}
 }
 
-static void console_putch(const char c) {
+void console_putch(const char c) {
 	if (!console_fb)
 		return;
 	if (c == '\r') {
@@ -173,12 +159,17 @@ void console_init(void) {
 	max_x = ai->width / 8;
 	max_y = ai->height / 16;
 
-	console_clrscr(0);
+	console_clrscr(console_color[0]);
 	
 	stdout_hook = console_stdout_hook;
 
 	printf(" * Xenos FB with %dx%d (%dx%d) at %p initialized.\n",
 		max_x, max_y, ai->width, ai->height, console_fb);
+}
+
+void console_set_colors(unsigned int background, unsigned int foreground){
+	console_color[0]=background;
+	console_color[1]=foreground;
 }
 
 void console_close(void)
