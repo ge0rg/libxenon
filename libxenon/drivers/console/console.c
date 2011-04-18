@@ -99,7 +99,13 @@ static void console_scroll32(const unsigned int lines) {
 		       console_fb + bs*l,
 		       bs);
 	}
-	memset(console_fb + console_size*4 - bs*lines, 0, bs*lines);
+
+	/* fill up last lines with background color */
+	uint32_t *fb = (uint32_t*)(console_fb + console_size*4 - bs*lines);
+	uint32_t *end = (uint32_t*)(console_fb + console_size*4);
+	while (fb != end)
+		*fb++ = console_color[0];
+
 	memdcbst(console_fb, console_size*4);
 }
 
