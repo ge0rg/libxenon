@@ -5,11 +5,9 @@
 extern "C" {
 #endif
 
-#include <types/stdint.h>
+#include <xetypes.h>
 
 extern uint64_t xenon_secotp_read_line(int nr);
-extern int xenon_secotp_blow_fuse(int nr);
-
 
 #ifdef __cplusplus
 };

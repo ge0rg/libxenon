@@ -24,12 +24,16 @@ b 1f
 	rlwinm. %r3, %r3, 0, 31, 31
 //	bne after_slb
 
-		/* setup SLB identity mapping, N=0, LP=1 */
 1:
-
+		/* setup SLB identity mapping, N=0, LP=1 */
 	isync
 	slbia
 	isync
+
+		/* read fuses */
+	mfpir	%r3
+	cmplwi	%r3,0
+	beql	read_fuses
 
 		/* set page size: 16MB for both */
 	mfspr %r3, hid6
@@ -165,6 +169,32 @@ secondary:
 	bctrl
 
 	b 1b
+
+.globl xenon_fuses
+xenon_fuses:
+	.quad 0,0,0,0,0,0,0,0,0,0,0,0
+
+read_fuses:
+	li	%r3,12
+	mtctr	%r3
+
+	li	%r4,0x200
+	oris	%r4,%r4,0x8000
+	rldicr	%r4,%r4,32,31
+	oris 	%r4,%r4,2
+
+	lis	%r5,0x8000
+	rldicr	%r5,%r5,32,31
+	ori	%r5,%r5,xenon_fuses@l
+
+	1:
+		ld	%r3,0(%r4)
+		std	%r3,0(%r5)
+		addi	%r4,%r4,0x200
+		addi	%r5,%r5,8
+		bdnz	1b
+
+	blr
 
 .globl return_to_xell
 return_to_xell:
