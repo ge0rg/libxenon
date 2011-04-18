@@ -238,6 +238,35 @@ int usb_init(void)
 
 	usb_buscnt = 0;
 
+	// preinit (start from scratch)
+		// OHCI
+	*(volatile uint32_t*)0x80000200D0120044 = __builtin_bswap32(0xED44);
+	*(volatile uint32_t*)0x80000200D0128044 = __builtin_bswap32(0xED44);
+		// EHCI
+	*(volatile uint32_t*)0x80000200D0121040 = __builtin_bswap32(0x0C004020);
+	*(volatile uint32_t*)0x80000200D0129040 = __builtin_bswap32(0x0C004020);
+	*(volatile uint32_t*)0x80000200D0121044 = __builtin_bswap32(0x3C);
+	*(volatile uint32_t*)0x80000200D0129044 = __builtin_bswap32(0x3C);
+
+	// resetting EHCI
+	// disable interrupts
+	*(volatile uint32_t*)0x80000200EA003028 = 0x00000000;
+	*(volatile uint32_t*)0x80000200EA005028 = 0x00000000;
+	// set reset, set interrupt thresh
+	*(volatile uint32_t*)0x80000200EA003020 = __builtin_bswap32(2);
+	*(volatile uint32_t*)0x80000200EA005020 = __builtin_bswap32(2);
+	*(volatile uint32_t*)0x80000200EA003020 = __builtin_bswap32(0x80000);
+	*(volatile uint32_t*)0x80000200EA005020 = __builtin_bswap32(0x80000);
+	// set configure flag to default to OHCI controller
+	*(volatile uint32_t*)0x80000200EA003060 = 0x00000000;
+	*(volatile uint32_t*)0x80000200EA005060 = 0x00000000;
+	// set frame
+	*(volatile uint32_t*)0x80000200EA00302C = 0x00000000;
+	*(volatile uint32_t*)0x80000200EA00502C = 0x00000000;
+	// clear status
+	*(volatile uint32_t*)0x80000200EA003024 = __builtin_bswap32(0xFFFF);
+	*(volatile uint32_t*)0x80000200EA005024 = __builtin_bswap32(0xFFFF);
+
     kmem_init();
 
 #if CFG_PCI
