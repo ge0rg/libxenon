@@ -10,12 +10,16 @@ ifeq ($(strip $(DEVKITXENON)),)
 $(error "please set DEVKITXENON")
 endif
 
-CFLAGS = -mcpu=cell -mtune=cell -Os \
+# ipv4 or ipv6
+LWIP_MODE = ipv4
+
+CFLAGS = -g -mcpu=cell -mtune=cell -Os \
 	-ffunction-sections -fdata-sections \
 	-Wall -I. -DBYTE_ORDER=BIG_ENDIAN \
 	-I ../../drivers -I ../../include -Wall  \
 	-m32 -fno-pic -mpowerpc64 \
-	-I ../../drivers/nocfe -D_CFE_=1 -DENDIAN_BIG=1
+	-I ../../drivers/nocfe -D_CFE_=1 -DENDIAN_BIG=1 \
+	-I ../../drivers/lwip/include/ -I ../../drivers/lwip/xenon/include/ -I ../../drivers/lwip/include/$(LWIP_MODE)/
 
 # we need to fix the toolchain to work with multilib here.
 LIBDIR32 = $(DEVKITXENON)/xenon/lib/32/
@@ -69,7 +73,34 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/xenos/ucode.o \
 	../../drivers/xenos/edram.o \
 	../../drivers/xenos/xe.o \
-	../../drivers/xenos/xenos.o
+	../../drivers/xenos/xenos.o \
+	../../drivers/lwip/core/init.o \
+	../../drivers/lwip/core/tcp_in.o \
+	../../drivers/lwip/core/ipv4/inet_chksum.o \
+	../../drivers/lwip/core/ipv4/inet.o \
+	../../drivers/lwip/core/mem.o \
+	../../drivers/lwip/core/memp.o \
+	../../drivers/lwip/core/netif.o \
+	../../drivers/lwip/core/pbuf.o \
+	../../drivers/lwip/core/stats.o \
+	../../drivers/lwip/core/sys.o \
+	../../drivers/lwip/core/tcp.o \
+	../../drivers/lwip/core/ipv4/ip_addr.o \
+	../../drivers/lwip/core/ipv4/icmp.o \
+	../../drivers/lwip/core/ipv4/ip.o \
+	../../drivers/lwip/core/ipv4/ip_frag.o \
+	../../drivers/lwip/core/tcp_out.o \
+	../../drivers/lwip/core/udp.o \
+	../../drivers/lwip/netif/etharp.o \
+	../../drivers/lwip/netif/loopif.o \
+	../../drivers/lwip/core/dhcp.o \
+	../../drivers/lwip/core/raw.o \
+	../../drivers/lwip/core/def.o \
+	../../drivers/lwip/core/timers.o \
+	../../drivers/lwip/xenon/src/lib.o \
+	../../drivers/lwip/xenon/netif/enet.o \
+	../../drivers/network/network.o
+
 
 OBJS_MAIN = main.o ffs_content.o xee.o engine.o exception.o
 
@@ -120,5 +151,12 @@ install: libxenon.a
 	cp libxenon.a $(DEVKITXENON)/usr/lib/
 	mkdir -p $(DEVKITXENON)/usr/include/
 	cp -r ../../drivers/* $(DEVKITXENON)/usr/include/
-	cp ../../include/* $(DEVKITXENON)/usr/include/ 
+	cp ../../include/* $(DEVKITXENON)/usr/include/
+	mkdir -p $(DEVKITXENON)/usr/include/lwip/
+	cp ../../drivers/lwip/include/lwip/* $(DEVKITXENON)/usr/include/lwip/
+	cp ../../drivers/lwip/include/$(LWIP_MODE)/lwip/* $(DEVKITXENON)/usr/include/lwip/
+	mkdir -p $(DEVKITXENON)/usr/include/netif/
+	cp ../../drivers/lwip/include/netif/* $(DEVKITXENON)/usr/include/netif/
+	mkdir -p $(DEVKITXENON)/usr/include/arch/
+	cp ../../drivers/lwip/xenon/include/arch/* $(DEVKITXENON)/usr/include/arch/
 	find $(DEVKITXENON)/usr/include/ -type f \! -name "*.h" -delete
