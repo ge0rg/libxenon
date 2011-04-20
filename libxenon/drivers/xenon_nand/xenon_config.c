@@ -71,3 +71,23 @@ int xenon_config_get_avregion(void)
 		return buf[0x2];
 	}
 }
+
+void xenon_config_get_mac_addr(unsigned char *hwaddr)
+{
+	unsigned char dmac[0x6] = {0x00,0x22,0x48,0xFF,0xFF,0xFF};
+
+	//read from nand
+	memcpy(hwaddr, &secured_settings.MACAddress[0x0], 6);
+
+	//check if we got erased nand data
+	if (hwaddr[0x0]==0xFF && hwaddr[0x1]==0xFF && hwaddr[0x2]==0xFF)
+		memcpy(hwaddr, dmac, 6);
+
+	//check if we got zeroed nand data
+	if (hwaddr[0x0]==0x00 && hwaddr[0x1]==0x00 && hwaddr[0x2]==0x00)
+		memcpy(hwaddr, dmac, 6);
+
+	//printf("NIC MAC set to %02X%02X%02X%02X%02X%02X\n",
+	//		hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
+}
+
