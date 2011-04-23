@@ -36,7 +36,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/console/console.o \
 	../../drivers/diskio/diskio.o \
 	../../drivers/diskio/disk_rb.o \
-	../../drivers/diskio/dvd.o \
+	../../drivers/diskio/ata.o \
 	../../drivers/fat/fat_rb.o \
 	../../drivers/fat/file_rb.o \
 	../../drivers/fat/dir_rb.o \
