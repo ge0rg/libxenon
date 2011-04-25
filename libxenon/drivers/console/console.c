@@ -40,8 +40,7 @@ static uint32_t console_color[2] = { 0x00000000, 0xFFA0A000 };
 
 static unsigned char *console_fb = 0LL;
 
-static int cursor_x, cursor_y,
-    max_x, max_y;
+static int cursor_x, cursor_y, max_x, max_y, offset_x, offset_y;
 
 struct ati_info {
 	uint32_t unknown1[4];
@@ -136,7 +135,7 @@ void console_putch(const char c) {
 	} else if (c == '\n') {
 		console_newline();
 	} else {
-		console_draw_char(cursor_x*8, cursor_y*16, c);
+		console_draw_char(cursor_x*8 + offset_x, cursor_y*16 + offset_y, c);
 		cursor_x++;
 		if (cursor_x >= max_x)
 			console_newline();
@@ -161,10 +160,17 @@ void console_init(void) {
 	console_height = ((ai->height+31)>>5)<<5;
 	console_size = console_width*console_height;
 
-	cursor_x = cursor_y = 0;
-	max_x = ai->width / 8;
-	max_y = ai->height / 16;
+	offset_x = offset_y = 0;
+	if (xenos_is_overscan())
+	{
+		offset_x = (ai->width/28); //50;
+		offset_y = (ai->height/28); //50;
+	}
 
+	cursor_x = cursor_y = 0;
+	max_x = (ai->width - offset_x * 2) / 8;
+	max_y = (ai->height - offset_y * 2) / 16;
+	
 	console_clrscr(console_color[0]);
 	
 	stdout_hook = console_stdout_hook;

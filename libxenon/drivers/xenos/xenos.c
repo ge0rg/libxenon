@@ -21,13 +21,13 @@ u32 xenos_id=0; // 5841=slim, 5831=jasper, 5821=zephyr/falcon?, 5811=xenon?
 
 void xenos_write32(int reg, uint32_t val)
 {
-	write32n(0x200ec800000 + reg, val);
+	write32n(0xec800000 + reg, val);
 //	printf("set reg %4x %08x, read %08x\n", reg, val, read32n(0x200ec800000 + reg));
 }
 
 uint32_t xenos_read32(int reg)
 {
-	return read32n(0x200ec800000 + reg);
+	return read32n(0xec800000 + reg);
 }
 
 static void xenos_ana_write(int addr, uint32_t reg)
@@ -498,7 +498,8 @@ uint32_t ana_ntsc_480i[] = {
 struct mode_s
 {
 	uint32_t *ana;
-	int total_width, total_height, hsync_offset, real_active_width, active_height, vsync_offset, is_progressive, width, height, composite_sync, rgb, hdmi;
+	int total_width, total_height, hsync_offset, real_active_width, active_height,
+		vsync_offset, is_progressive, width, height, composite_sync, rgb, hdmi, overscan;
 } xenos_modes[] = {
 	{
 		.ana = ana_640x480p,
@@ -538,6 +539,7 @@ struct mode_s
 		.width = 640,
 		.height = 480/2,
 		.composite_sync = 1,
+		.overscan = 1,
 	},
 	{
 		.ana = ana_yuv_480p,
@@ -551,6 +553,7 @@ struct mode_s
 		.height = 480,
 		.is_progressive = 1,
 		.composite_sync = 1,
+		.overscan = 1,
 	},
 	{
 		.ana = ana_pal,
@@ -565,6 +568,7 @@ struct mode_s
 		.height = 576/2,
 		.is_progressive = 0,
 		.composite_sync = 1,
+		.overscan = 1,
 	},
 	{	
         .ana = ana_1280x768,
@@ -644,6 +648,7 @@ struct mode_s
 		.is_progressive = 1,
 		.rgb = 1,
         .hdmi = 1,
+		.overscan = 1,
 	}, 
 	{
         .ana = ana_yuv_720p,
@@ -657,6 +662,7 @@ struct mode_s
 		.height = 720,
 		.is_progressive = 1,
 		.composite_sync = 1,
+		.overscan = 1,
 	},
 	{
 	.ana = ana_ntsc_480i,
@@ -670,8 +676,11 @@ struct mode_s
 		.width = 640,
 		.height = 480/2,
 		.composite_sync = 1,
+		.overscan = 1,
 	},
 };
+
+static struct mode_s * xenos_current_mode = NULL;
 
 void xenos_init_ana_new(uint32_t *mode_ana, int hdmi)
 {
@@ -1054,6 +1063,8 @@ void xenos_set_mode(struct mode_s *mode)
 	}
 
 	if (mode->hdmi) xenon_smc_ana_write(0,0x2c1);
+	
+	xenos_current_mode = mode;
 }
 
 void xenos_autoset_mode(void)
@@ -1113,7 +1124,7 @@ void xenos_autoset_mode(void)
 void xenos_init(int videoMode)
 {
     xenos_id=read32(0xd0010000)>>16;
-    printf("Xenos GPU ID=%04x\n", xenos_id);
+    printf("Xenos GPU ID=%04x\n", (unsigned int)xenos_id);
 
     xenos_init_phase0();
 	xenos_init_phase1();
@@ -1130,4 +1141,10 @@ void xenos_init(int videoMode)
 
 	xenon_smc_ana_write(0xdf, 0);
 	xenos_write32(AVIVO_D1MODE_DESKTOP_HEIGHT, 0x00000300);
+}
+
+int xenos_is_overscan()
+{
+	assert(xenos_current_mode);
+	return xenos_current_mode->overscan;
 }
