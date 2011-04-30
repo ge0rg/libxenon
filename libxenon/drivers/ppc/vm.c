@@ -1,7 +1,7 @@
 #include <ppc/vm.h>
 
 #define WIMG_CACHED 0x190
-#define WIMG_GUARDED 0xAC
+#define WIMG_GUARDED 0x1B8
 
 /* Goal is to provide a *simple* memory layout with the following features:
 	-	addresses at 0 should pagefault,

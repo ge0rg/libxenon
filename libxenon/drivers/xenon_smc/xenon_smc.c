@@ -193,6 +193,18 @@ void xenon_smc_set_led(int override, int value)
 	xenon_smc_send_message(buf);
 }
 
+void xenon_smc_set_power_led(int override, int state, int startanim)
+{
+	uint8_t buf[16];
+	memset(buf, 0, 16);
+
+	buf[0] = 0x8C;
+	buf[1] = (override ? 1 : 0) | (state ? 0 : 2);
+	buf[2] = startanim;
+
+	xenon_smc_send_message(buf);
+}
+
 void xenon_smc_power_shutdown(void)
 {
 	uint8_t buf[16] = {0x82, 0x01};

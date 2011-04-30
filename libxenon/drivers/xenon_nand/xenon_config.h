@@ -53,5 +53,6 @@ struct XCONFIG_SECURED_SETTINGS // 0x200
 void xenon_config_init(void);
 int xenon_config_get_avregion(void);
 void xenon_config_get_mac_addr(unsigned char *hwaddr);
+int xenon_config_get_vid_delta();
 
 #endif /* XENON_CONFIG_H_ */

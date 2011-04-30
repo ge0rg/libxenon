@@ -91,3 +91,12 @@ void xenon_config_get_mac_addr(unsigned char *hwaddr)
 	//		hwaddr[0], hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
 }
 
+int xenon_config_get_vid_delta()
+{
+	u8 delta=secured_settings.PowerMode.VIDDelta;
+	
+	//check if we got erased or zeroed nand data
+	if (delta==0 || delta==0xff) return -1;
+			
+	return delta;
+}

@@ -1,9 +1,7 @@
 // startup when being loaded from xell. It the linux ABI.
-#define lpcr 318
-#define hid6 1017
-#define lpidr 319
-#define pir 1023
-#define hrmor 313
+
+#include <ppc/xenonsprs.h>
+
 .globl _start
 
 .align 8
@@ -30,11 +28,6 @@ b 1f
 	slbia
 	isync
 
-		/* read fuses */
-	mfpir	%r3
-	cmplwi	%r3,0
-	beql	read_fuses
-
 		/* set page size: 16MB for both */
 	mfspr %r3, hid6
 	li %r4, 0xF
@@ -59,15 +52,25 @@ b 1f
 
 after_slb:
 
-	isync
-	li %r3, 0xc00
-	li %r4, 0x100
-	mtctr %r4
+		/* invalidate all TLBs */
+	li      %r3, 0xC00
+	li      %r4, 0x100
+	mtctr   %r4
 1:
-	tlbiel %r3, 0
+	tlbiel  %r3, 0
+	addi    %r3, %r3, 0x1000
 	bdnz+ 1b
+	eieio
+	ptesync
+	li      %r3, 0x3FF
+	rldicr  %r3, %r3, 32,31
+	tlbiel  %r3, 1
+	eieio
+	ptesync
 
+		/* setup MSR */
 	mfmsr %r5
+	ori %r5, %r5, 0x1000 // Machine check enable
 	ori %r5, %r5, 0x2000 // FP available
 	oris %r5, %r5, 0x200 // Vector avail
 //	ori %r5, %r5, 0x8000 // EE
@@ -80,12 +83,14 @@ after_slb:
 	mtspr lpidr, %r3
 
 	mfspr %r5, lpcr
+	li %r3, 2
+	andc %r5, %r5, %r3 // clear RMI (enable caching)
 	ori %r5, %r5, 0x400 // software tlb reload
 	mtspr lpcr, %r5
 
 	li %r3, 1  // hrmor
 	sldi %r3, %r3, 63
-	mtspr 313, %r3
+	mtspr hrmor, %r3
 
 	lis %r1, 0
 	rldicr  %r1, %r1, 32,31
@@ -169,32 +174,6 @@ secondary:
 	bctrl
 
 	b 1b
-
-.globl xenon_fuses
-xenon_fuses:
-	.quad 0,0,0,0,0,0,0,0,0,0,0,0
-
-read_fuses:
-	li	%r3,12
-	mtctr	%r3
-
-	li	%r4,0x200
-	oris	%r4,%r4,0x8000
-	rldicr	%r4,%r4,32,31
-	oris 	%r4,%r4,2
-
-	lis	%r5,0x8000
-	rldicr	%r5,%r5,32,31
-	ori	%r5,%r5,xenon_fuses@l
-
-	1:
-		ld	%r3,0(%r4)
-		std	%r3,0(%r5)
-		addi	%r4,%r4,0x200
-		addi	%r5,%r5,8
-		bdnz	1b
-
-	blr
 
 .globl return_to_xell
 return_to_xell:

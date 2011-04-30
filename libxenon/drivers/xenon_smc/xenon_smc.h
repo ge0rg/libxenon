@@ -17,6 +17,7 @@ int xenon_smc_i2c_write(uint16_t addr, uint8_t val);
 int xenon_smc_i2c_read(uint16_t addr, uint8_t *val);
 
 void xenon_smc_set_led(int override, int value);
+void xenon_smc_set_power_led(int override, int state, int startanim);
 void xenon_smc_power_shutdown(void);
 void xenon_smc_start_bootanim(void);
 

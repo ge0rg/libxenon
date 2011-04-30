@@ -13,13 +13,17 @@ endif
 # ipv4 or ipv6
 LWIP_MODE = ipv4
 
+INCLUDES = -I ../../drivers -I ../../include \
+	-I ../../drivers/nocfe \
+	-I ../../drivers/lwip/include/ -I ../../drivers/lwip/xenon/include/ -I ../../drivers/lwip/include/$(LWIP_MODE)/
+
+
 CFLAGS = -g -mcpu=cell -mtune=cell -Os \
 	-ffunction-sections -fdata-sections \
 	-Wall -I. -DBYTE_ORDER=BIG_ENDIAN \
-	-I ../../drivers -I ../../include -Wall  \
 	-m32 -fno-pic -mpowerpc64 \
-	-I ../../drivers/nocfe -D_CFE_=1 -DENDIAN_BIG=1 \
-	-I ../../drivers/lwip/include/ -I ../../drivers/lwip/xenon/include/ -I ../../drivers/lwip/include/$(LWIP_MODE)/
+	-D_CFE_=1 -DENDIAN_BIG=1 \
+	$(INCLUDES)
 
 # we need to fix the toolchain to work with multilib here.
 LIBDIR32 = $(DEVKITXENON)/xenon/lib/32/
@@ -27,7 +31,7 @@ LIBDIR32 = $(DEVKITXENON)/xenon/lib/32/
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -fpermissive -Wno-sign-compare -Werror=int-to-pointer-cast \
 	-Werror=pointer-to-int-cast -Wno-unknown-pragmas  -Wno-unused-value -Wno-unused-variable 
 
-AFLAGS = -Iinclude -m32 
+AFLAGS = -Iinclude -m32 $(INCLUDES)
 LDFLAGS = -L$(DEVKITXENON)/usr/lib -lxenon -lstdc++ -lm -m32 -Wl,--gc-sections
 
 LIBOBJS = crti.o crtn.o \
@@ -99,18 +103,16 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/lwip/core/timers.o \
 	../../drivers/lwip/xenon/src/lib.o \
 	../../drivers/lwip/xenon/netif/enet.o \
-	../../drivers/network/network.o
+	../../drivers/network/network.o\
+	../../drivers/elf/elf.o \
+	../../drivers/elf/elf_run.o
 
-
-OBJS_MAIN = main.o ffs_content.o xee.o engine.o exception.o
-
-TARGETS=main.elf32
 
 # Build rules
 all: $(TARGETS)
 
 clean:
-	rm -rf $(OBJS) $(LIBOBJS) $(TARGETS) libxenon.a main.elf
+	rm -rf $(OBJS) $(LIBOBJS) libxenon.a
 
 ffs_content.c: genffs.py files/ps.psu files/vs.vsu
 	python genffs.py > ffs_content.c
@@ -131,20 +133,8 @@ ffs_content.c: genffs.py files/ps.psu files/vs.vsu
 	@echo [$(notdir $<)]
 	@$(CC) $(AFLAGS) -c $*.s -o $*.o
 
-main.elf: main.lds $(OBJS_MAIN) crt0.o crt1.o crti.o crtn.o
-	$(CC) -n -T $< -o $@ $(OBJS_MAIN) $(LDFLAGS)  -Wl,-Map -Wl,main.map  -L $(LIBDIR32)
-
-main.elf32: main.elf
-	$(OBJCOPY) -O elf32-powerpc --adjust-vma 0x80000000 $< $@
-	$(STRIP) -s $@
-	echo "finished"
-
 libxenon.a: $(LIBOBJS)
 	ar rc $@ $(LIBOBJS)
-
-run:
-	cp main.elf32 /tftpboot/xenon
-#	/home/dev360/run
 
 install: libxenon.a
 	mkdir -p $(DEVKITXENON)/usr/lib/

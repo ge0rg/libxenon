@@ -1,12 +1,18 @@
 #include <stdio.h>
 #include <xenon_soc/xenon_power.h>
 #include <xenon_soc/xenon_io.h>
+#include <xenon_nand/xenon_config.h>
 #include <ppc/register.h>
+#include <ppc/xenonsprs.h>
+#include <ppc/atomic.h>
 #include <time/time.h>
 #include <pci/io.h>
 
-extern volatile int wait[3];
-extern volatile int secondary_lock, secondary_alive;
+#include <debug.h>
+
+extern volatile int wait[12];
+extern volatile int secondary_alive;
+extern unsigned int secondary_lock;
 
 static volatile int thread_state[6];
 
@@ -16,7 +22,7 @@ void xenon_yield(void)
 
 static inline void wakeup_secondary(void)
 {
-	mtspr(152, 0xc00000);  // CTRL.TE{0,1} = 11
+	mtspr(ctrlwr, 0xc00000);  // CTRL.TE{0,1} = 11
 }
 
 void wakeup_cpus(void)
@@ -38,59 +44,56 @@ void wakeup_cpus(void)
 void prepare_sleep(uint64_t *save)
 {
 	void *irq = (void*)0x20050000;
-	int id = mfspr(1023); // PIR
+	int id = mfspr(pir); // PIR
 
 	std(irq + id * 0x1000 + 8, 0x7c);
 	mtdec(0x7fffffff);
 	if (!(id & 1))
-		while (mfspr(136) & (1 << 22)); /* wait until second thread dies */
-	mtspr(310, 0x7fffffff);
-	mtspr(921, (mfspr(921) & ~0x700000) | ((id & 1) ? 0 : (1<<20))); // WEXT for secondary threads
+		while (mfspr(ctrlrd) & (1 << 22)); /* wait until second thread dies */
+	mtspr(hdec, 0x7fffffff);
+	mtspr(tscr, (mfspr(tscr) & ~0x700000) | ((id & 1) ? 0 : (1<<20))); // WEXT for secondary threads
 }
 
 extern void cpusleep(void), secondary_wakeup(void);
 
 void xenon_thread_sleep(void)
 {
-	int pir = mfspr(1023);
+	int id = mfspr(pir);
 	uint64_t save[6];
 	prepare_sleep(save);
-	thread_state[pir] = 1;
+	thread_state[id] = 1;
 	cpusleep();
-	thread_state[pir] = 0;
-	if (!(pir & 1))
+	thread_state[id] = 0;
+	if (!(id & 1))
 		wakeup_secondary();
 }
 
-void xenon_set_speed(int new_speed)
+void xenon_set_speed(int new_speed, int vid_delta)
 {
+	uint64_t v;
+	
 	void *cpuregs = (void*)0x20061000;
 	void *cpuregs2 = (void*)0x20060000;
 	void *irq = (void*)0x20050000;
 
-	std(cpuregs2 + 0xb58, ld(cpuregs2 + 0xb58) | 0x8000000000000000ULL);
-	std(cpuregs + 0x50, ld(cpuregs + 0x50) &~ 0x200000000ULL);
-	std(cpuregs + 0x60, ld(cpuregs + 0x60) | (1ULL << 33));
+	std(irq + 0x6000, 0);
+	std(irq + 0x6010, 0);
+	std(irq + 0x6020, 0);
+	std(irq + 0x6030, 0);
+	std(irq + 0x6040, 0);
 
-//	write32(0xe1020004, read32(0xe1020004) | 1);
+	std(cpuregs2 + 0xb58, ld(cpuregs2 + 0xb58) | 0x8000000000000000ULL);
+	std(cpuregs + 0x50, ld(cpuregs + 0x50) & (0xFFFEULL<<33));
+	std(cpuregs + 0x60, ld(cpuregs + 0x60) | (1ULL << 33));
 
 	udelay(1);
 
-	std(irq + 0x6020, 0x1047c);
+	std(irq + 0x6020, 0x400);
 	while (ld(irq + 0x6020) & 0x2000);
-	std(irq + 8, 0x78);
 
-	uint64_t v = ld(cpuregs + 0x188);
-
-	int base_vid = (v >> 48) & 0x3F;
-	
-	v &= ~0xC007ULL;
-	v |= new_speed & 7;
-	v |= 0xFF0000;
-	v |= 8;
-	std(cpuregs + 0x188, v);
-	
 	v = ld(cpuregs + 0x188);
+	
+	int base_vid = (v >> 48) & 0x3F;
 	
 	/*
 		The CPU VID outputs connect directly to the 
@@ -139,24 +142,28 @@ void xenon_set_speed(int new_speed)
 		It seems that the CPU runs stable with much less voltage, but
 		this would require a bit more effort to make this sure.
 	*/
-
-	int vlt = 11000 + (0x3D - ((base_vid < 0x15) ? base_vid + 0x3E : base_vid)) * 125;
-
-	printf(" * default VID: %02x (%d.%04dV)\n", base_vid, vlt / 10000, vlt % 10000);
 	
-	if (base_vid < 0x15)
-		base_vid += 0x3e;
+	uint32_t rev700up=mfspr(pvr)>=0x710700;
 	
-	int delta = 0x84; /* should come from config area */
+	if(!rev700up){
+		int vlt = 11000 + (0x3D - ((base_vid < 0x15) ? base_vid + 0x3E : base_vid)) * 125;
 
-	int new_vid = base_vid + delta - 0x80;
-	
-	if (new_vid >= 0x3e)
-		new_vid -= 0x3e;
+		printf(" * default VID: %02x (%d.%04dV)\n", base_vid, vlt / 10000, vlt % 10000);
 
-	vlt = 11000 + (0x3D - ((new_vid < 0x15) ? new_vid + 0x3E : new_vid)) * 125;
+		if (base_vid < 0x15)
+			base_vid += 0x3e;
+	}
 	
-	printf(" * using new VID: %02x (%d.%04dV)\n", new_vid, vlt / 10000, vlt % 10000);
+	int new_vid = base_vid + vid_delta - 0x80;
+	
+	if(!rev700up){
+		if (new_vid >= 0x3e)
+			new_vid -= 0x3e;
+
+		int vlt = 11000 + (0x3D - ((new_vid < 0x15) ? new_vid + 0x3E : new_vid)) * 125;
+
+		printf(" * using new VID: %02x (%d.%04dV)\n", new_vid, vlt / 10000, vlt % 10000);
+	}
 
 	v &= ~0xBF08ULL;
 	v |= new_vid << 8;
@@ -164,14 +171,31 @@ void xenon_set_speed(int new_speed)
 	v |= 0xFF << 24;
 
 	std(cpuregs + 0x188, v);
+	
+	while (!(ld(irq + 0x6020) & 0x2000));
+	
+	std(cpuregs + 0x188, ld(cpuregs + 0x188) | 0x8000);
+
+	std(irq + 0x6020, 0x1047c);
+	//while (ld(irq + 0x6020) & 0x2000);
+	std(irq + 8, 0x78);
+
+	v = ld(cpuregs + 0x188);
+
+	v &= ~0xC007ULL;
+	v |= new_speed & 7;
+	v |= 0xFF0000;
+	v |= 8;
+	std(cpuregs + 0x188, v);
 
 	cpusleep();
-
+	
 	std(cpuregs + 0x188, ld(cpuregs + 0x188) | 0x8000);
 
 	std(irq + 0x50, ld(irq + 0x60));
 	std(irq + 8, 0x7c);
 	std(irq + 0x6020, 0);
+
 }
 
 int xenon_run_thread_task(int thread, void *stack, void *task)
@@ -187,16 +211,23 @@ static unsigned char stack[5 * 0x1000];
 
 void xenon_make_it_faster(int speed)
 {
-	int i;
-
+	int i,delta;
+	
+	xenon_config_init();
+	delta=xenon_config_get_vid_delta();
+	
+	if (delta<0){
+		printf(" !!! could not read VID delta, aborting\n");
+		return;
+	}
+	
 	printf(" * Make it faster by making it sleep...\n");
 
 	xenon_set_single_thread_mode();
 
 	printf(" * Make it faster by making it consume more power...\n");
 
-		/* TODO: we need to get the VID from the config block, and set it. */
-	xenon_set_speed(speed);
+	xenon_set_speed(speed,delta);
 
 	printf(" * Make it faster by awaking the other cores...\n");
 	wakeup_cpus();
@@ -209,7 +240,8 @@ void xenon_make_it_faster(int speed)
 
 void xenon_thread_startup(void)
 {
-	secondary_lock = 4 | 16; /* start primary threads */
+	if (secondary_alive == 0x3f) return;		
+	atomic_clearset(&secondary_lock, 0, 4 | 16); /* start primary threads */
 	while (secondary_alive != 0x3f); /* wait until all are alive */
 }
 
@@ -222,8 +254,7 @@ void xenon_sleep_thread(int thread)
 void xenon_set_single_thread_mode(){
 	int i;
 
-	if (secondary_alive != 0x3f)
-		xenon_thread_startup();
+	xenon_thread_startup();
 
 	for (i = 1; i < 6; ++i)
 		while (xenon_run_thread_task(i, stack + i * 0x1000 - 0x100, xenon_thread_sleep));

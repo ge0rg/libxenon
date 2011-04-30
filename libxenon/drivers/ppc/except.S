@@ -1,10 +1,9 @@
 .section ".except"
-// #define DEBUG 1
+
+#include <ppc/xenonsprs.h>
+
+//#define DEBUG 1
 #define PAGE_BITS 12
-#define TLB_Index_Hint 0x3b2
-#define TLB_Index 0x3b3
-#define TLB_VPN   0x3b4
-#define TLB_RPN   0x3b5
 
 #define OFF_REG(r) r * 8
 #define REG_LR 32
@@ -155,7 +154,7 @@ ex_isi:
 #endif
 
 #if DEBUG
-	mfspr %r3, TLB_Index_Hint
+	mfspr %r3, PpeTlbIndexHint
 	bl puthex
 	li %r3, ','
 	bl putc
@@ -178,7 +177,7 @@ ex_isi:
 	or %r3, %r3, %r5
 		// r3 now contains the phys addr
 
-	mfspr %r4, TLB_Index_Hint
+	mfspr %r4, PpeTlbIndexHint
 
 	rldicl %r2, %r3, 64-PAGE_BITS, 64-PAGE_BITS-1 // page nr
 	rldicr %r2, %r2, 0, 39 // round down to 16M (was 47)
@@ -212,7 +211,7 @@ ex_isi:
 #endif
 
 // 00001120_00000898
-	mtspr TLB_Index, %r15
+	mtspr PpeTlbIndex, %r15
 
 		/* ARPN */
 	rldicr %r2, %r3, 0, 39 // round down to 16M (was 47)
@@ -229,7 +228,7 @@ ex_isi:
 	bl putc
 #endif
 
-	mtspr TLB_RPN, %r2
+	mtspr PpeTlbRpn, %r2
 
 	rldicr %r2, %r15, 60 - PAGE_BITS, 56 // AVPN
 	rldicl %r2, %r2, 0, 20 // whatever
@@ -243,7 +242,7 @@ ex_isi:
 
 // 00000000_00004481
 
-	mtspr TLB_VPN, %r2
+	mtspr PpeTlbVpn, %r2
 	b except_return
 
 
@@ -349,7 +348,7 @@ ex_dsi:
 #endif
 
 #if DEBUG
-	mfspr %r3, TLB_Index_Hint
+	mfspr %r3, PpeTlbIndexHint
 	bl puthex
 	li %r3, ','
 	bl putc
@@ -371,7 +370,7 @@ ex_dsi:
 	rldicl %r6, %r4, 0, 50  // leave lower 14 bits of RPN
 	or %r3, %r3, %r5        //r3 now contains the phys addr
 
-	mfspr %r4, TLB_Index_Hint
+	mfspr %r4, PpeTlbIndexHint
 
 	rldicl %r2, %r3, 64-PAGE_BITS, 64-PAGE_BITS // page nr
 
@@ -406,7 +405,7 @@ ex_dsi:
 #endif
 
 // 00001120_00000898
-	mtspr TLB_Index, %r15
+	mtspr PpeTlbIndex, %r15
 
 		/* ARPN */
 	rldicr %r2, %r3, 0, 39 /* round down to 16M */
@@ -423,7 +422,7 @@ ex_dsi:
 	bl putc
 #endif
 
-	mtspr TLB_RPN, %r2
+	mtspr PpeTlbRpn, %r2
 
 			/* calculate VPN */
 
@@ -439,7 +438,7 @@ ex_dsi:
 
 // 00000000_00004481
 
-	mtspr TLB_VPN, %r2
+	mtspr PpeTlbVpn, %r2
 except_return:
 
 	mfsprg1 %r31
