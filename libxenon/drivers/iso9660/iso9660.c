@@ -255,10 +255,7 @@ static int bread_cache(cache_block_t **cache, u32 sector) {
 	/* Load the requested block */
 	j = iso9660_dev->ops->read(iso9660_dev, cache[i]->data, sector, 1);
 	if (j < 0) {
-		dbglog(DBG_ERROR, "fs_iso9660: can't read_sectors for %d: %d\n", sector, j);
-//gli		if (j == ERR_DISC_CHG || j == ERR_NO_DISC) {
-			init_percd();
-//gli		}
+		if (j!=DISKIO_ERROR_NO_MEDIA) dbglog(DBG_ERROR, "fs_iso9660: can't read_sectors for %d: %d\n", (unsigned int)sector, j);
 		rv = -1;
 		goto bread_exit;
 	}
@@ -308,7 +305,7 @@ static iso_dirent_t root_dirent;
 static int init_percd() {
 	int		i, blk;
 
-	dbglog(DBG_NOTICE, "fs_iso9660: disc change detected\n");
+//	dbglog(DBG_NOTICE, "fs_iso9660: disc change detected\n");
 	
 	/* Start off with no cached blocks and no open files*/
 	iso_reset();

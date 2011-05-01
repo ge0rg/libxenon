@@ -63,8 +63,9 @@ struct xenon_atapi_read
   uint8_t code;
   uint8_t reserved1;
   uint32_t lba;
-  uint32_t length;
-  uint8_t reserved2[2];
+  uint8_t reserved2;
+  uint16_t length;
+  uint8_t reserved3[3];
 } __attribute__((packed));
 
 int xenon_ata_init();

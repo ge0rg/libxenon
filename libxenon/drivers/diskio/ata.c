@@ -25,6 +25,8 @@
 #include <time/time.h>
 #include "ata.h"
 
+#include <debug.h>
+
 //No printf
 //#define printf(...)
 
@@ -97,9 +99,19 @@ xenon_ata_pio_read(struct xenon_ata_device *dev, char *buf, int size) {
     xenon_ata_wait_drq(dev);
 
     /* Read in the data, word by word.  */
-    for (i = 0; i < size / 4; i++)
-        buf32[i] = xenon_ata_read_data(dev, XENON_ATA_REG_DATA);
-
+	if (size&0xf){
+		for (i = 0; i < size / 4; i++)
+			buf32[i] = xenon_ata_read_data(dev, XENON_ATA_REG_DATA);
+	}else{
+		volatile uint32_t* reg_data=(volatile uint32_t*)(dev->ioaddress + XENON_ATA_REG_DATA);
+		for (i = 0; i < size / 16; ++i){
+			*buf32++ = *reg_data;
+			*buf32++ = *reg_data;
+			*buf32++ = *reg_data;
+			*buf32++ = *reg_data;
+		}
+	}
+		
     if (xenon_ata_regget(dev, XENON_ATA_REG_STATUS) & 1)
         return xenon_ata_regget(dev, XENON_ATA_REG_ERROR);
 
@@ -278,7 +290,7 @@ xenon_atapi_identify(struct xenon_ata_device *dev) {
             XENON_ATA_CMD_IDENTIFY_PACKET_DEVICE);
     xenon_ata_wait_ready(dev);
 
-    xenon_ata_pio_read(dev, info, 256);
+    xenon_ata_pio_read(dev, info, sizeof(info));
 
     dev->atapi = 1;
 
@@ -289,11 +301,12 @@ xenon_atapi_identify(struct xenon_ata_device *dev) {
 
 static int
 xenon_atapi_packet(struct xenon_ata_device *dev, char *packet) {
-    xenon_ata_regset(dev, XENON_ATA_REG_DISK, 0);
+	
+	xenon_ata_regset(dev, XENON_ATA_REG_DISK, 0);
     xenon_ata_regset(dev, XENON_ATA_REG_FEATURES, 0);
     xenon_ata_regset(dev, XENON_ATA_REG_SECTORS, 0);
-    xenon_ata_regset(dev, XENON_ATA_REG_LBAHIGH, 0xFF);
-    xenon_ata_regset(dev, XENON_ATA_REG_LBAMID, 0xFF);
+    xenon_ata_regset(dev, XENON_ATA_REG_LBAHIGH, 0xff);
+    xenon_ata_regset(dev, XENON_ATA_REG_LBAMID, 0xff);
     xenon_ata_regset(dev, XENON_ATA_REG_CMD, XENON_ATA_CMD_PACKET);
     xenon_ata_wait_ready(dev);
 
@@ -302,21 +315,74 @@ xenon_atapi_packet(struct xenon_ata_device *dev, char *packet) {
     return 0;
 }
 
+#define   SK(sense)((sense>>16) & 0xFF)
+#define  ASC(sense)((sense>>8)  & 0xFF)
+#define ASCQ(sense)((sense>>0)  & 0xFF)
+
+int
+xenon_atapi_request_sense(struct xenon_ata_device *dev)
+{
+	char cdb[12] = {0x03,0x00,0x00,0x00,0x00,0x00,
+			                 0x00,0x00,0x00,0x00,0x00,0x00};
+	char buf[18];
+	memset(buf,0,sizeof(buf));
+
+	cdb[4] = sizeof(buf);
+
+	xenon_atapi_packet(dev, cdb);
+	xenon_ata_wait_ready(dev);
+	if (xenon_ata_pio_read(dev,buf,sizeof(buf))){
+		printf("ATAPI request sense failed\n");
+		return -1;
+	};
+	
+	return (buf[2] << 16) | (buf[12] << 8) | buf[13];
+}
+
 static int
 xenon_atapi_read_sectors(struct bdev *bdev,
         void *buf, lba_t start_sector, int sector_size) {
+    unsigned int sect;
+	int maxretries = 10;	
     struct xenon_ata_device *dev = bdev->ctx;
     struct xenon_atapi_read readcmd;
+	void * bufpos;
 
-    readcmd.code = 0xA8;
+    readcmd.code = 0x28;
     readcmd.lba = start_sector;
     readcmd.length = sector_size;
+	
+//	printf("xenon_atapi_read_sectors %d %d\n",(unsigned int)start_sector,sector_size);
 
+retry:
+	bufpos=buf;
+	
     xenon_atapi_packet(dev, (char *) &readcmd);
-    xenon_ata_wait();
-    xenon_ata_pio_read(dev, buf, XENON_CDROM_SECTOR_SIZE);
+    xenon_ata_wait_ready(dev);
+    for (sect = 0; sect < sector_size; sect++) {
+        if (xenon_ata_pio_read(dev, bufpos, XENON_CDROM_SECTOR_SIZE)) {
+			int sense = xenon_atapi_request_sense(dev);
+			
+			// no media
+			if (SK(sense)==0x02 && ASC(sense)==0x3a){
+				return DISKIO_ERROR_NO_MEDIA;
+			}
 
-    return sector_size;
+			// becoming ready
+			if ((SK(sense)==0x02 && ASC(sense)==0x4) || SK(sense)==0x6){
+				if (!maxretries) return -1;
+				delay(1);
+				maxretries--;
+				goto retry;
+			}
+			
+			printf("ATAPI read error\n");
+            return -1;
+        }
+        bufpos += XENON_CDROM_SECTOR_SIZE;
+    }
+
+	return sector_size;
 }
 
 static int
@@ -422,9 +488,9 @@ xenon_ata_init() {
     *(volatile uint32_t*)0xd0110060 = __builtin_bswap32(0x112400);
     *(volatile uint32_t*)0xd0110080 = __builtin_bswap32(0x407231BE);
     *(volatile uint32_t*)0xea001318 &= __builtin_bswap32(0xFFFFFFF0);
-	mdelay(100);
+	mdelay(50);
     
-    struct xenon_ata_device *dev = &ata;
+	struct xenon_ata_device *dev = &ata;
     memset(dev, 0, sizeof (struct xenon_ata_device));
     int err = xenon_ata_init1(dev, 0xea001300, 0xea001320);
     if (!err) dev->bdev = register_bdev(dev, &xenon_ata_ops, "sda");
@@ -438,12 +504,12 @@ struct bdev_ops xenon_atapi_ops ={
 int
 xenon_atapi_init() {
     //preinit (start from scratch)
-    *(volatile uint32_t*)0xd0108060 = __builtin_bswap32(0x112400);
-    *(volatile uint32_t*)0xd0108080 = __builtin_bswap32(0x407231BE);
-    *(volatile uint32_t*)0xea001218 &= __builtin_bswap32(0xFFFFFFF0);
-	mdelay(100);
+	*(volatile uint32_t*)0xd0108060 = __builtin_bswap32(0x112400);
+	*(volatile uint32_t*)0xd0108080 = __builtin_bswap32(0x407231BE);
+	*(volatile uint32_t*)0xea001218 &= __builtin_bswap32(0xFFFFFFF0);
+	mdelay(50);
 	
-    struct xenon_ata_device *dev = &atapi;
+	struct xenon_ata_device *dev = &atapi;
 	memset(dev, 0, sizeof (struct xenon_ata_device));
     int err = xenon_ata_init1(dev, 0xea001200, 0xea001220);
     if (!err) dev->bdev = register_bdev(dev, &xenon_atapi_ops, "dvd");
