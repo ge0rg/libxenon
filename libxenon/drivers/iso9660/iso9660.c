@@ -255,7 +255,12 @@ static int bread_cache(cache_block_t **cache, u32 sector) {
 	/* Load the requested block */
 	j = iso9660_dev->ops->read(iso9660_dev, cache[i]->data, sector, 1);
 	if (j < 0) {
-		if (j!=DISKIO_ERROR_NO_MEDIA) dbglog(DBG_ERROR, "fs_iso9660: can't read_sectors for %d: %d\n", (unsigned int)sector, j);
+		
+		if (j==DISKIO_ERROR_NO_MEDIA)
+			init_percd();
+		else
+			dbglog(DBG_ERROR, "fs_iso9660: can't read_sectors for %d: %d\n", (unsigned int)sector, j);
+		
 		rv = -1;
 		goto bread_exit;
 	}
