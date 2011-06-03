@@ -73,15 +73,6 @@
 #define IF_MV_NONVOID(x) void
 #endif
 
-/* mutex stuff */
-struct mutex {
-	unsigned int lock;
-};
-
-#define mutex_init(m) unlock((unsigned int *)(m));
-#define mutex_lock(m) lock((unsigned int *)(m));
-#define mutex_unlock(m) unlock((unsigned int *)(m));
-
 /* static endianness conversion */
 #define SWAP_16(x) ((typeof(x))(unsigned short)(((unsigned short)(x) >> 8) | \
                                                 ((unsigned short)(x) << 8)))

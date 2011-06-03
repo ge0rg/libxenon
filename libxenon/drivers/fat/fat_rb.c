@@ -208,17 +208,17 @@ struct fat_cache_entry
 
 static char fat_cache_sectors[FAT_CACHE_SIZE][SECTOR_SIZE];
 static struct fat_cache_entry fat_cache[FAT_CACHE_SIZE];
-static struct mutex cache_mutex SHAREDBSS_ATTR;
+unsigned int cache_mutex SHAREDBSS_ATTR;
 
 #if defined(HAVE_HOTSWAP) && !(CONFIG_STORAGE & STORAGE_MMC) /* A better condition ?? */
 void fat_lock(void)
 {
-    mutex_lock(&cache_mutex);
+    lock(&cache_mutex);
 }
 
 void fat_unlock(void)
 {
-    mutex_unlock(&cache_mutex);
+    unlock(&cache_mutex);
 }
 #endif
 
@@ -263,7 +263,7 @@ void fat_init(void)
     if (initialized) return;
 
 	initialized = true;
-    mutex_init(&cache_mutex);
+    cache_mutex = 0;
 
 #ifdef HAVE_PRIORITY_SCHEDULING
     /* Disable this because it is dangerous due to the assumption that
@@ -474,7 +474,7 @@ int fat_unmount(int volume, bool flush)
     else
     {   /* volume is not accessible any more, e.g. MMC removed */
         int i;
-        mutex_lock(&cache_mutex);
+        lock(&cache_mutex);
         for(i = 0;i < FAT_CACHE_SIZE;i++)
         {
             struct fat_cache_entry *fce = &fat_cache[i];
@@ -488,7 +488,7 @@ int fat_unmount(int volume, bool flush)
                 fce->dirty = false;
             }
         }
-        mutex_unlock(&cache_mutex);
+        unlock(&cache_mutex);
         rc = 0;
     }
 #ifdef HAVE_MULTIVOLUME
@@ -659,7 +659,7 @@ static void *cache_fat_sector(IF_MV2(struct bpb* fat_bpb,)
     unsigned char *sectorbuf =(unsigned char *) &fat_cache_sectors[cache_index][0];
     int rc;
 
-    mutex_lock(&cache_mutex); /* make changes atomic */
+    lock(&cache_mutex); /* make changes atomic */
 
     /* Delete the cache entry if it isn't the sector we want */
     if(fce->inuse && (fce->secnum != secnum
@@ -686,7 +686,7 @@ static void *cache_fat_sector(IF_MV2(struct bpb* fat_bpb,)
         {
             DEBUGF( "cache_fat_sector() - Could not read sector %ld"
                     " (error %d)\n", secnum, rc);
-            mutex_unlock(&cache_mutex);
+            unlock(&cache_mutex);
             return NULL;
         }
         fce->inuse = true;
@@ -697,7 +697,7 @@ static void *cache_fat_sector(IF_MV2(struct bpb* fat_bpb,)
     }
     if (dirty)
         fce->dirty = true; /* dirt remains, sticky until flushed */
-    mutex_unlock(&cache_mutex);
+    unlock(&cache_mutex);
     return sectorbuf;
 }
 
@@ -969,7 +969,7 @@ static int flush_fat(IF_MV_NONVOID(struct bpb* fat_bpb))
     unsigned char *sec;
     LDEBUGF("flush_fat()\n");
 
-    mutex_lock(&cache_mutex);
+    lock(&cache_mutex);
     for(i = 0;i < FAT_CACHE_SIZE;i++)
     {
         struct fat_cache_entry *fce = &fat_cache[i];
@@ -983,7 +983,7 @@ static int flush_fat(IF_MV_NONVOID(struct bpb* fat_bpb))
             flush_fat_sector(fce, sec);
         }
     }
-    mutex_unlock(&cache_mutex);
+    unlock(&cache_mutex);
 
     rc = update_fsinfo(IF_MV(fat_bpb));
     if (rc < 0)
