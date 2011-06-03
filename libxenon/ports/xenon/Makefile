@@ -32,7 +32,6 @@ CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -fpermissive -Wno-sign-compare -W
 	-Werror=pointer-to-int-cast -Wno-unknown-pragmas  -Wno-unused-value -Wno-unused-variable 
 
 AFLAGS = -Iinclude -m32 $(INCLUDES)
-LDFLAGS = -L$(DEVKITXENON)/usr/lib -lxenon -lstdc++ -lm -m32 -Wl,--gc-sections
 
 LIBOBJS = crti.o crtn.o \
 	../../startup/xenon/startup_from_xell.o \
@@ -113,9 +112,6 @@ all: $(TARGETS)
 
 clean:
 	rm -rf $(OBJS) $(LIBOBJS) libxenon.a
-
-ffs_content.c: genffs.py files/ps.psu files/vs.vsu
-	python genffs.py > ffs_content.c
 
 .c.o:
 	@echo [$(notdir $<)]
