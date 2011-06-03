@@ -124,7 +124,7 @@ endif
 #source/ffs_content.c: genffs.py data/ps.psu data/vs.vsu
 #	python genffs.py > source/ffs_content.c
 
-run: $(OUTPUT).elf32
+run: $(BUILD) $(OUTPUT).elf32
 	cp $(OUTPUT).elf32 /tftpboot/xenon
 	$(PREFIX)strip /tftpboot/xenon
 #	/home/dev360/run
