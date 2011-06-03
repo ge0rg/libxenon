@@ -31,6 +31,7 @@
 #include <ppc/cache.h>
 #include "font_8x16.h"
 #include "console.h"
+#include <xenos/xenos.h>
 
 static int console_width, console_height,
     console_size;
