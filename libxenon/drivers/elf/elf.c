@@ -7,6 +7,7 @@
 #include <ppc/cache.h>
 #include <ppc/timebase.h>
 #include <time/time.h>
+#include <debug.h>
 
 #include "elf_abi.h"
 
@@ -83,7 +84,8 @@ static inline __attribute__((always_inline)) void elf_sync_before_exec(unsigned 
 	}
 }
 
-static void __attribute__ ((section (".elfldr"))) elf_prepare_run (void *addr)
+// optimize("O2") is required to prevent call to _savegpr, which would fail due to the relocation
+static void __attribute__ ((section (".elfldr"),noreturn,flatten,optimize("O2"))) elf_prepare_run (void *addr)
 {
 	unsigned char s[50];
 	
@@ -143,6 +145,8 @@ static void __attribute__ ((section (".elfldr"))) elf_prepare_run (void *addr)
 	// call elf_run()
 	void(*call)(unsigned long,unsigned long) = ELF_GET_RELOCATED(elf_run);
 	call(ehdr->e_entry,((unsigned long)ELF_DEVTREE_START)&0x7fffffff);
+	
+	for(;;);
 }
 
 void elf_runFromMemory (void *addr, int size)

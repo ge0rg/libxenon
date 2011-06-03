@@ -18,6 +18,8 @@ elf_hold_thread:
 	cmpwi %r3, 0
 	beq 1b
 
+	or %r2, %r2, %r2
+
 .globl elf_run
 elf_run:
 	mr	%r31,%r3
