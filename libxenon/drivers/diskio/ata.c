@@ -324,7 +324,7 @@ xenon_atapi_request_sense(struct xenon_ata_device *dev)
 {
 	char cdb[12] = {0x03,0x00,0x00,0x00,0x00,0x00,
 			                 0x00,0x00,0x00,0x00,0x00,0x00};
-	char buf[18];
+	char buf[24];
 	memset(buf,0,sizeof(buf));
 
 	cdb[4] = sizeof(buf);
