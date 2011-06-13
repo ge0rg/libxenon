@@ -7,6 +7,7 @@ extern "C" {
 
 void console_set_colors(unsigned int background, unsigned int foreground); // can be called before init
 void console_putch(const char c);
+void console_clrscr();
 void console_init(void);
 void console_close(void);
 

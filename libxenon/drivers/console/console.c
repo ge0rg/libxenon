@@ -78,11 +78,11 @@ static void console_draw_char(const int x, const int y, const unsigned char c) {
 		}
 }
 
-static void console_clrscr(const unsigned int bgra) {
+void console_clrscr() {
 	unsigned int *fb = (unsigned int*)console_fb;
 	int count = console_width * console_height;
 	while (count--)
-		*fb++ = bgra;
+		*fb++ = console_color[0];
 
 	memdcbst(console_fb, console_size*4);
 
@@ -172,7 +172,7 @@ void console_init(void) {
 	max_x = (ai->width - offset_x * 2) / 8;
 	max_y = (ai->height - offset_y * 2) / 16;
 	
-	console_clrscr(console_color[0]);
+	console_clrscr();
 	
 	stdout_hook = console_stdout_hook;
 
