@@ -29,8 +29,6 @@
 
 #include <sys/types.h>
 
-#define MAX_OPEN_FILES 64
-
 #ifndef SEEK_SET
 #define SEEK_SET 0
 #endif

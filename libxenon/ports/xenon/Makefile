@@ -40,6 +40,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/diskio/diskio.o \
 	../../drivers/diskio/disk_rb.o \
 	../../drivers/diskio/ata.o \
+	../../drivers/fat/fat.o \
 	../../drivers/fat/fat_rb.o \
 	../../drivers/fat/file_rb.o \
 	../../drivers/fat/dir_rb.o \
@@ -145,4 +146,6 @@ install: libxenon.a
 	cp ../../drivers/lwip/include/netif/* $(DEVKITXENON)/usr/include/netif/
 	mkdir -p $(DEVKITXENON)/usr/include/arch/
 	cp ../../drivers/lwip/xenon/include/arch/* $(DEVKITXENON)/usr/include/arch/
+	mkdir -p $(DEVKITXENON)/usr/include/sys/
+	cp ../../drivers/newlib/dirent.h $(DEVKITXENON)/usr/include/sys/
 	find $(DEVKITXENON)/usr/include/ -type f \! -name "*.h" -delete

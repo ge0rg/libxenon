@@ -21,6 +21,7 @@
  *
  ****************************************************************************/
 #include <stdio.h>
+#include <stdlib.h>
 #include "disk_rb.h"
 #include <string.h>
 #include <fat/fat_rb.h>
@@ -54,21 +55,21 @@ static const unsigned char fat_partition_types[] = {
 #endif
 };
 
-static struct partinfo part[NUM_DRIVES*4]; /* space for 4 partitions on 2 drives */
-static int vol_drive[NUM_VOLUMES]; /* mounted to which drive (-1 if none) */
+static struct partinfo part[MAXDEVICES*4]; /* space for 4 partitions on 2 drives */
+static int vol_drive[MAXMOUNT]; /* mounted to which drive (-1 if none) */
 
 #ifdef MAX_LOG_SECTOR_SIZE
 int disk_sector_multiplier = 1;
 #endif
 
-extern struct bdev devices[NUM_DRIVES]; // TODO
+extern struct bdev devices[MAXDEVICES]; // TODO
 
 // must be a power of 2
 #define BLOCK_CACHE_SECTOR_COUNT 128
 #define BAD_LBA -1
 
-static unsigned char block_cache[NUM_DRIVES][BLOCK_CACHE_SECTOR_COUNT][SECTOR_SIZE];
-static lba_t block_cache_lba[NUM_DRIVES];
+static unsigned char block_cache[MAXDEVICES][BLOCK_CACHE_SECTOR_COUNT][SECTOR_SIZE];
+static lba_t block_cache_lba[MAXDEVICES];
 
 struct partinfo* disk_init(IF_MD_NONVOID(int drive))
 {
@@ -229,7 +230,7 @@ int disk_unmount(int drive)
 {
     int unmounted = 0;
     int i;
-    for (i=0; i<NUM_VOLUMES; i++)
+    for (i=0; i<MAXMOUNT; i++)
     {
         if (vol_drive[i] == drive)
         {   /* force releasing resources */
@@ -248,7 +249,7 @@ int disk_unmount(int drive)
 
 int storage_read_sectors(int drive, unsigned long start, int count, void* buf)
 {
-	int red;
+	int red=0;
 
 //	printf("[storage_read_sectors] device %s start %ld count %d\n",devices[drive].name,start,count);
 	
@@ -279,5 +280,5 @@ int storage_read_sectors(int drive, unsigned long start, int count, void* buf)
 int storage_write_sectors(int drive, unsigned long start, int count, const void* buf)
 {
 	printf("[storage_write_sectors] device %s start %ld count %d TODO :)\n",devices[drive].name,start,count);
-	exit(-1);
+	exit(1);
 }

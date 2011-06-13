@@ -5,7 +5,11 @@
 extern "C" {
 #endif
 
-#define NAME_MAX 32
+#define NAME_MAX 256
+
+#define DT_UNKNOWN       0
+#define DT_DIR           4
+#define DT_REG           8
 
 /*
  * This file was written to be compatible with the BSD directory
@@ -17,11 +21,6 @@ extern "C" {
 
 typedef struct _dirdesc {
 	int	dd_fd;
-	long	dd_loc;
-	long	dd_size;
-	char	*dd_buf;
-	int	dd_len;
-	long	dd_seek;
 } DIR;
 
 # define __dirfd(dp)	((dp)->dd_fd)
@@ -40,14 +39,10 @@ struct dirent {
 	char		d_name[NAME_MAX + 1];
 };
 
-#define DT_REG 0
-#define DT_DIR 1
 
-int scandir ( const char *dirname,
-   struct dirent *** namelist,
-   int (*select)(struct dirent *),
-   int (*dcomp)(const struct dirent **, const struct dirent **)
-);
+DIR* opendir(const char* dirname);
+struct dirent* readdir(DIR* dirp);
+int closedir(DIR* dirp);
 
 #ifdef __cplusplus
 }

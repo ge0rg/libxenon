@@ -11,19 +11,9 @@
 #include <newlib/vfs.h>
 #include <xenon_soc/xenon_power.h>
 
-struct ffs_s
-{
-	const char *filename;
-	int size;
-	void *content;
-};
-
-struct ffs_s __attribute__((weak)) ffs_files[] = {{0,0,0}};
-
-#define MAXFD    MAX_OPEN_FILES
-#define MAXMOUNT NUM_VOLUMES
-
 struct mount_s;
+
+static struct vfs_dir_s dd_array[MAXDD] = {};
 
 size_t vfs_default_lseek(struct vfs_file_s *file, size_t offset, int whence)
 {
@@ -128,6 +118,10 @@ void * sbrk(ptrdiff_t incr)
 	heap_ptr += incr;
 	return res;
 }
+
+/*
+ * file functions
+ */
 
 static inline struct vfs_file_s *is_valid_and_open_fd(int fd)
 {
@@ -245,19 +239,6 @@ ssize_t read(int fildes, void *buf, size_t nbyte)
 	}
 }
 
-extern void return_to_xell();
-
-void _exit(int status)
-{
-	printf("[Exit] with code %d\n", status);
-#if 0
-	getch();
-	xenon_set_single_thread_mode();
-	return_to_xell();
-#endif
-	for(;;);
-}
-
 int open(const char *path, int oflag, ...)
 {
 	int fd = 0;
@@ -285,6 +266,100 @@ int open(const char *path, int oflag, ...)
 	return -1;
 }
 
+/*
+ * directories functions
+ */
+
+static inline struct vfs_dir_s *is_valid_and_open_DIR(DIR * d)
+{
+	return (d && d->dd_fd >= 0 && d->dd_fd < MAXDD && dd_array[d->dd_fd].ops) ? &dd_array[d->dd_fd] : 0;
+}
+
+DIR* opendir(const char* dirname)
+{
+	int dd = 0;
+	while (dd < MAXDD)
+	{
+		if (!dd_array[dd].ops)
+			break;
+		dd++;
+	}
+	if (dd == MAXDD)
+	{
+		errno = EMFILE;
+		return NULL;
+	}
+	
+	int i;
+	for (i = 0; i < MAXMOUNT; ++i)
+	{
+		const char *mpath = mounts[i].mountpoint;
+		if (*mpath && !strncmp(dirname, mpath, strlen(mpath)))
+			if(!mounts[i].ops->opendir(&dd_array[dd], &mounts[i], dirname + strlen(mpath))){
+				DIR * d = &dd_array[dd].dir;
+				memset(d,0,sizeof(*d));
+				d->dd_fd=dd;
+				return d;
+			}
+	}
+	errno = ENOENT;
+	return NULL;
+}
+
+struct dirent* readdir(DIR* dirp)
+{
+	struct vfs_dir_s *dir = is_valid_and_open_DIR(dirp);
+	
+	if (!dir)
+	{
+		errno = EBADF;
+		return NULL;
+	}
+	
+	if (dir->ops->readdir)
+		return dir->ops->readdir(dir);
+	else
+	{
+		errno = EINVAL;
+		return NULL;
+	}
+}
+
+int closedir(DIR* dirp)
+{
+	struct vfs_dir_s *dir = is_valid_and_open_DIR(dirp);
+	
+	if (!dir)
+	{
+		errno = EBADF;
+		return -1;
+	}
+	
+	if (dir->ops->closedir)
+		dir->ops->closedir(dir);
+
+	memset(dir, 0, sizeof(*dir));
+
+	return 0;
+}
+
+/*
+ * system functions
+ */
+
+extern void return_to_xell();
+
+void _exit(int status)
+{
+	printf("[Exit] with code %d\n", status);
+#if 0
+	getch();
+	xenon_set_single_thread_mode();
+	return_to_xell();
+#endif
+	for(;;);
+}
+
 pid_t getpid(void)
 {
 	return 0;
@@ -299,3 +374,5 @@ int unlink(const char *file)
 {
 	return -1;
 }
+
+

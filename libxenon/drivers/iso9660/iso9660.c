@@ -50,6 +50,8 @@ ISO9660 systems, as these were used as references as well.
 
 #define dbglog(sev,prm...) printf(sev prm);
 
+#define O_DIR 0x100000
+
 static struct bdev * iso9660_dev;
 
 int iso_reset();
@@ -553,7 +555,7 @@ static int iso_open(const char *fn, int mode) {
 	iso_dirent_t	*de;
 
 	/* Make sure they don't want to open things as writeable */
-	if (mode != O_RDONLY)
+	if (mode != O_RDONLY && mode != O_DIR)
 		return 0;
 	
 	/* Do this only when we need to (this is still imperfect) */
@@ -562,7 +564,7 @@ static int iso_open(const char *fn, int mode) {
 	percd_done = 1;
 
 	/* Find the file we want */
-	de = find_object_path(fn, /*(mode & O_DIR)?1:*/0, &root_dirent);
+	de = find_object_path(fn, (mode & O_DIR)?1:0, &root_dirent);
 	if (!de) return 0;
 	
 	/* Find a free file handle */
@@ -579,7 +581,7 @@ static int iso_open(const char *fn, int mode) {
 
 	/* Fill in the file handle and return the fd */
 	fh[fd].first_extent = iso_733(de->extent);
-	fh[fd].dir = /*(mode & O_DIR)?1:*/0;
+	fh[fd].dir = (mode & O_DIR)?1:0;
 	fh[fd].ptr = 0;
 	fh[fd].size = iso_733(de->size);
 	fh[fd].broken = 0;
@@ -783,11 +785,16 @@ static struct dirent *iso_readdir(int fd) {
 			pnt += pnt[2];
 		}
 	}
+	
+	fh[fd].dirent.d_namlen = de->name_len;
 
-	if (de->flags & 2)
+	if (de->flags & 2){
 		fh[fd].dirent.d_reclen = -1;
-	else
+		fh[fd].dirent.d_type = DT_DIR;
+	}else{
 		fh[fd].dirent.d_reclen = iso_733(de->size);
+		fh[fd].dirent.d_type = DT_REG;
+	}
 
 	fh[fd].ptr += de->length;
 	
@@ -914,6 +921,21 @@ void _iso9660_close(struct vfs_file_s *file)
 
 struct vfs_fileop_s vfs_iso9660_file_ops = {.read = _iso9660_read, .lseek = _iso9660_lseek, .fstat = _iso9660_fstat, .close = _iso9660_close};
 
+int _iso9660_closedir(struct vfs_dir_s *dirp)
+{
+	int fd = (int)dirp->priv[0];
+	iso_close(fd);
+	return 0;
+}
+
+struct dirent* _iso9660_readdir(struct vfs_dir_s *dirp)
+{
+	int fd = (int)dirp->priv[0];
+	return iso_readdir(fd);
+}
+
+struct vfs_dirop_s vfs_iso9660_dir_ops = {.readdir = _iso9660_readdir, .closedir = _iso9660_closedir};
+
 int _iso9660_open(struct vfs_file_s *file, struct mount_s *mount, const char *filename, int oflags, int perm)
 {
 	int fd = iso_open(filename,oflags);	
@@ -923,6 +945,17 @@ int _iso9660_open(struct vfs_file_s *file, struct mount_s *mount, const char *fi
 
 	return fd<=0;
 }
+
+int _iso9660_opendir(struct vfs_dir_s *dir, struct mount_s *mount, const char *dirname)
+{
+	int fd = iso_open(dirname,O_DIR);
+	
+	dir->priv[0] = (void *) fd;
+	dir->ops = &vfs_iso9660_dir_ops;
+
+	return fd<=0;
+}
+
 
 void _iso9660_mount(struct mount_s *mount, struct bdev * device)
 {
@@ -935,5 +968,5 @@ void _iso9660_umount(struct mount_s *mount)
 	fs_iso9660_shutdown();
 }
 
-struct vfs_mountop_s vfs_iso9660_mount_ops = {.open = _iso9660_open, .mount = _iso9660_mount, .umount = _iso9660_umount};
+struct vfs_mountop_s vfs_iso9660_mount_ops = {.open = _iso9660_open, .opendir = _iso9660_opendir, .mount = _iso9660_mount, .umount = _iso9660_umount};
 

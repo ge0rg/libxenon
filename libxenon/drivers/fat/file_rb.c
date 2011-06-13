@@ -49,7 +49,7 @@ struct filedesc {
     bool trunc;
 };
 
-static struct filedesc openfiles[MAX_OPEN_FILES];
+static struct filedesc openfiles[MAXDD];
 
 static int flush_cache(int fd);
 
@@ -76,11 +76,11 @@ static int open_internal(int volume, const char* pathname, int flags, bool use_c
     }
 
     /* find a free file descriptor */
-    for ( fd=0; fd<MAX_OPEN_FILES; fd++ )
+    for ( fd=0; fd<MAXDD; fd++ )
         if ( !openfiles[fd].busy )
             break;
 
-    if ( fd == MAX_OPEN_FILES ) {
+    if ( fd == MAXDD ) {
         DEBUGF("Too many files open\n");
         errno = EMFILE;
         return -2;
@@ -234,7 +234,7 @@ int rb_close(int fd)
 
     LDEBUGF("close(%d)\n", fd);
 
-    if (fd < 0 || fd > MAX_OPEN_FILES-1) {
+    if (fd < 0 || fd > MAXDD-1) {
         errno = EINVAL;
         return -1;
     }
@@ -263,7 +263,7 @@ int rb_fsync(int fd)
 
     LDEBUGF("fsync(%d)\n", fd);
 
-    if (fd < 0 || fd > MAX_OPEN_FILES-1) {
+    if (fd < 0 || fd > MAXDD-1) {
         errno = EINVAL;
         return -1;
     }
@@ -492,7 +492,7 @@ static int readwrite(int fd, void* buf, long count, bool write)
     struct filedesc* file;
     int rc;
 
-    if (fd < 0 || fd > MAX_OPEN_FILES-1) {
+    if (fd < 0 || fd > MAXDD-1) {
         errno = EINVAL;
         return -1;
     }
@@ -696,7 +696,7 @@ off_t rb_lseek(int fd, off_t offset, int whence)
 
     LDEBUGF("lseek(%d,%ld,%d)\n",fd,offset,whence);
 
-    if (fd < 0 || fd > MAX_OPEN_FILES-1) {
+    if (fd < 0 || fd > MAXDD-1) {
         errno = EINVAL;
         return -1;
     }
@@ -772,7 +772,7 @@ off_t rb_filesize(int fd)
 {
     struct filedesc* file = &openfiles[fd];
 
-    if (fd < 0 || fd > MAX_OPEN_FILES-1) {
+    if (fd < 0 || fd > MAXDD-1) {
         errno = EINVAL;
         return -1;
     }
@@ -792,7 +792,7 @@ int release_files(int volume)
     struct filedesc* pfile = openfiles;
     int fd;
     int closed = 0;
-    for ( fd=0; fd<MAX_OPEN_FILES; fd++, pfile++)
+    for ( fd=0; fd<MAXDD; fd++, pfile++)
     {
 #ifdef HAVE_MULTIVOLUME
         if (pfile->fatfile.volume == volume)

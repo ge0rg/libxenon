@@ -5,7 +5,12 @@
 extern "C" {
 #endif
 
-#define DISKIO_ERROR_NO_MEDIA (-8)
+#define MAXDEVICES 16
+#define MAXMOUNT 16
+#define MAXFD    64
+#define MAXDD    64
+
+#define DISKIO_ERROR_NO_MEDIA -8
 	
 typedef unsigned long long lba_t;
 

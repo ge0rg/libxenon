@@ -178,7 +178,7 @@ struct bpb
 #endif
 };
 
-static struct bpb fat_bpbs[NUM_VOLUMES]; /* mounted partition info */
+static struct bpb fat_bpbs[MAXMOUNT]; /* mounted partition info */
 static bool initialized = false;
 
 static int update_fsinfo(IF_MV_NONVOID(struct bpb* fat_bpb));
@@ -283,7 +283,7 @@ void fat_init(void)
     }
 #ifdef HAVE_MULTIVOLUME
     /* mark the possible volumes as not mounted */
-    for (i=0; i<NUM_VOLUMES;i++)
+    for (i=0; i<MAXMOUNT;i++)
     {
         fat_bpbs[i].mounted = false;
     }
@@ -1653,7 +1653,7 @@ int fat_open(IF_MV2(int volume,)
 #ifdef HAVE_MULTIVOLUME
     file->volume = volume;
     /* fixme: remove error check when done */
-    if (volume >= NUM_VOLUMES || !fat_bpbs[volume].mounted)
+    if (volume >= MAXMOUNT || !fat_bpbs[volume].mounted)
     {
         LDEBUGF("fat_open() illegal volume %d\n", volume);
         return -1;
@@ -2297,7 +2297,7 @@ int fat_opendir(IF_MV2(int volume,)
 #ifdef HAVE_MULTIVOLUME
     struct bpb* fat_bpb = &fat_bpbs[volume];
     /* fixme: remove error check when done */
-    if (volume >= NUM_VOLUMES || !fat_bpbs[volume].mounted)
+    if (volume >= MAXMOUNT || !fat_bpbs[volume].mounted)
     {
         LDEBUGF("fat_open() illegal volume %d\n", volume);
         return -1;
@@ -2516,6 +2516,6 @@ unsigned int fat_get_cluster_size(IF_MV_NONVOID(int volume))
 #ifdef HAVE_MULTIVOLUME
 bool fat_ismounted(int volume)
 {
-    return (volume<NUM_VOLUMES && fat_bpbs[volume].mounted);
+    return (volume<MAXMOUNT && fat_bpbs[volume].mounted);
 }
 #endif

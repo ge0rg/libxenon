@@ -1,6 +1,8 @@
 #ifndef H_ATA
 #define H_ATA
 
+#include <xetypes.h>
+
 #define XENON_ATA_REG_DATA      0
 #define XENON_ATA_REG_ERROR     1
 #define XENON_ATA_REG_FEATURES  1

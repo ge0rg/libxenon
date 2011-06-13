@@ -1,75 +1,15 @@
 #include <diskio/diskio.h>
-#include <diskio/disk_rb.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <newlib/vfs.h>
-#include <fat/fat_rb.h>
-#include <fat/file_rb.h>
 #include <iso9660/iso9660.h>
+#include <fat/fat.h>
 #include <malloc.h>
 #include <newlib/dirent.h>
 #include <errno.h>
 
-#define MAX_DEVICES NUM_DRIVES
-
-struct bdev devices[MAX_DEVICES];
-
-off_t _fat_lseek(struct vfs_file_s *file, size_t offset, int whence)
-{
-	int fd = (int)file->priv[0];
-	return rb_lseek(fd,offset,whence);
-}
-
-
-int _fat_read(struct vfs_file_s *file, void *dst, size_t len)
-{
-	int fd = (int)file->priv[0];
-	return rb_read(fd,dst,len);
-}
-
-int _fat_fstat(struct vfs_file_s *file, struct stat *buf)
-{
-	int fd = (int)file->priv[0];
-	buf->st_size = rb_filesize(fd);
-	buf->st_mode = S_IFREG;
-	buf->st_blksize = 65536;
-	return 0;
-}
-
-void _fat_close(struct vfs_file_s *file)
-{
-	int fd = (int)file->priv[0];
-	rb_close(fd);
-}
-
-struct vfs_fileop_s vfs_fat_file_ops = {.read = _fat_read, .lseek = _fat_lseek, .fstat = _fat_fstat, .close = _fat_close};
-
-int _fat_open(struct vfs_file_s *file, struct mount_s *mount, const char *filename, int oflags, int perm)
-{
-	int fd=rb_open(mount->index,filename,oflags);
-	
-	file->priv[0] = (void *) fd;
-	file->ops = &vfs_fat_file_ops;
-
-	return fd < 0;
-}
-
-void _fat_mount(struct mount_s *mount, struct bdev * device)
-{
-	mount->priv[0] = device;
-	fat_init();
-	disk_mount(device->index,mount->index);
-}
-
-void _fat_umount(struct mount_s *mount)
-{
-	fat_unmount(mount->index,true);
-}
-
-struct vfs_mountop_s vfs_fat_mount_ops = {.open = _fat_open, .mount = _fat_mount, .umount = _fat_umount};
-
-typedef int (vfs_open_call)(struct vfs_file_s *, struct mount_s *, const char *, int, int);
+struct bdev devices[MAXDEVICES];
 
 struct vfs_mountop_s *determine_filesystem (struct bdev *dev)
 {
@@ -87,12 +27,12 @@ struct vfs_mountop_s *determine_filesystem (struct bdev *dev)
 struct bdev *register_bdev(void *ctx, struct bdev_ops *ops, const char *name)
 {
 	int i;
-	for (i = 0; i < MAX_DEVICES; ++i)
+	for (i = 0; i < MAXDEVICES; ++i)
 	{
 		if (!devices[i].ops)
 			break;
 	}
-	if (i == MAX_DEVICES)
+	if (i == MAXDEVICES)
 		return 0;
 
 	devices[i].index = i;
@@ -133,7 +73,7 @@ void unregister_bdev(struct bdev *bdev)
 struct bdev *bdev_open(const char *name)
 {
 	int i;
-	for (i = 0; i < MAX_DEVICES; ++i)
+	for (i = 0; i < MAXDEVICES; ++i)
 		if (!strcmp(devices[i].name, name))
 			return devices + i;
 	return 0;
@@ -143,9 +83,9 @@ int bdev_enum(int handle, const char **name)
 {
     do{
         ++handle;
-    }while(handle<MAX_DEVICES && !devices[handle].ops);
+    }while(handle<MAXDEVICES && !devices[handle].ops);
 
-    if (handle>=MAX_DEVICES) return -1;
+    if (handle>=MAXDEVICES) return -1;
 
     if (name) *name=devices[handle].name;
 

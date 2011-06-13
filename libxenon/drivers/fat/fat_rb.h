@@ -21,8 +21,8 @@
  *
  ****************************************************************************/
 
-#ifndef FAT_H
-#define FAT_H
+#ifndef FAT_RB_H
+#define FAT_RB_H
 
 #include <stdbool.h>
 
@@ -48,8 +48,6 @@
 #define logf(args...) 
 
 #define SHAREDBSS_ATTR
-
-#define NUM_VOLUMES 16
 
 /* Drives are things like a disk, a card, a flash chip. They can have volumes on them */
 #ifdef HAVE_MULTIDRIVE
