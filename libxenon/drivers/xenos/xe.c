@@ -1794,7 +1794,7 @@ void Xe_VBPut(struct XenosDevice *xe, void *data, int len)
 		if (!remaining)
 		{
 			struct XenosVertexBuffer **n = xe->vb_head ? &xe->vb_current->next : &xe->vb_head;
-			xe->vb_current = Xe_VBPoolAlloc(xe, 0x10000);
+			xe->vb_current = Xe_VBPoolAlloc(xe, 0x100000); // fixme, was 0x10000
 			*n = xe->vb_current;
 			continue;
 		}

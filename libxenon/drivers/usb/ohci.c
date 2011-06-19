@@ -79,18 +79,7 @@
 # if defined(BCM47XX)
 #define BSWAP32(x) (x)
 # else
-#define BSWAP32(x) __swap32(x)
-static inline uint32_t __swap32(uint32_t x)
-{
-    uint32_t y;
-
-    y = ((x & 0xFF) << 24) |
-	((x & 0xFF00) << 8) |
-	((x & 0xFF0000) >> 8) |
-	((x & 0xFF000000) >> 24);
-
-    return y;
-}
+#define BSWAP32(x) __builtin_bswap32(x)
 # endif
 #else
 #define BSWAP32(x) (x)

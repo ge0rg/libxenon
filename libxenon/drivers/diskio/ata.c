@@ -22,20 +22,25 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 #include <time/time.h>
+#include <ppc/cache.h>
+#include <malloc.h>
 #include "ata.h"
 
 #include <debug.h>
+#include <byteswap.h>
+
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#define MIN(a,b) (((a)<(b))?(a):(b))
 
 //No printf
 //#define printf(...)
 
+#define USE_DMA
+
 struct xenon_ata_device ata;
 struct xenon_ata_device atapi;
-
-static inline uint16_t bswap16(uint16_t t) {
-    return ((t & 0xFF) << 8) | ((t & 0xFF00) >> 8);
-}
 
 static inline void
 xenon_ata_regset(struct xenon_ata_device *dev, int reg, uint8_t val) {
@@ -65,6 +70,11 @@ xenon_ata_read_data(struct xenon_ata_device *dev, int reg) {
 static inline void
 xenon_ata_write_data(struct xenon_ata_device *dev, int reg, uint32_t val) {
     *(volatile uint32_t*)(dev->ioaddress + reg) = val;
+}
+
+static inline void
+xenon_ata_write_data2(struct xenon_ata_device *dev, int reg, uint32_t val) {
+    *(volatile uint32_t*)(dev->ioaddress2 + reg) = val;
 }
 
 static inline void
@@ -135,6 +145,83 @@ xenon_ata_pio_write(struct xenon_ata_device *dev, char *buf, int size) {
 
     return 0;
 }
+
+static int
+xenon_ata_dma_read(struct xenon_ata_device *dev, char *buf, int size) {
+	
+	assert(!((uint32_t)buf&3));
+	
+	uint32_t i,b;
+	int s,ss;
+	
+	if (xenon_ata_regget(dev, XENON_ATA_REG_STATUS) & 1)
+        return xenon_ata_regget(dev, XENON_ATA_REG_ERROR);
+
+//	printf("ATA DMA %p %d\n",buf,size);
+
+	/* build PRDs */
+	
+	i=0;
+	s=size;
+	b=((uint32_t)buf)&0x7fffffff;
+	while(s>0){
+		dev->prds[i].address=__builtin_bswap32(b);
+		
+		ss=MIN(s,0x10000-(b&0xffff)); // a PRD buffer mustn't cross a 64k boundary
+		s-=ss;
+		b+=ss;
+		
+		dev->prds[i].size_flags=__builtin_bswap32((ss&0xffff)|(s>0?0:0x80000000));
+		
+//		printf("PRD %08x %d\n",b,ss);
+		
+		++i;
+		if (i>=MAX_PRDS && s>0) {
+			printf("ATA DMA transfer too big\n");
+			return -1;
+		}
+	}
+
+	memdcbst(dev->prds,MAX_PRDS*sizeof(struct xenon_ata_dma_prd));
+
+	/* setup DMA regs */
+	
+	xenon_ata_write_data2(dev,XENON_ATA_DMA_TABLE_OFS,__builtin_bswap32((uint32_t)dev->prds&0x7fffffff));
+	xenon_ata_regset2(dev,XENON_ATA_DMA_CMD,XENON_ATA_DMA_WR);
+	xenon_ata_regset2(dev,XENON_ATA_DMA_STATUS,0);
+
+	/* flush buffer from cache */
+	
+	memdcbf(buf,size);
+	
+	/* start DMA */
+	
+	xenon_ata_regset2(dev,XENON_ATA_DMA_CMD,XENON_ATA_DMA_WR|XENON_ATA_DMA_START);
+	
+	/* wait for DMA end */
+
+	while(xenon_ata_regget2(dev,XENON_ATA_DMA_STATUS)&XENON_ATA_DMA_ACTIVE);
+
+	/* stop DMA ctrlr */
+
+	xenon_ata_regset2(dev,XENON_ATA_DMA_CMD,0);
+	
+	if (xenon_ata_regget2(dev,XENON_ATA_DMA_STATUS)&XENON_ATA_DMA_ERR){
+		printf("ATA DMA transfer error\n");
+        return -1;
+	}
+	
+	if (xenon_ata_regget(dev, XENON_ATA_REG_STATUS) & 1)
+        return xenon_ata_regget(dev, XENON_ATA_REG_ERROR);
+
+	/* reload buffer into cache */
+	
+	memdcbt(buf,size);
+	
+	return 0;
+};
+
+
 
 static void
 xenon_ata_dumpinfo(struct xenon_ata_device *dev, char *info) {
@@ -235,7 +322,6 @@ xenon_ata_setaddress(struct xenon_ata_device *dev, int sector, int size) {
 
 static int
 xenon_ata_read_sectors(struct bdev *bdev, void *buf, lba_t start_sector, int sector_size) {
-    unsigned int sect;
     struct xenon_ata_device *dev = bdev->ctx;
 
     start_sector += bdev->offset;
@@ -243,7 +329,9 @@ xenon_ata_read_sectors(struct bdev *bdev, void *buf, lba_t start_sector, int sec
     xenon_ata_setaddress(dev, start_sector, sector_size);
 
     /* Read sectors.  */
-    xenon_ata_regset(dev, XENON_ATA_REG_CMD, XENON_ATA_CMD_READ_SECTORS_EXT);
+#ifndef USE_DMA
+    unsigned int sect=0;
+	xenon_ata_regset(dev, XENON_ATA_REG_CMD, XENON_ATA_CMD_READ_SECTORS_EXT);
     xenon_ata_wait_ready(dev);
     for (sect = 0; sect < sector_size; sect++) {
         if (xenon_ata_pio_read(dev, buf, XENON_DISK_SECTOR_SIZE)) {
@@ -252,8 +340,17 @@ xenon_ata_read_sectors(struct bdev *bdev, void *buf, lba_t start_sector, int sec
         }
         buf += XENON_DISK_SECTOR_SIZE;
     }
+	return sect;
+#else
+	xenon_ata_regset(dev, XENON_ATA_REG_CMD, XENON_ATA_CMD_READ_DMA_EXT);
+    xenon_ata_wait_ready(dev);
 
-    return sect;
+	if (xenon_ata_dma_read(dev, buf, sector_size*XENON_DISK_SECTOR_SIZE)) {
+		printf("ATA DMA read error\n");
+		return -1;
+	}
+	return sector_size;
+#endif
 }
 
 static int
@@ -300,10 +397,10 @@ xenon_atapi_identify(struct xenon_ata_device *dev) {
 }
 
 static int
-xenon_atapi_packet(struct xenon_ata_device *dev, char *packet) {
+xenon_atapi_packet(struct xenon_ata_device *dev, char *packet, int dma) {
 	
 	xenon_ata_regset(dev, XENON_ATA_REG_DISK, 0);
-    xenon_ata_regset(dev, XENON_ATA_REG_FEATURES, 0);
+    xenon_ata_regset(dev, XENON_ATA_REG_FEATURES, dma?1:0);
     xenon_ata_regset(dev, XENON_ATA_REG_SECTORS, 0);
     xenon_ata_regset(dev, XENON_ATA_REG_LBAHIGH, 0xff);
     xenon_ata_regset(dev, XENON_ATA_REG_LBAMID, 0xff);
@@ -329,7 +426,7 @@ xenon_atapi_request_sense(struct xenon_ata_device *dev)
 
 	cdb[4] = sizeof(buf);
 
-	xenon_atapi_packet(dev, cdb);
+	xenon_atapi_packet(dev, cdb, 0);
 	xenon_ata_wait_ready(dev);
 	if (xenon_ata_pio_read(dev,buf,sizeof(buf))){
 		printf("ATAPI request sense failed\n");
@@ -342,22 +439,21 @@ xenon_atapi_request_sense(struct xenon_ata_device *dev)
 static int
 xenon_atapi_read_sectors(struct bdev *bdev,
         void *buf, lba_t start_sector, int sector_size) {
-    unsigned int sect;
-	int maxretries = 10;	
+	int maxretries = 20;	
     struct xenon_ata_device *dev = bdev->ctx;
     struct xenon_atapi_read readcmd;
-	void * bufpos;
 
     readcmd.code = 0x28;
     readcmd.lba = start_sector;
     readcmd.length = sector_size;
 	
-//	printf("xenon_atapi_read_sectors %d %d\n",(unsigned int)start_sector,sector_size);
+//	printf("xenon_atapi_read_sectors %p %d %d\n",buf,(unsigned int)start_sector,sector_size);
 
+#ifndef USE_DMA
+    unsigned int sect=0;
+	void * bufpos=buf;
 retry:
-	bufpos=buf;
-	
-    xenon_atapi_packet(dev, (char *) &readcmd);
+    xenon_atapi_packet(dev, (char *) &readcmd,0);
     xenon_ata_wait_ready(dev);
     for (sect = 0; sect < sector_size; sect++) {
         if (xenon_ata_pio_read(dev, bufpos, XENON_CDROM_SECTOR_SIZE)) {
@@ -371,7 +467,7 @@ retry:
 			// becoming ready
 			if ((SK(sense)==0x02 && ASC(sense)==0x4) || SK(sense)==0x6){
 				if (!maxretries) return -1;
-				delay(1);
+				mdelay(500);
 				maxretries--;
 				goto retry;
 			}
@@ -381,6 +477,31 @@ retry:
         }
         bufpos += XENON_CDROM_SECTOR_SIZE;
     }
+#else
+retry:
+	xenon_atapi_packet(dev, (char *) &readcmd,1);
+	xenon_ata_wait_ready(dev);
+
+	if (xenon_ata_dma_read(dev, buf, sector_size*XENON_CDROM_SECTOR_SIZE)) {
+		int sense = xenon_atapi_request_sense(dev);
+
+		// no media
+		if (SK(sense)==0x02 && ASC(sense)==0x3a){
+			return DISKIO_ERROR_NO_MEDIA;
+		}
+
+		// becoming ready
+		if ((SK(sense)==0x02 && ASC(sense)==0x4) || SK(sense)==0x6){
+			if (!maxretries) return -1;
+			mdelay(500);
+			maxretries--;
+			goto retry;
+		}
+
+		printf("ATAPI DMA read error\n");
+		return -1;
+	}
+#endif
 
 	return sector_size;
 }
@@ -407,9 +528,9 @@ xenon_ata_identify(struct xenon_ata_device *dev) {
     /* CHS is always supported.  */
     dev->addressing_mode = XENON_ATA_CHS;
     /* Check if LBA is supported.  */
-    if (bswap16(info16[49]) & (1 << 9)) {
+    if (bswap_16(info16[49]) & (1 << 9)) {
         /* Check if LBA48 is supported.  */
-        if (bswap16(info16[83]) & (1 << 10))
+        if (bswap_16(info16[83]) & (1 << 10))
             dev->addressing_mode = XENON_ATA_LBA48;
         else
             dev->addressing_mode = XENON_ATA_LBA;
@@ -422,9 +543,9 @@ xenon_ata_identify(struct xenon_ata_device *dev) {
         dev->size = __builtin_bswap32(*((uint32_t *) & info16[100]));
 
     /* Read CHS information.  */
-    dev->cylinders = bswap16(info16[1]);
-    dev->heads = bswap16(info16[3]);
-    dev->sectors_per_track = bswap16(info16[6]);
+    dev->cylinders = bswap_16(info16[1]);
+    dev->heads = bswap_16(info16[3]);
+    dev->sectors_per_track = bswap_16(info16[6]);
 
     xenon_ata_dumpinfo(dev, info);
 
@@ -437,15 +558,17 @@ xenon_ata_init1(struct xenon_ata_device *dev, uint32_t ioaddress, uint32_t ioadd
     memset(dev, 0, sizeof (struct xenon_ata_device));
     dev->ioaddress = ioaddress;
     dev->ioaddress2 = ioaddress2;
+	
+	dev->prds = memalign(0x10000,MAX_PRDS*sizeof(struct xenon_ata_dma_prd));
 
     /* Try to detect if the port is in use by writing to it,
        waiting for a while and reading it again.  If the value
        was preserved, there is a device connected.  */
     xenon_ata_regset(dev, XENON_ATA_REG_DISK, 0);
     xenon_ata_wait();
-    xenon_ata_regset(dev, XENON_ATA_REG_SECTORS, 0x5A);
+    xenon_ata_regset(dev, XENON_ATA_REG_LBALOW, 0x5A);
     xenon_ata_wait();
-    if (xenon_ata_regget(dev, XENON_ATA_REG_SECTORS) != 0x5A) {
+    if (xenon_ata_regget(dev, XENON_ATA_REG_LBALOW) != 0x5A) {
         printf("no ata device connected.\n");
         return -1;
     }
@@ -475,7 +598,16 @@ xenon_ata_init1(struct xenon_ata_device *dev, uint32_t ioaddress, uint32_t ioadd
     printf("SATA device at %08lx\n", dev->ioaddress);
     xenon_ata_identify(dev);
 
-    return 0;
+#if 0	
+	/* set UDMA 5 mode */
+    xenon_ata_regset(dev, XENON_ATA_REG_DISK, 0xE0);
+    xenon_ata_regset(dev, XENON_ATA_REG_FEATURES, 3);
+    xenon_ata_regset(dev, XENON_ATA_REG_SECTORS, 0x45);
+    xenon_ata_regset(dev, XENON_ATA_REG_CMD, XENON_ATA_CMD_SET_FEATURES);
+	xenon_ata_wait_ready(dev);
+#endif 
+	
+	return 0;
 }
 
 struct bdev_ops xenon_ata_ops ={
@@ -488,7 +620,7 @@ xenon_ata_init() {
     *(volatile uint32_t*)0xd0110060 = __builtin_bswap32(0x112400);
     *(volatile uint32_t*)0xd0110080 = __builtin_bswap32(0x407231BE);
     *(volatile uint32_t*)0xea001318 &= __builtin_bswap32(0xFFFFFFF0);
-	mdelay(50);
+	mdelay(1000);
     
 	struct xenon_ata_device *dev = &ata;
     memset(dev, 0, sizeof (struct xenon_ata_device));
@@ -507,7 +639,7 @@ xenon_atapi_init() {
 	*(volatile uint32_t*)0xd0108060 = __builtin_bswap32(0x112400);
 	*(volatile uint32_t*)0xd0108080 = __builtin_bswap32(0x407231BE);
 	*(volatile uint32_t*)0xea001218 &= __builtin_bswap32(0xFFFFFFF0);
-	mdelay(50);
+	mdelay(100);
 	
 	struct xenon_ata_device *dev = &atapi;
 	memset(dev, 0, sizeof (struct xenon_ata_device));
