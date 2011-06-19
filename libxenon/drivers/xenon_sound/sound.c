@@ -2,20 +2,20 @@
 #include <string.h>
 #include <malloc.h>
 #include <xenon_smc/xenon_smc.h>
+#include <xenon_smc/xenon_gpio.h>
 #include <stdio.h>
 #include <ppc/cache.h>
-
-static inline uint32_t bswap32(uint32_t t)
-{
-	return ((t & 0xFF) << 24) | ((t & 0xFF00) << 8) | ((t & 0xFF0000) >> 8) | ((t & 0xFF000000) >> 24);
-}
 
 static int snd_base = 0xea001600, wptr, buffer_len;
 static void *buffer;
 
 void xenon_sound_init(void)
 {
-
+	// reset DAC (init from scratch)
+	xenon_gpio_control(5,0x1000,0x1000);
+	xenon_gpio_control(0,0x1000,0x1000);
+	xenon_gpio_control(4,0x1000,0x1000);
+	
 	static unsigned char smc_snd[32] = {0x8d, 1, 1};
 	xenon_smc_send_message(smc_snd);
 
@@ -32,8 +32,8 @@ void xenon_sound_init(void)
 	int i;
 	for (i = 0; i < 0x20; ++i)
 	{
-		descr[i * 2] = bswap32(buffer_base + (buffer_len/0x20) * i);
-		descr[i * 2 + 1] = bswap32(0x80000000 | (buffer_len/0x20));
+		descr[i * 2] = __builtin_bswap32(buffer_base + (buffer_len/0x20) * i);
+		descr[i * 2 + 1] = __builtin_bswap32(0x80000000 | (buffer_len/0x20));
 	}
 
 	memdcbst(descr, 0x20 * 2 * 4);
