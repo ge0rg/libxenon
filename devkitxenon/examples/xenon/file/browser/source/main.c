@@ -5,11 +5,13 @@
 #include <debug.h>
 #include <xenos/xenos.h>
 #include <diskio/dvd.h>
+#include <diskio/ata.h>
 #include <input/input.h>
 #include <console/console.h>
 #include <diskio/diskio.h>
 #include <usb/usbmain.h>
 #include <time/time.h>
+#include <xenon_soc/xenon_power.h>
 #include <dirent.h>
 
 #define FG_COL -1
@@ -79,12 +81,16 @@ int main(){
 	xenos_init(VIDEO_MODE_AUTO);
 	console_init();
 
+	xenon_make_it_faster(XENON_SPEED_FULL);
+	
 	usb_init();
 	usb_do_poll();
 
+	xenon_ata_init();
+
 	dvd_init();
 
-  	handle=-1;
+	handle=-1;
     handle=bdev_enum(handle,&s);
     if(handle<0) return 0;
 
