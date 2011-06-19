@@ -65,6 +65,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/usb/usbmain.o \
 	../../drivers/usb/usbmass.o \
 	../../drivers/utils/unicode_rb.o \
+	../../drivers/utils/debug.o \
 	../../drivers/xenon_smc/xenon_gpio.o \
 	../../drivers/xenon_smc/xenon_smc.o \
 	../../drivers/xenon_soc/cpusleep.o \
