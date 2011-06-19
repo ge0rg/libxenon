@@ -595,7 +595,8 @@ dump_from_pagefault:
 	bl putc
 	li %r3, '='
 	bl putc
-	ld %r4, OFF_REG(REG_LR)(%r31)
+	mfsprg1 %r31
+	ld %r3, OFF_REG(REG_LR)(%r31)
 	bl puthex
 
 	li %r3, '\n'
@@ -658,6 +659,39 @@ dump_from_pagefault:
 
 	li %r3, '\n'
 	bl putc
+
+	li %r3, 'S'
+	bl putc
+	li %r3, 't'
+	bl putc
+	li %r3, 'a'
+	bl putc
+	li %r3, 'c'
+	bl putc
+	li %r3, 'k'
+	bl putc
+	li %r3, '\n'
+	bl putc
+	
+	li %r5, 32
+	mtctr %r5
+	lis %r5,0x8000
+	andc %sp,%sp,%r5
+1:
+	mr %r3,%sp
+	bl puthex
+	li %r3, '='
+	bl putc
+	ld %r3,0(%sp)
+	bl puthex
+	li %r3, '\n'
+	bl putc
+	addi %sp,%sp,8
+	bdnz 1b
+	
+	li %r3, '\n'
+	bl putc
+
 	li %r3, 'F'
 	bl putc
 	li %r3, 'A'
