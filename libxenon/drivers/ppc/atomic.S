@@ -28,21 +28,27 @@ atomic_clearset:
 	bne-   1b
 	blr
 
+	// thanks cOz for the following :)
 .globl lock
 lock:
-1:
-	lwarx  %r4, 0, %r3
-	cmpwi  %r4, 0
-	li     %r4, 1
-	bne 1f
-	stwcx. %r4, 0, %r3
-	bne- 1b
-
-1:
-	blr
-
+        lwarx   %r4, 0, %r3
+        cmplwi  %r4, 0
+        bc	6, eq, spinner
+        stwcx.  %r3, 0, %r3
+        bc      6, eq, spinner
+        sync    1  // lwsync
+        .long   0x7FFFFB78 // db16cyc - AIX for 16 cycle delay
+        blr
+spinner:
+        .long   0x7FFFFB78 // db16cyc - AIX for 16 cycle delay
+        lwz     %r4, 0(%r3)
+        cmplwi  %r4, 0
+        bc      15, eq, lock
+        b       spinner
+ 
 .globl unlock
 unlock:
-	li %r4, 0
-	stw %r4, 0(%r3)
-	blr
+        li      %r4, 0
+        sync    1  // lwsync
+        stw     %r4, 0(%r3)
+        blr
