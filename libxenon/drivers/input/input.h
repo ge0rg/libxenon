@@ -1,6 +1,10 @@
 #ifndef __input_h
 #define __input_h
 
+#ifdef __cplusplus
+   extern "C" {
+#endif /* __cplusplus */
+
 struct controller_data_s
 {
 	signed short s1_x, s1_y, s2_x, s2_y;
@@ -12,5 +16,9 @@ struct controller_data_s
 int get_controller_data(struct controller_data_s *d, int port);
 
 void set_controller_data(int port, const struct controller_data_s *d);
+
+#ifdef __cplusplus
+   }
+#endif /* __cplusplus */
 
 #endif

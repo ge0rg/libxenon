@@ -3,6 +3,10 @@
 
 #include <xetypes.h>
 
+#ifdef __cplusplus
+   extern "C" {
+#endif /* __cplusplus */
+
 #define XENON_ATA_REG_DATA      0
 #define XENON_ATA_REG_ERROR     1
 #define XENON_ATA_REG_FEATURES  1
@@ -94,5 +98,9 @@ struct xenon_atapi_read
 
 int xenon_ata_init();
 int xenon_atapi_init();
+
+#ifdef __cplusplus
+   }
+#endif /* __cplusplus */
 
 #endif
