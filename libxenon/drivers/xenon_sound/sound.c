@@ -66,7 +66,7 @@ void xenon_sound_submit(void *data, int len)
 		if (wptr == buffer_len)
 			wptr = 0;
 	}
-	int cur_descr = wptr / (buffer_len/0x20);
+	int cur_descr = (wptr / (buffer_len/0x20) -1) & 0x1f;
 	
 	write32(snd_base + 4, cur_descr << 8);
 	write32(snd_base + 8, read32(snd_base) | 0x1000000);
