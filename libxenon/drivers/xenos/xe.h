@@ -76,6 +76,14 @@ extern "C" {
 #define XE_TEXADDR_BORDER                 6
 #define XE_TEXADDR_MIRRORONCE_BORDER      7
 
+#define XE_CLIP_ENABLE_PLANE0  0x0001
+#define XE_CLIP_ENABLE_PLANE1  0x0002
+#define XE_CLIP_ENABLE_PLANE2  0x0004
+#define XE_CLIP_ENABLE_PLANE3  0x0008
+#define XE_CLIP_ENABLE_PLANE4  0x0010
+#define XE_CLIP_ENABLE_PLANE5  0x0020
+#define XE_CLIP_MASTER_DISABLE 0x10000
+
 struct XenosLock
 {
 	void *start;
@@ -228,6 +236,8 @@ struct XenosDevice
 	u32 fetch_dirty; /* 3 * 2 per bit */
 
 	float clipplane[6*4];
+	int clipcontrol;
+	
 	u32 integer_constants[10*4];
 	u32 controlpacket[9], stencildata[2];
 	unsigned int alpharef; // should be moved into state
@@ -275,6 +285,9 @@ struct XenosDevice
 	struct XenosVertexBuffer *current_vb;
 	
 	int edram_colorformat, edram_depthbase, edram_color0base, edram_hizpitch, edram_pitch;
+	
+	int scissor_enable;
+	int scissor_ltrb[4];
 };
 
 void Xe_Init(struct XenosDevice *xe);
@@ -326,6 +339,7 @@ void Xe_SetCullMode(struct XenosDevice *xe, unsigned int cullmode);
 void Xe_SetAlphaTestEnable(struct XenosDevice *xe, int enable);
 void Xe_SetAlphaFunc(struct XenosDevice *xe, unsigned int func);
 void Xe_SetAlphaRef(struct XenosDevice *xe, float alpharef);
+void Xe_SetScissor(struct XenosDevice *xe, int enable, int left, int top, int right, int bottom);
 
 	/* bfff is a bitfield {backface,frontface} */
 void Xe_SetStencilEnable(struct XenosDevice *xe, unsigned int enable);

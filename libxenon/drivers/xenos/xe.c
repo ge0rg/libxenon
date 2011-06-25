@@ -65,7 +65,7 @@ void Xe_pSyncFromDevice(struct XenosDevice *xe, volatile void *data, int len)
 
 void *Xe_pAlloc(struct XenosDevice *xe, u32 *phys, int size, int align)
 {
-    void *r;
+	void *r;
 	if (!align)
 		align = size;
 
@@ -962,8 +962,6 @@ void Xe_Init(struct XenosDevice *xe)
     xe->regs = (void*)0xec800000;
     xe->rb = xe->rb_primary = (void*)(RINGBUFFER_BASE | 0x80000000);
 
-    unsigned char * poolbase=xe->rb+0x20000;
-
     kmeminit(&xe->mempool,(unsigned char *)(MEMPOOL_BASE | 0x80000000),MEMPOOL_SIZE);
 	
 	xe->tex_fb.ptr = r32(0x6110);
@@ -1127,7 +1125,7 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 	rput32(0x000005c8); rput32(0x00020000);
 	rput32(0x00002203); rput32(0x00000000);
 	rput32(0x00022100); rput32(0x0000ffff); rput32(0x00000000); rput32(0x00000000); 
-	rput32(0x00022204); rput32(0x00010000); rput32(0x00010000); rput32(0x00000300); 
+	rput32(0x00022204); rput32((xe->clipcontrol&0x3f)?xe->clipcontrol:0x00010000); rput32(0x00010000); rput32(0x00000300); 
 	rput32(0x00002312); rput32(0x0000ffff); 
 	rput32(0x0000200d); rput32(0x00000000);
 
@@ -1608,6 +1606,17 @@ void Xe_SetStencilWriteMask(struct XenosDevice *xe, int bfff, int writemask)
 	xe->dirty |= DIRTY_MISC;
 }
 
+void Xe_SetScissor(struct XenosDevice *xe, int enable, int left, int top, int right, int bottom)
+{
+	xe->scissor_enable=enable;
+	xe->scissor_ltrb[0]=left;
+	xe->scissor_ltrb[1]=top;
+	xe->scissor_ltrb[2]=right;
+	xe->scissor_ltrb[3]=bottom;
+	xe->dirty |= DIRTY_MISC;
+}
+
+
 void Xe_InvalidateState(struct XenosDevice *xe)
 {
 	xe->dirty = ~0;
@@ -1665,7 +1674,11 @@ void Xe_pSetState(struct XenosDevice *xe)
 
 //	if (xe->dirty & DIRTY_MISC)
 	{
-		Xe_pSetSurfaceClip(xe, 0, 0, 0, 0, xe->vp_xres, xe->vp_yres);
+		if (xe->scissor_enable)
+			Xe_pSetSurfaceClip(xe, 0, 0, xe->scissor_ltrb[0], xe->scissor_ltrb[1], xe->scissor_ltrb[2], xe->scissor_ltrb[3]);
+		else
+			Xe_pSetSurfaceClip(xe, 0, 0, 0, 0, xe->vp_xres, xe->vp_yres);
+		
 		Xe_pSetEDRAMLayout(xe);
 		rput32(0x0000200d);
 			rput32(0x00000000);
@@ -1714,13 +1727,13 @@ struct XenosVertexBuffer *Xe_CreateVertexBuffer(struct XenosDevice *xe, int size
 {
 	struct XenosVertexBuffer *vb = malloc(sizeof(struct XenosVertexBuffer));
 	memset(vb, 0, sizeof(struct XenosVertexBuffer));
-	printf("--- alloc new vb, at %p\n", vb);
+	printf("--- alloc new vb, at %p, size %d\n", vb, size);
 	vb->base = Xe_pAlloc(xe, &vb->phys_base, size, 0x1000);
 	vb->size = 0;
 	vb->space = size;
 	vb->next = 0;
 	vb->vertices = 0;
-	printf("alloc done, at %p %x\n", vb->base, vb->phys_base);
+//	printf("alloc done, at %p %x\n", vb->base, vb->phys_base);
 	return vb;
 }
 
@@ -1737,6 +1750,7 @@ struct XenosVertexBuffer *Xe_VBPoolAlloc(struct XenosDevice *xe, int size)
 	while (*vbp)
 	{
 		struct XenosVertexBuffer *vb = *vbp;
+//		printf("use %d %d\n",vb->space,size);
 		if (vb->space >= size)
 		{
 			*vbp = vb->next;
@@ -1784,9 +1798,11 @@ void Xe_VBPut(struct XenosDevice *xe, void *data, int len)
 	
 	while (len)
 	{
-		int remaining = xe->vb_current ? (xe->vb_current->space - xe->vb_current->size) : 0;
+		int remaining = xe->vb_current ? (xe->vb_current->space - xe->vb_current->size) / 4 : 0;
 		
 		remaining -= remaining % xe->vb_current_pitch;
+		
+//		printf("rem %d len %d\n",remaining,len);
 		
 		if (remaining > len)
 			remaining = len;
@@ -1794,13 +1810,13 @@ void Xe_VBPut(struct XenosDevice *xe, void *data, int len)
 		if (!remaining)
 		{
 			struct XenosVertexBuffer **n = xe->vb_head ? &xe->vb_current->next : &xe->vb_head;
-			xe->vb_current = Xe_VBPoolAlloc(xe, 0x100000); // fixme, was 0x10000
+			xe->vb_current = Xe_VBPoolAlloc(xe, 0x10000);
 			*n = xe->vb_current;
 			continue;
 		}
 		
-		memcpy(xe->vb_current->base + xe->vb_current->size * 4, data, remaining * 4);
-		xe->vb_current->size += remaining;
+		memcpy(xe->vb_current->base + xe->vb_current->size, data, remaining * 4);
+		xe->vb_current->size += remaining * 4;
 		xe->vb_current->vertices += remaining / xe->vb_current_pitch;
 		data += remaining * 4;
 		len -= remaining;
@@ -1814,8 +1830,8 @@ struct XenosVertexBuffer *Xe_VBEnd(struct XenosDevice *xe)
 	
 	while (xe->vb_head)
 	{
-		Xe_pSyncToDevice(xe, xe->vb_head->base, xe->vb_head->space * 4);
-		Xe_pInvalidateGpuCache(xe, xe->vb_head->phys_base, (xe->vb_head->space * 4) + 0x1000);
+		Xe_pSyncToDevice(xe, xe->vb_head->base, xe->vb_head->space);
+		Xe_pInvalidateGpuCache(xe, xe->vb_head->phys_base, xe->vb_head->space + 0x1000);
 		xe->vb_head = xe->vb_head->next;
 	}
 
