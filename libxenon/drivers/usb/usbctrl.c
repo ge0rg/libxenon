@@ -138,9 +138,12 @@ static int usbctrl_ireq_callback(usbreq_t *ur)
 	{
 		if (b[5] == 0x13)
 		{
+#if 0
 			if (b[6] == 2) /* CHECKME: is this required for the Xbox racing wheel? */
 				b++;
+#endif				
 			b += 4;
+			
 		} else
 			goto ignore;
 	}

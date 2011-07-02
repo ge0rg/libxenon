@@ -21,6 +21,12 @@ int _fat_read(struct vfs_file_s *file, void *dst, size_t len)
 	return rb_read(fd,dst,len);
 }
 
+int _fat_write(struct vfs_file_s *file, const void *src, size_t len)
+{
+	int fd = (int)file->priv[0];
+	return rb_write(fd,src,len);
+}
+
 int _fat_fstat(struct vfs_file_s *file, struct stat *buf)
 {
 	int fd = (int)file->priv[0];
@@ -36,7 +42,7 @@ void _fat_close(struct vfs_file_s *file)
 	rb_close(fd);
 }
 
-struct vfs_fileop_s vfs_fat_file_ops = {.read = _fat_read, .lseek = _fat_lseek, .fstat = _fat_fstat, .close = _fat_close};
+struct vfs_fileop_s vfs_fat_file_ops = {.read = _fat_read, .write = _fat_write  .lseek = _fat_lseek, .fstat = _fat_fstat, .close = _fat_close};
 
 int _fat_closedir(struct vfs_dir_s *dirp)
 {

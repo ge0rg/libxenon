@@ -19,6 +19,7 @@ struct bdev;
 struct bdev_ops
 {
 	int (*read)(struct bdev *dev, void *data, lba_t lba, int num);
+	int (*write)(struct bdev *dev, const void *data, lba_t lba, int num);
 };
 
 struct bdev

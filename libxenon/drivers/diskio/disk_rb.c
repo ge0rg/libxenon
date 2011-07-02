@@ -279,6 +279,9 @@ int storage_read_sectors(int drive, unsigned long start, int count, void* buf)
 
 int storage_write_sectors(int drive, unsigned long start, int count, const void* buf)
 {
-	printf("[storage_write_sectors] device %s start %ld count %d TODO :)\n",devices[drive].name,start,count);
-	exit(1);
+	// Invalide cache
+	block_cache_lba[drive]=BAD_LBA;
+	int red = devices[drive].ops->write(&devices[drive],buf,start,count);
+	
+	return count-red;
 }

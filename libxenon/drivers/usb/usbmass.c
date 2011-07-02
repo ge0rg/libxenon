@@ -653,10 +653,11 @@ int usbmass_read_capacity(usbdev_t *dev,uint32_t *size)
 #include <diskio/diskio.h>
 
 int usbmass_read(struct bdev *dev, void *data, lba_t lba, int num);
-
+int usbmass_write(struct bdev *dev, const void *data, lba_t lba, int num);
 struct bdev_ops usbmass_ops =
 {
-	.read = usbmass_read
+	.read = usbmass_read,
+	.write = usbmass_write
 };
 
 /*  *********************************************************************
@@ -1137,6 +1138,29 @@ int usbmass_read(struct bdev *dev, void *data, lba_t lba, int num)
 		int tl = num;
 		if (tl>MAX_SECTOR_PER_REQUEST) tl=MAX_SECTOR_PER_REQUEST;
 		if (usbmass_read_sector(softc->dev, lba, tl, PTR2HSADDR(p)))
+			break;
+
+		p += tl*512;
+		num -= tl;
+		r += tl;
+		lba += tl;
+	}
+	
+	return r;
+}
+
+int usbmass_write(struct bdev *dev, const void *data, lba_t lba, int num)
+{
+	char * p = (char *)data;
+	usbmass_softc_t *softc = dev->ctx;
+	lba += dev->offset;
+	
+	int r = 0;
+	while (num)
+	{
+		int tl = num;
+		if (tl>MAX_SECTOR_PER_REQUEST) tl=MAX_SECTOR_PER_REQUEST;
+		if (usbmass_write_sector(softc->dev, lba, tl, PTR2HSADDR(p)))
 			break;
 
 		p += tl*512;

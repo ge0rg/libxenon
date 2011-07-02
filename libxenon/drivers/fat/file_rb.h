@@ -28,6 +28,8 @@
 #define MAX_PATH 260
 
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #ifndef SEEK_SET
 #define SEEK_SET 0

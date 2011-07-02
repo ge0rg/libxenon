@@ -611,7 +611,7 @@ xenon_ata_init1(struct xenon_ata_device *dev, uint32_t ioaddress, uint32_t ioadd
 }
 
 struct bdev_ops xenon_ata_ops ={
-    .read = xenon_ata_read_sectors
+    .read = xenon_ata_read_sectors, .write = xenon_ata_write_sectors
 };
 
 int
