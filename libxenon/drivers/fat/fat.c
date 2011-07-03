@@ -42,7 +42,7 @@ void _fat_close(struct vfs_file_s *file)
 	rb_close(fd);
 }
 
-struct vfs_fileop_s vfs_fat_file_ops = {.read = _fat_read, .write = _fat_write  .lseek = _fat_lseek, .fstat = _fat_fstat, .close = _fat_close};
+struct vfs_fileop_s vfs_fat_file_ops = {.read = _fat_read, .write = _fat_write,  .lseek = _fat_lseek, .fstat = _fat_fstat, .close = _fat_close};
 
 int _fat_closedir(struct vfs_dir_s *dirp)
 {
