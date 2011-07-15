@@ -19,8 +19,9 @@ INCLUDES = -I ../../drivers -I ../../include \
 
 
 CFLAGS = -g -mcpu=cell -mtune=cell -Os \
+	-maltivec \
 	-ffunction-sections -fdata-sections \
-	-Wall -I. -DBYTE_ORDER=BIG_ENDIAN \
+	-Wall -Wno-format -Wno-attributes -I. -DBYTE_ORDER=BIG_ENDIAN \
 	-m32 -fno-pic -mpowerpc64 \
 	-D_CFE_=1 -DENDIAN_BIG=1 \
 	$(INCLUDES)
@@ -66,6 +67,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/usb/usbmass.o \
 	../../drivers/utils/unicode_rb.o \
 	../../drivers/utils/debug.o \
+	../../drivers/utils/gmon.o \
 	../../drivers/xenon_smc/xenon_gpio.o \
 	../../drivers/xenon_smc/xenon_smc.o \
 	../../drivers/xenon_soc/cpusleep.o \

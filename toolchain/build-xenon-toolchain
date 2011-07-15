@@ -7,8 +7,8 @@ TARGET=xenon
 PREFIX=/usr/local/xenon # Install location of your final toolchain
 PARALLEL=""		# Or: PARALLEL="-j 2"
 
-BINUTILS=binutils-2.19.1
-GCC=gcc-4.4.0
+BINUTILS=binutils-2.21
+GCC=gcc-4.6.0
 NEWLIB=newlib-1.17.0
 GDB=gdb-6.8
 
@@ -112,10 +112,10 @@ function toolchain_install
 	tar xfj $GCC.tar.bz2 >> $LOGFILE 2>&1 && cat gcc.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
 	cd build
 	echo -e "Configuring gcc..."
-	../$GCC/configure --target=$TARGET --prefix=$PREFIX --with-libiconv-prefix=/opt/local -enable-interwork --enable-multilib \
+	../$GCC/configure --target=$TARGET --prefix=$PREFIX --with-libiconv-prefix=/opt/local -enable-interwork \
 		--enable-languages="c" --without-headers --disable-shared \
-		--with-newlib --disable-libgomp --disable-libmudflap --disable-libssp --disable-nls --disable-shared --disable-threads --without-headers \
-		--disable-decimal-float \
+		--with-newlib --disable-libmudflap --disable-libssp --disable-nls --disable-shared --without-headers \
+		--disable-decimal-float --enable-altivec\
 		  --with-gmp=/opt/local --with-mpfr=/opt/local --with-cpu=cell >> $LOGFILE 2>&1 || exit 0 
 	echo -e "Building gcc, this could take a while..."
 	make $PARALLEL all-gcc >> $LOGFILE 2>&1 || exit 0
@@ -130,7 +130,7 @@ function toolchain_install
 	tar xfz $NEWLIB.tar.gz >> $LOGFILE 2>&1 && cat newlib.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
 	cd build
 	echo -e "Configuring newlib..."
-	../$NEWLIB/configure --target=$TARGET --prefix=$PREFIX  --enable-multilib   --disable-nls CFLAGS='-DHAVE_BLKSIZE' >> $LOGFILE 2>&1 || exit 0
+	../$NEWLIB/configure --target=$TARGET --prefix=$PREFIX  --enable-multilib --disable-nls CFLAGS='-DHAVE_BLKSIZE' --enable-newlib-io-long-long --enable-newlib-io-long-double >> $LOGFILE 2>&1 || exit 0
 	echo -e "Building newlib, this could take a while..."
 	make $PARALLEL >> $LOGFILE 2>&1 || exit 0
 	make install >> $LOGFILE 2>&1 || exit 0
@@ -144,10 +144,10 @@ function toolchain_install
 	cd build
 	echo -e "Configuring gcc - 2nd pass..."
 	../$GCC/configure --target=$TARGET --prefix=$PREFIX --with-libiconv-prefix=/opt/local \
-		  --enable-multilib  --with-cpu=cell \
-		   --with-gmp=/opt/local --with-mpfr=/opt/local --disable-decimal-float \
-		 --enable-languages=c,c++ --disable-libssp --with-newlib --enable-cxx-flags="-G0" --disable-libgomp \
-		 --disable-libmudflap --disable-nls --disable-shared --disable-threads  --disable-linux-futex  \
+		  --with-cpu=cell \
+		   --with-gmp=/opt/local --with-mpfr=/opt/local --disable-decimal-float --disable-libquadmath \
+		 --enable-languages=c,c++ --disable-libssp --with-newlib --enable-cxx-flags="-G0" \
+		 --disable-libmudflap --disable-nls --disable-shared --disable-linux-futex --enable-altivec --disable-threads --disable-libgomp \
 		 	>> $LOGFILE 2>&1 || exit 0
 	echo -e "Building gcc - 2nd pass, this could take a while..."
 	make $PARALLEL >> $LOGFILE 2>&1 || exit 0
