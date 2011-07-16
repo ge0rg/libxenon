@@ -852,6 +852,8 @@ int fs_iso9660_init() {
 	/* Init thread mutexes */
 	cache_mutex = malloc(sizeof(u32));
 	fh_mutex = malloc(sizeof(u32));
+	*cache_mutex = 0;
+	*fh_mutex = 0;
 
 	/* Allocate cache block space */
 	for (i=0; i<NUM_CACHE_BLOCKS; i++) {
@@ -969,4 +971,3 @@ void _iso9660_umount(struct mount_s *mount)
 }
 
 struct vfs_mountop_s vfs_iso9660_mount_ops = {.open = _iso9660_open, .opendir = _iso9660_opendir, .mount = _iso9660_mount, .umount = _iso9660_umount};
-
