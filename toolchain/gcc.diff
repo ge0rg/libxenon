@@ -1,5 +1,5 @@
 --- gcc-4.6.0/config.sub	2010-05-25 15:22:07.000000000 +0200
-+++ edited/gcc-4.6.0/config.sub	2011-05-08 20:01:59.131496120 +0200
++++ gcc-4.6.0/config.sub	2011-05-08 20:01:59.131496120 +0200
 @@ -962,6 +962,10 @@
  	ppc64le-* | powerpc64little-*)
  		basic_machine=powerpc64le-`echo $basic_machine | sed 's/^[^-]*-//'`
@@ -12,7 +12,7 @@
  		basic_machine=i386-ibm
  		;;
 --- gcc-4.6.0/libstdc++-v3/configure	2011-03-08 01:04:05.000000000 +0100
-+++ edited/gcc-4.6.0/libstdc++-v3/configure	2011-05-08 20:03:15.371557434 +0200
++++ gcc-4.6.0/libstdc++-v3/configure	2011-05-08 20:03:15.371557434 +0200
 @@ -10790,6 +10790,7 @@
    finish_cmds='PATH="\$PATH:/sbin" ldconfig -n $libdir'
    shlibpath_var=LD_LIBRARY_PATH
@@ -21,8 +21,8 @@
  
    # Some binutils ld are patched to set DT_RUNPATH
    if test "${lt_cv_shlibpath_overrides_runpath+set}" = set; then :
---- /root/ppctc46/libxenon/toolchain/gcc-4.6.0/gcc/config/rs6000/altivec.md	2011-02-03 06:42:19.000000000 +0100
-+++ /root/ppctc46/libxenon/toolchain/edited/gcc-4.6.0/gcc/config/rs6000/altivec.md	2011-06-28 20:46:28.580429716 +0200
+--- gcc-4.6.0/gcc/config/rs6000/altivec.md	2011-02-03 06:42:19.000000000 +0100
++++ gcc-4.6.0/gcc/config/rs6000/altivec.md	2011-06-28 20:46:28.580429716 +0200
 @@ -584,7 +584,7 @@
   
     two = gen_reg_rtx (V8HImode);
