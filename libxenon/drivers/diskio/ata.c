@@ -660,7 +660,7 @@ xenon_atapi_init() {
 	*(volatile uint32_t*)0xd0108060 = __builtin_bswap32(0x112400);
 	*(volatile uint32_t*)0xd0108080 = __builtin_bswap32(0x407231BE);
 	*(volatile uint32_t*)0xea001218 &= __builtin_bswap32(0xFFFFFFF0);
-	mdelay(100);
+	mdelay(200);
 	
 	struct xenon_ata_device *dev = &atapi;
 	memset(dev, 0, sizeof (struct xenon_ata_device));
