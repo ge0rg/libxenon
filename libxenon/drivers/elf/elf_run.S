@@ -13,12 +13,12 @@ elf_hold_thread:
 	sub %r4,%r4,%r3
 
 1:
-	or %r1, %r1, %r1       /* low priority */
+//	or %r1, %r1, %r1       /* low priority */
 	lwz %r3, 0(%r4)
 	cmpwi %r3, 0
 	beq 1b
 
-	or %r2, %r2, %r2
+//	or %r2, %r2, %r2
 
 .globl elf_run
 elf_run:
