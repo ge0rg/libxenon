@@ -354,7 +354,7 @@ xenon_ata_read_sectors(struct bdev *bdev, void *buf, lba_t start_sector, int sec
 }
 
 static int
-xenon_ata_write_sectors(struct bdev *bdev, void *buf, lba_t start_sector, int sector_size) {
+xenon_ata_write_sectors(struct bdev *bdev, const void *buf, lba_t start_sector, int sector_size) {
     unsigned int sect;
     struct xenon_ata_device *dev = bdev->ctx;
 
@@ -366,7 +366,7 @@ xenon_ata_write_sectors(struct bdev *bdev, void *buf, lba_t start_sector, int se
     xenon_ata_regset(dev, XENON_ATA_REG_CMD, XENON_ATA_CMD_WRITE_SECTORS_EXT);
     xenon_ata_wait_ready(dev);
     for (sect = 0; sect < sector_size; sect++) {
-        if (xenon_ata_pio_write(dev, buf, XENON_DISK_SECTOR_SIZE)) {
+        if (xenon_ata_pio_write(dev, (void *)buf, XENON_DISK_SECTOR_SIZE)) {
             printf("ATA write error\n");
             return -1;
         }
@@ -420,7 +420,7 @@ int
 xenon_atapi_request_sense(struct xenon_ata_device *dev)
 {
 	char cdb[12] = {0x03,0x00,0x00,0x00,0x00,0x00,
-			                 0x00,0x00,0x00,0x00,0x00,0x00};
+	                0x00,0x00,0x00,0x00,0x00,0x00};
 	char buf[24];
 	memset(buf,0,sizeof(buf));
 
@@ -434,6 +434,27 @@ xenon_atapi_request_sense(struct xenon_ata_device *dev)
 	};
 	
 	return (buf[2] << 16) | (buf[12] << 8) | buf[13];
+}
+
+static int
+xenon_atapi_inquiry_model(struct xenon_ata_device *dev) {
+	
+	char cdb[12] = {0x12,0x00,0x00,0x00,0x24,0xC0,
+			        0x00,0x00,0x00,0x00,0x00,0x00};
+	char buf[0x24];
+	memset(buf,0,sizeof(buf));
+
+	xenon_atapi_packet(dev,cdb,0);
+	xenon_ata_wait_ready(dev);
+	if (xenon_ata_pio_read(dev,buf,sizeof(buf))){
+		printf("ATAPI inquiry failed\n");
+		return -1;
+	};
+	
+	buf[8+24] = '\0';
+	printf("ATAPI inquiry model: %s\n",&buf[8]);
+	
+	return 0;
 }
 
 static int
@@ -518,7 +539,7 @@ xenon_ata_identify(struct xenon_ata_device *dev) {
 
     int val = xenon_ata_pio_read(dev, info, XENON_DISK_SECTOR_SIZE);
     if (val & 4)
-        return xenon_atapi_identify(dev);
+        return xenon_atapi_inquiry_model(dev);
     else if (val)
         return -1;
 
@@ -647,4 +668,3 @@ xenon_atapi_init() {
     if (!err) dev->bdev = register_bdev(dev, &xenon_atapi_ops, "dvd");
     return err;
 }
-
