@@ -11,6 +11,7 @@
 #include <diskio/diskio.h>
 #include <usb/usbmain.h>
 #include <time/time.h>
+#include <ppc/timebase.h>
 #include <xenon_soc/xenon_power.h>
 #include <dirent.h>
 
@@ -85,7 +86,7 @@ int main(){
 	
 	usb_init();
 	usb_do_poll();
-
+	
 	xenon_ata_init();
 
 	dvd_init();
@@ -111,11 +112,40 @@ int main(){
 			continue;
 		}
 		
-		if (pad.a && entries[pos].d_type&DT_DIR){
-			append_dir_to_path(path,entries[pos].d_name);
-			load_dir(path);
-			ppos=-1;
-			pos=0;
+		if (pad.a){
+			if(entries[pos].d_type&DT_DIR){
+				append_dir_to_path(path,entries[pos].d_name);
+				load_dir(path);
+				ppos=-1;
+				pos=0;
+			}else{
+				char fn[256];
+				strcpy(fn,path);
+				strcat(fn,entries[pos].d_name);
+				
+				printf("%s\n",fn);
+				
+				FILE * f=fopen(fn,"rb");
+				if(f){
+					int size=1024*1024;
+					int totred=0,red;
+					
+					void * buf=malloc(size);
+
+					u64 beg=mftb();
+					do{
+						red=fread(buf,1,size,f);
+						totred+=red;
+						console_putch('.');
+					}while(red==size);
+					
+					printf("\n%d bytes, %f KB/s\n",totred, (float)(totred/1024.0)/((float)(mftb()-beg)/PPC_TIMEBASE_FREQ));
+					
+					free(buf);
+					
+					fclose(f);
+				}
+			}
 		}
 		
 		if(pad.select){
