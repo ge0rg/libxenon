@@ -55,6 +55,8 @@
 
 #include "usbchap9.h"
 #include "usbd.h"
+#include <usb/tinyehci/tinyehci.h>
+#include <diskio/diskio.h>
 
 
 /*  *********************************************************************
@@ -230,14 +232,12 @@ int usb_init(void)
     static int initdone = 0;
 
     if (initdone) {
-	printf("USB has already been initialized.\n");
-	return -1;
+		printf("USB has already been initialized.\n");
+		return -1;
 	}
 
 	initdone = 1;
-
-	usb_buscnt = 0;
-
+	
 	// preinit (start from scratch)
 		// OHCI
 	*(volatile uint32_t*)0xD0120044 = __builtin_bswap32(0xED44);
@@ -248,6 +248,7 @@ int usb_init(void)
 	*(volatile uint32_t*)0xD0121044 = __builtin_bswap32(0x3C);
 	*(volatile uint32_t*)0xD0129044 = __builtin_bswap32(0x3C);
 
+#if 0
 	// resetting EHCI
 	// disable interrupts
 	*(volatile uint32_t*)0xEA003028 = 0x00000000;
@@ -266,6 +267,14 @@ int usb_init(void)
 	// clear status
 	*(volatile uint32_t*)0xEA003024 = __builtin_bswap32(0xFFFF);
 	*(volatile uint32_t*)0xEA005024 = __builtin_bswap32(0xFFFF);
+#endif 
+
+	printf(" * Initialising USB EHCI...\n");
+	EHCI_Init();	
+
+	printf(" * Initialising USB OHCI...\n");
+	
+	usb_buscnt = 0;
 
     kmem_init();
 
@@ -291,5 +300,8 @@ void usb_do_poll(void)
 {
 	if (!usb_initialized)
 		return;
+	
+	USBStorage_Init();
+	
 	usb_cfe_timer(0);
 }

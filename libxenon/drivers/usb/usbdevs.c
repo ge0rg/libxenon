@@ -68,7 +68,9 @@
 extern usb_driver_t usbhub_driver;
 extern usb_driver_t usbhid_driver;
 extern usb_driver_t usbctrl_driver;
+#ifdef USB11_MASS_STORAGE
 extern usb_driver_t usbmass_driver;
+#endif
 extern usb_driver_t usbserial_driver;
 extern usb_driver_t usbpeg_driver;
 extern usb_driver_t usbcatc_driver;
@@ -96,8 +98,10 @@ usb_drvlist_t usb_drivers[] = {
      * Mass storage devices
      */
 
+#ifdef USB11_MASS_STORAGE
     {USB_DEVICE_CLASS_STORAGE,	VENDOR_ANY,	PRODUCT_ANY,	&usbmass_driver},
-
+#endif
+	
 #if 0
     /*
      * Serial ports

@@ -45,6 +45,7 @@
     *     THE POSSIBILITY OF SUCH DAMAGE.
     ********************************************************************* */
 
+#ifdef USB11_MASS_STORAGE
 
 #ifndef _CFE_
 #include <stdio.h>
@@ -1172,3 +1173,4 @@ int usbmass_write(struct bdev *dev, const void *data, lba_t lba, int num)
 	return r;
 }
 
+#endif
