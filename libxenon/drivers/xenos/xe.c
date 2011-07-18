@@ -36,6 +36,8 @@
 #define CP_PACKET0_TABLE( reg, n )                                      \
         (RADEON_CP_PACKET0 | RADEON_ONE_REG_WR | ((n) << 16) | ((reg) >> 2))
 
+#define VBPOOL_NUM_TRIANGLES 2000
+
 static inline void Xe_pWriteReg(struct XenosDevice *xe, u32 reg, u32 val)
 {
 	rput32(CP_PACKET0(reg, 0));
@@ -55,12 +57,12 @@ static inline u32 xy32(int x, int y)
 
 void Xe_pSyncToDevice(struct XenosDevice *xe, volatile void *data, int len)
 {
-	memdcbst(data, len);
+	memdcbst((void *)data, len);
 }
 
 void Xe_pSyncFromDevice(struct XenosDevice *xe, volatile void *data, int len)
 {
-	memdcbf(data, len);
+	memdcbf((void *)data, len);
 }
 
 void *Xe_pAlloc(struct XenosDevice *xe, u32 *phys, int size, int align)
@@ -644,7 +646,7 @@ void Xe_pUploadShaderConstants(struct XenosDevice *xe, struct XenosShader *s)
 		
 		constants += 16;
 
-		int size = *(u32*)constants; constants += 4;
+//		int size = *(u32*)constants; constants += 4;
 		
 //		printf("uploading shader constants..\n");
 
@@ -1810,7 +1812,7 @@ void Xe_VBPut(struct XenosDevice *xe, void *data, int len)
 		if (!remaining)
 		{
 			struct XenosVertexBuffer **n = xe->vb_head ? &xe->vb_current->next : &xe->vb_head;
-			xe->vb_current = Xe_VBPoolAlloc(xe, 0x10000);
+			xe->vb_current = Xe_VBPoolAlloc(xe, VBPOOL_NUM_TRIANGLES*3*xe->vb_current_pitch);
 			*n = xe->vb_current;
 			continue;
 		}
