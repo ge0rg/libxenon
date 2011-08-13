@@ -646,7 +646,8 @@ void Xe_pUploadShaderConstants(struct XenosDevice *xe, struct XenosShader *s)
 		
 		constants += 16;
 
-//		int size = *(u32*)constants; constants += 4;
+//		int size = *(u32*)constants;
+		constants += 4;
 		
 //		printf("uploading shader constants..\n");
 
