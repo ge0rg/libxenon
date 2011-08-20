@@ -27,6 +27,7 @@
 #include <byteswap.h>
 #include <pci/io.h>
 #include <ppc/timebase.h>
+#include <ppc/cache.h>
 #include <xetypes.h>
 #include <debug.h>
 
@@ -57,7 +58,7 @@
 #define be32_to_cpu(a)		(a)
 #define ehci_readl(a)		read32((u32)a)
 #define ehci_writel(v,a)	write32((u32)a,v)
-#define get_timer()  (mftb()/(PPC_TIMEBASE_FREQ/10000000LL))
+#define get_timer()  (mftb()/(PPC_TIMEBASE_FREQ/1000000LL))
 
 #define EHCI_HCD_COUNT 2
 
@@ -74,14 +75,21 @@ static s32 EHCI_do_one(u32 idx,u32 addr)
 	/* EHCI addresses */
 	ehci->caps = (void *)addr;
 	ehci->regs = (void *)(addr + HC_LENGTH(ehci_readl(&ehci->caps->hc_capbase)));	
+	
+	printf("Initialising EHCI bus %d at %p\n",idx,addr);
+	
 	/* Setup EHCI */
 	ehci->hcs_params = ehci_readl(&ehci->caps->hcs_params);
-    ehci->num_port   = HCS_N_PORTS(ehci->hcs_params);
+    
+	ehci_dbg("ehci->hcs_params %x\n",ehci->hcs_params);
 	
-	/* Initialize EHCI */
+	ehci->num_port   = HCS_N_PORTS(ehci->hcs_params);
+	ehci->bus_id = idx;
+	
+	/* Initialize EHCI */ 
 	ret = ehci_init(ehci,1);
 	if (ret)
-		return ret; 
+		return ret;
 
 	ehci_discover(ehci);
 	
@@ -99,10 +107,4 @@ s32 EHCI_Init(void)
 	
 	ret=EHCI_do_one(1,0xea005000);
 	return ret;
-}
-
-s32 EHCI_Poll(void)
-{
-	// nothing
-	return 0;
 }

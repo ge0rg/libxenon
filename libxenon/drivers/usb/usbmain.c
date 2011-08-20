@@ -55,6 +55,7 @@
 
 #include "usbchap9.h"
 #include "usbd.h"
+#include "pci/io.h"
 #include <usb/tinyehci/tinyehci.h>
 #include <diskio/diskio.h>
 
@@ -240,34 +241,13 @@ int usb_init(void)
 	
 	// preinit (start from scratch)
 		// OHCI
-	*(volatile uint32_t*)0xD0120044 = __builtin_bswap32(0xED44);
-	*(volatile uint32_t*)0xD0128044 = __builtin_bswap32(0xED44);
+	write32(0xD0120044,0xed44);
+	write32(0xD0128044,0xed44);
 		// EHCI
-	*(volatile uint32_t*)0xD0121040 = __builtin_bswap32(0x0C004020);
-	*(volatile uint32_t*)0xD0129040 = __builtin_bswap32(0x0C004020);
-	*(volatile uint32_t*)0xD0121044 = __builtin_bswap32(0x3C);
-	*(volatile uint32_t*)0xD0129044 = __builtin_bswap32(0x3C);
-
-#if 0
-	// resetting EHCI
-	// disable interrupts
-	*(volatile uint32_t*)0xEA003028 = 0x00000000;
-	*(volatile uint32_t*)0xEA005028 = 0x00000000;
-	// set reset, set interrupt thresh
-	*(volatile uint32_t*)0xEA003020 = __builtin_bswap32(2);
-	*(volatile uint32_t*)0xEA005020 = __builtin_bswap32(2);
-	*(volatile uint32_t*)0xEA003020 = __builtin_bswap32(0x80000);
-	*(volatile uint32_t*)0xEA005020 = __builtin_bswap32(0x80000);
-	// set configure flag to default to OHCI controller
-	*(volatile uint32_t*)0xEA003060 = 0x00000000;
-	*(volatile uint32_t*)0xEA005060 = 0x00000000;
-	// set frame
-	*(volatile uint32_t*)0xEA00302C = 0x00000000;
-	*(volatile uint32_t*)0xEA00502C = 0x00000000;
-	// clear status
-	*(volatile uint32_t*)0xEA003024 = __builtin_bswap32(0xFFFF);
-	*(volatile uint32_t*)0xEA005024 = __builtin_bswap32(0xFFFF);
-#endif 
+	write32(0xD0121040,0x0C004020);
+	write32(0xD0129040,0x0C004020);
+	write32(0xD0121044,0x3C);
+	write32(0xD0129044,0x3C);
 
 	printf(" * Initialising USB EHCI...\n");
 	EHCI_Init();	
@@ -296,12 +276,33 @@ int usb_init(void)
 	return 0;
 }
 
+void usb_shutdown(void)
+{
+	// EHCI
+		// disable interrupts
+	write32(0xEA003028,0);
+	write32(0xEA005028,0);
+		// halt
+	write32(0xEA003020,0);
+	write32(0xEA005020,0);
+	
+	// OHCI
+		// disable interrupts
+	write32(0xEA002014,1 << 31);
+	write32(0xEA004014,1 << 31);
+		// halt
+	write32(0xEA002004,0);
+	read32(0xEA002004);
+	write32(0xEA004004,0);
+	read32(0xEA004004);
+}
+
 void usb_do_poll(void)
 {
 	if (!usb_initialized)
 		return;
 	
-	USBStorage_Init();
-	
 	usb_cfe_timer(0);
+
+	USBStorage_Init();
 }

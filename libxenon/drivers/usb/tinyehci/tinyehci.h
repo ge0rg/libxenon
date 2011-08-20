@@ -6,6 +6,5 @@
 
 /* Prototypes */
 s32 EHCI_Init(void);
-s32 EHCI_Poll(void);
 
 #endif

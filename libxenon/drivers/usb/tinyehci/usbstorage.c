@@ -101,7 +101,6 @@ static u8 __lun = 16;
 static u8 __mounted = 0;
 static u16 __vid = 0;
 static u16 __pid = 0;
-
 //0x1377E000
 
 //#define MEM_PRINT 1
@@ -1204,8 +1203,8 @@ struct bdev_ops usb2mass_ops =
 
 s32 USBStorage_Init(void)
 {
-	int i,j;
-	debug_printf("usbstorage init %d\n", ums_init_done);
+	int i,j,retries=1;
+//	debug_printf("usbstorage init %d\n", ums_init_done);
 	if(ums_init_done)
 		return 0;
 	
@@ -1213,18 +1212,12 @@ s32 USBStorage_Init(void)
 
 	try_status=-1;      
 
-#ifdef MEM_PRINT
-s_printf("\n***************************************************\nUSBStorage_Init()\n***************************************************\n\n");
-
-#endif
-
-	
 	for(j = 0;j<EHCI_HCD_COUNT; j++){
 		
 		for(i = 0;i<ehci->num_port; i++){
 				struct ehci_device *dev = &ehci->devices[i];
 
-//retry:
+retry:
 			dev->port=i;
 
 			if(dev->id != 0)
@@ -1235,6 +1228,8 @@ s_printf("\n***************************************************\nUSBStorage_Init
 
 					if(USBStorage_Try_Device(ehci,dev)==0) 
 					{
+						printf("EHCI bus %d device %d: vendor %04X product %04X : Mass-Storage Device\n",j,dev->id,__vid,__pid);
+		
 						first_access=TRUE;handshake_mode=0;ums_init_done = 1;unplug_device=0;
 						__bdev=register_bdev(NULL, &usb2mass_ops, "uda");
 						#ifdef MEM_PRINT
@@ -1264,7 +1259,10 @@ s_printf("\n***************************************************\nUSBStorage_Init
 						ehci_msleep(100);
 						ehci_reset_port(ehci,i);
 					}
-//					goto retry;						
+					if(retries){
+						retries--;
+						goto retry;						
+					}
 				}
 			}
 		}

@@ -46,56 +46,59 @@ struct ehci_hcd;
 #define EHCI_MAX_QTD		8
 #include "usb.h"
 
-struct ehci_device{
-        usb_devdesc desc;
-        int id;
-        int port;
-        int fd;
-        u32 toggles;
+struct ehci_device {
+	usb_devdesc desc;
+	int id;
+	int port;
+	int fd;
+	u32 toggles;
 };
 #define ep_bit(ep) (((ep)&0xf)+(((ep)>>7)?16:0))
 #define get_toggle(dev,ep) (((dev)->toggles>>ep_bit(ep))&1)
 #define set_toggle(dev,ep,v) (dev)->toggles = ((dev)->toggles &(~(1<<ep_bit(ep)))) | ((v)<<ep_bit(ep))
 
-struct ehci_urb{
-        void* setup_buffer;
-        dma_addr_t setup_dma;
+struct ehci_urb {
+	void* setup_buffer;
+	dma_addr_t setup_dma;
 
-        void* transfer_buffer;
-        dma_addr_t transfer_dma;
-        u32 transfer_buffer_length;
-        u32 actual_length;
+	void* transfer_buffer;
+	dma_addr_t transfer_dma;
+	u32 transfer_buffer_length;
+	u32 actual_length;
 
-        u8 ep;
-        u8 input;
-        u32 maxpacket;
+	u8 ep;
+	u8 input;
+	u32 maxpacket;
 };
-struct ehci_hcd {			/* one per controller */
+
+struct ehci_hcd { /* one per controller */
 	/* glue to PCI and HCD framework */
 	void __iomem *_regs;
 	struct ehci_caps __iomem *caps;
 	struct ehci_regs __iomem *regs;
 	struct ehci_dbg_port __iomem *debug;
-        void		        *device;
-	__u32			hcs_params;	/* cached register copy */
+	void *device;
+	__u32 hcs_params; /* cached register copy */
 
 	/* async schedule support */
-	struct ehci_qh		*async; // the head never gets a qtd inside.
-	struct ehci_qh		*asyncqh;
-        
-        struct ehci_qtd	        *qtds[EHCI_MAX_QTD];
-        int		        qtd_used;
-	unsigned long		next_statechange;
-	u32			command;
-        
-        /* HW need periodic table initialised even if we dont use it @todo:is it really true? */
-#define	DEFAULT_I_TDPS		1024		/* some HCs can do less */
-	__hc32			*periodic;	/* hw periodic table */
-	dma_addr_t		periodic_dma;
+	struct ehci_qh *async; // the head never gets a qtd inside.
+	struct ehci_qh *asyncqh;
 
-        u8			num_port;
-	struct ehci_device	devices[EHCI_MAX_ROOT_PORTS];	/* the attached device list per port */
-        void *ctrl_buffer;		/* pre allocated buffer for control messages */
+	struct ehci_qtd * qtds[EHCI_MAX_QTD];
+	int qtd_used;
+	unsigned long next_statechange;
+	u32 command;
+
+	/* HW need periodic table initialised even if we dont use it @todo:is it really true? */
+#define	DEFAULT_I_TDPS		1024		/* some HCs can do less */
+	__hc32 *periodic; /* hw periodic table */
+	dma_addr_t periodic_dma;
+
+	u8 num_port;
+	struct ehci_device devices[EHCI_MAX_ROOT_PORTS]; /* the attached device list per port */
+	void *ctrl_buffer; /* pre allocated buffer for control messages */
+
+	int bus_id;
 };
 /*-------------------------------------------------------------------------*/
 
@@ -114,9 +117,9 @@ struct ehci_hcd {			/* one per controller */
  */
 struct ehci_qtd {
 	/* first part defined by EHCI spec */
-	__hc32			hw_next;	/* see EHCI 3.5.1 */
-	__hc32			hw_alt_next;    /* see EHCI 3.5.2 */
-	__hc32			hw_token;       /* see EHCI 3.5.3 */
+	__hc32 hw_next; /* see EHCI 3.5.1 */
+	__hc32 hw_alt_next; /* see EHCI 3.5.2 */
+	__hc32 hw_token; /* see EHCI 3.5.3 */
 #define	QTD_TOGGLE	(1 << 31)	/* data toggle */
 #define	QTD_LENGTH(tok)	(((tok)>>16) & 0x7fff)
 #define	QTD_IOC		(1 << 15)	/* interrupt on complete */
@@ -135,15 +138,15 @@ struct ehci_qtd {
 #define HALT_BIT(ehci)		cpu_to_hc32( QTD_STS_HALT)
 #define STATUS_BIT(ehci)	cpu_to_hc32( QTD_STS_STS)
 
-	__hc32			hw_buf [5];        /* see EHCI 3.5.4 */
-	__hc32			hw_buf_hi [5];        /* Appendix B */
+	__hc32 hw_buf [5]; /* see EHCI 3.5.4 */
+	__hc32 hw_buf_hi [5]; /* Appendix B */
 
 	/* the rest is HCD-private */
-	dma_addr_t		qtd_dma;		/* qtd address */
-	struct ehci_qtd		*next;			/* sw qtd list */
-	struct ehci_urb		*urb;			/* qtd's urb */
-	size_t			length;			/* length of buffer */
-} __attribute__ ((aligned (32)));
+	dma_addr_t qtd_dma; /* qtd address */
+	struct ehci_qtd *next; /* sw qtd list */
+	struct ehci_urb *urb; /* qtd's urb */
+	size_t length; /* length of buffer */
+} __attribute__((aligned(32)));
 
 /* mask NakCnt+T in qh->hw_alt_next */
 #define QTD_MASK(ehci)	cpu_to_hc32 ( ~0x1f)
@@ -183,12 +186,12 @@ struct ehci_qtd {
  * For entries in the async schedule, the type tag always says "qh".
  */
 union ehci_shadow {
-	struct ehci_qh		*qh;		/* Q_TYPE_QH */
-	struct ehci_itd		*itd;		/* Q_TYPE_ITD */
-	struct ehci_sitd	*sitd;		/* Q_TYPE_SITD */
-	struct ehci_fstn	*fstn;		/* Q_TYPE_FSTN */
-	__hc32			*hw_next;	/* (all types) */
-	void			*ptr;
+	struct ehci_qh *qh; /* Q_TYPE_QH */
+	struct ehci_itd *itd; /* Q_TYPE_ITD */
+	struct ehci_sitd *sitd; /* Q_TYPE_SITD */
+	struct ehci_fstn *fstn; /* Q_TYPE_FSTN */
+	__hc32 *hw_next; /* (all types) */
+	void *ptr;
 };
 
 /*-------------------------------------------------------------------------*/
@@ -203,32 +206,32 @@ union ehci_shadow {
 
 struct ehci_qh {
 	/* first part defined by EHCI spec */
-	__hc32			hw_next;	/* see EHCI 3.6.1 */
-	__hc32			hw_info1;       /* see EHCI 3.6.2 */
+	__hc32 hw_next; /* see EHCI 3.6.1 */
+	__hc32 hw_info1; /* see EHCI 3.6.2 */
 #define	QH_HEAD		0x00008000
-	__hc32			hw_info2;        /* see EHCI 3.6.2 */
+	__hc32 hw_info2; /* see EHCI 3.6.2 */
 #define	QH_SMASK	0x000000ff
 #define	QH_CMASK	0x0000ff00
 #define	QH_HUBADDR	0x007f0000
 #define	QH_HUBPORT	0x3f800000
 #define	QH_MULT		0xc0000000
-	__hc32			hw_current;	/* qtd list - see EHCI 3.6.4 */
+	__hc32 hw_current; /* qtd list - see EHCI 3.6.4 */
 
 	/* qtd overlay (hardware parts of a struct ehci_qtd) */
-	__hc32			hw_qtd_next;
-	__hc32			hw_alt_next;
-	__hc32			hw_token;
-	__hc32			hw_buf [5];
-	__hc32			hw_buf_hi [5];
+	__hc32 hw_qtd_next;
+	__hc32 hw_alt_next;
+	__hc32 hw_token;
+	__hc32 hw_buf [5];
+	__hc32 hw_buf_hi [5];
 
 	/* the rest is HCD-private */
-	dma_addr_t		qh_dma;		/* address of qh */
-	struct ehci_qtd		*qtd_head;	/* sw qtd list */
+	dma_addr_t qh_dma; /* address of qh */
+	struct ehci_qtd *qtd_head; /* sw qtd list */
 
-	struct ehci_hcd		*ehci;
+	struct ehci_hcd *ehci;
 
 #define NO_FRAME ((unsigned short)~0)			/* pick new start */
-} __attribute__ ((aligned (32)));
+} __attribute__((aligned(32)));
 
 /*-------------------------------------------------------------------------*/
 
@@ -244,31 +247,30 @@ struct ehci_qh {
 /*-------------------------------------------------------------------------*/
 
 /* os specific functions */
-void*ehci_maligned(int size,int alignement,int crossing);
+void*ehci_maligned(int size, int alignement, int crossing);
 dma_addr_t ehci_virt_to_dma(void *);
-dma_addr_t ehci_dma_map_to(void *buf,size_t len);
-dma_addr_t ehci_dma_map_from(void *buf,size_t len);
-dma_addr_t ehci_dma_map_bidir(void *buf,size_t len);
-void ehci_dma_unmap_to(dma_addr_t buf,size_t len);
-void ehci_dma_unmap_from(dma_addr_t buf,size_t len);
-void ehci_dma_unmap_bidir(dma_addr_t buf,size_t len);
+dma_addr_t ehci_dma_map_to(void *buf, size_t len);
+dma_addr_t ehci_dma_map_from(void *buf, size_t len);
+dma_addr_t ehci_dma_map_bidir(void *buf, size_t len);
+void ehci_dma_unmap_to(dma_addr_t buf, size_t len);
+void ehci_dma_unmap_from(dma_addr_t buf, size_t len);
+void ehci_dma_unmap_bidir(dma_addr_t buf, size_t len);
 void ehci_usleep(int time);
 void ehci_msleep(int time);
 
 
 /* extern API */
 
-s32 ehci_control_message(struct ehci_hcd * ehci,struct ehci_device *dev,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *buf);
-s32 ehci_bulk_message(struct ehci_hcd * ehci,struct ehci_device *dev,u8 bEndpoint,u16 wLength,void *rpData);
+s32 ehci_control_message(struct ehci_hcd * ehci, struct ehci_device *dev, u8 bmRequestType, u8 bmRequest, u16 wValue, u16 wIndex, u16 wLength, void *buf);
+s32 ehci_bulk_message(struct ehci_hcd * ehci, struct ehci_device *dev, u8 bEndpoint, u16 wLength, void *rpData);
 int ehci_discover(struct ehci_hcd * ehci);
-int ehci_get_device_list(struct ehci_hcd * ehci,u8 maxdev,u8 b0,u8*num,u16*buf);
+int ehci_get_device_list(struct ehci_hcd * ehci, u8 maxdev, u8 b0, u8*num, u16*buf);
 
-int ehci_reset_port2(struct ehci_hcd * ehci,int port);
+int ehci_reset_port2(struct ehci_hcd * ehci, int port);
 
-extern struct ehci_hcd *ehci; /* @todo put ehci as a static global and remove ehci from APIs.. */
-extern int ehci_open_device(struct ehci_hcd * ehci,int vid,int pid,int fd);
+extern int ehci_open_device(struct ehci_hcd * ehci, int vid, int pid, int fd);
 extern int ehci_close_device(struct ehci_device *dev);
-extern void * ehci_fd_to_dev(struct ehci_hcd * ehci,int fd);
+extern void * ehci_fd_to_dev(struct ehci_hcd * ehci, int fd);
 extern int ehci_release_ports(struct ehci_hcd * ehci);
 
 /* UMS API */

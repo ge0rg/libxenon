@@ -7,6 +7,7 @@
 #include <ppc/cache.h>
 #include <ppc/timebase.h>
 #include <time/time.h>
+#include <usb/usbmain.h>
 #include <debug.h>
 
 #include "elf_abi.h"
@@ -17,6 +18,8 @@
 #define ELF_CODE_RELOC_START ((void*)0x87FF0000) /* TODO: must keep this synced with lis %r4,0x87ff and lis %r4,0x07ff in elf_run.S */
 #define ELF_DATA_RELOC_START ((void*)0x88000000)
 #define ELF_GET_RELOCATED(x) (ELF_CODE_RELOC_START+((unsigned long)(x)-(unsigned long)elfldr_start))
+
+extern void enet_quiesce();
 
 extern char elfldr_start[], elfldr_end[];
 extern void elf_run(unsigned long entry,unsigned long devtree);
@@ -152,7 +155,12 @@ static void __attribute__ ((section (".elfldr"),noreturn,flatten,optimize("O2"))
 void elf_runFromMemory (void *addr, int size)
 {
 	int i;
-
+	
+	// some drivers require a shutdown
+	
+	enet_quiesce();
+	usb_shutdown();
+	
 	// relocate code
 	memcpy(ELF_CODE_RELOC_START,elfldr_start,elfldr_end-elfldr_start); 
 	memicbi(ELF_CODE_RELOC_START,elfldr_end-elfldr_start);

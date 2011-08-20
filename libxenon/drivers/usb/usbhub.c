@@ -858,7 +858,7 @@ static void usbhub_scan_ports(usbdev_t *dev,void *arg)
 
 		newdev = softc->uhub_devices[idx];	/* Get device pointer */
 
-		usbhub_markdetached(newdev);		/* mark device and all subordinate 
+		if (newdev) usbhub_markdetached(newdev);		/* mark device and all subordinate 
 							   devices as "removing" */
 
 		softc->uhub_devices[idx] = NULL;	/* remove device from hub */
