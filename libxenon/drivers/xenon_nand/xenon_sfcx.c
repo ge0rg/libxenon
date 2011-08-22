@@ -348,6 +348,16 @@ int sfcx_address_to_block(int address)
 	return address / sfc.block_sz;
 }
 
+int sfcx_block_to_rawaddress(int block)
+{
+        return block * sfc.block_sz_phys;
+}
+
+int sfcx_rawaddress_to_block(int address)
+{
+        return address / sfc.block_sz_phys;
+}
+
 /*
 int sfcx_read_metadata_type(void)
 {
