@@ -348,6 +348,16 @@ int sfcx_address_to_block(int address)
 	return address / sfc.block_sz;
 }
 
+int sfcx_block_to_rawaddress(int block)
+{
+        return block * sfc.block_sz_phys;
+}
+
+int sfcx_rawaddress_to_block(int address)
+{
+        return address / sfc.block_sz_phys;
+}
+
 /*
 int sfcx_read_metadata_type(void)
 {
@@ -440,23 +450,57 @@ unsigned int sfcx_init(void)
 		break;
 
 	case 1: // New SFC/Southbridge: Codename "Panda"?
+	case 2: // New SFC/Southbridge: Codename "Panda" v2?
 		switch ((config >> 4) & 0x3)
 		{
-		case 0: // Unsupported
-			sfc.meta_type = META_TYPE_0;
-			printf(" ! SFCX: Unsupported Type B-0\n");
-			delay(5);
-			return 2;
+		case 0: 
+			
+			if(((config >> 17) & 0x03) == 0x01)
+			{
+				// Unsupported
+				sfc.meta_type = META_TYPE_0;
+				printf(" ! SFCX: Unsupported Type B-0\n");
+				delay(5);
+				return 2;
+			}
+			else
+			{
+				sfc.meta_type = META_TYPE_1;
+				sfc.block_sz = 0x4000; // 16 KB
+				sfc.size_blocks = 0x400;
+				sfc.size_bytes = sfc.size_blocks << 0xE;
+				sfc.blocks_per_lg_block = 8;
+				sfc.size_usable_fs = 0x3E0;
+				sfc.addr_config = (sfc.size_usable_fs - CONFIG_BLOCKS) * sfc.block_sz;
+				break;
+			}
 
-		case 1: // Small block 16MB setup
-			sfc.meta_type = META_TYPE_1;
-			sfc.block_sz = 0x4000; // 16 KB
-			sfc.size_blocks = 0x400;
-			sfc.size_bytes = sfc.size_blocks << 0xE;
-			sfc.blocks_per_lg_block = 8;
-			sfc.size_usable_fs = 0x3E0;
-			sfc.addr_config = (sfc.size_usable_fs - CONFIG_BLOCKS) * sfc.block_sz;
-			break;
+		case 1: 
+
+			if(((config >> 17) & 0x03) == 0x01)
+			{
+				// Small block 16MB setup
+				sfc.meta_type = META_TYPE_1;
+				sfc.block_sz = 0x4000; // 16 KB
+				sfc.size_blocks = 0x400;
+				sfc.size_bytes = sfc.size_blocks << 0xE;
+				sfc.blocks_per_lg_block = 8;
+				sfc.size_usable_fs = 0x3E0;
+				sfc.addr_config = (sfc.size_usable_fs - CONFIG_BLOCKS) * sfc.block_sz;
+				break;
+			}
+			else
+			{
+				// Small block 64MB setup
+				sfc.meta_type = META_TYPE_1;
+				sfc.block_sz = 0x4000; // 16 KB
+				sfc.size_blocks = 0x1000;
+				sfc.size_bytes = sfc.size_blocks << 0xE;
+				sfc.blocks_per_lg_block = 8;
+				sfc.size_usable_fs = 0xF80;
+				sfc.addr_config = (sfc.size_usable_fs - CONFIG_BLOCKS) * sfc.block_sz;
+				break;
+			}
 
 		case 2: // Large Block: Current Jasper 256MB and 512MB
 			sfc.meta_type = META_TYPE_2;
@@ -469,7 +513,7 @@ unsigned int sfcx_init(void)
 			break;
 
 		case 3: // Large Block: Future or unknown hardware
-			sfc.meta_type = 2;
+			sfc.meta_type = META_TYPE_2;
 			sfc.block_sz = 0x40000; // 256KB
 			sfc.size_bytes = 0x1 << (((config >> 19) & 0x3) + ((config >> 21) & 0xF) + 0x17);
 			sfc.size_blocks = sfc.size_bytes >> 0x12;
