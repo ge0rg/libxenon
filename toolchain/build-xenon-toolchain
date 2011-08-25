@@ -8,7 +8,7 @@ PREFIX=/usr/local/xenon # Install location of your final toolchain
 PARALLEL=""		# Or: PARALLEL="-j 2"
 
 BINUTILS=binutils-2.21
-GCC=gcc-4.6.0
+GCC=gcc-4.6.1
 NEWLIB=newlib-1.17.0
 GDB=gdb-6.8
 
@@ -109,7 +109,7 @@ function toolchain_install
 
 	if $BUILD_GCC; then
 	echo -e "Extracting gcc..."
-	tar xfj $GCC.tar.bz2 >> $LOGFILE 2>&1 && cat gcc.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
+	tar xfj $GCC.tar.bz2 >> $LOGFILE 2>&1 && cat $GCC.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
 	cd build
 	echo -e "Configuring gcc..."
 	../$GCC/configure --target=$TARGET --prefix=$PREFIX --with-libiconv-prefix=/opt/local -enable-interwork \
