@@ -338,6 +338,28 @@ int sfcx_is_pagevalid(unsigned char *data)
 	return valid;
 }
 
+int sfcx_is_pagezeroed(unsigned char *data)
+{
+	int i;
+	for(i = 0; i < sfc.page_sz; i++)
+	{
+	  if (data[i]!=0x00)
+	    return 0;
+	}
+	return 1;
+}
+
+int sfcx_is_pageempty(unsigned char *data)
+{
+	int i;
+	for(i = 0; i < sfc.page_sz_phys; i++)
+	{
+	  if (data[i]!=0xFF)
+	    return 0;
+	}
+	return 1;
+}
+
 int sfcx_block_to_address(int block)
 {
 	return block * sfc.block_sz;
