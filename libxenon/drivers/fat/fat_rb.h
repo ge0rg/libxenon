@@ -41,7 +41,8 @@
 #define HAVE_HOTSWAP
 
 /* debug */
-#define DEBUGF printf
+//#define DEBUGF printf
+#define DEBUGF
 //#define LDEBUGF printf
 #define LDEBUGF(args...) 
 //#define logf(args...) {printf(args);printf("\n");}
