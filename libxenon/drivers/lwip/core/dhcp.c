@@ -514,6 +514,7 @@ dhcp_handle_ack(struct netif *netif)
   ip_addr_set_zero(&dhcp->offered_gw_addr);
 #if LWIP_DHCP_BOOTP_FILE
   ip_addr_set_zero(&dhcp->offered_si_addr);
+  dhcp->boot_server_name[0] = 0;
 #endif /* LWIP_DHCP_BOOTP_FILE */
 
   /* lease time given? */
@@ -543,9 +544,12 @@ dhcp_handle_ack(struct netif *netif)
   ip_addr_copy(dhcp->offered_ip_addr, dhcp->msg_in->yiaddr);
 
 #if LWIP_DHCP_BOOTP_FILE
-  /* copy boot server address,
+  /* copy boot server address and server name,
      boot file name copied in dhcp_parse_reply if not overloaded */
   ip_addr_copy(dhcp->offered_si_addr, dhcp->msg_in->siaddr);
+  strncpy(dhcp->boot_server_name, (const char *)dhcp->msg_in->sname, DHCP_SNAME_LEN);
+  /* make sure the string is really NULL-terminated */
+  dhcp->boot_server_name[DHCP_SNAME_LEN-1] = 0;
 #endif /* LWIP_DHCP_BOOTP_FILE */
 
   /* subnet mask given? */
