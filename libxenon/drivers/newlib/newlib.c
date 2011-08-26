@@ -262,6 +262,9 @@ int open(const char *path, int oflag, ...)
 			if (!mounts[i].ops->open(&fd_array[fd], &mounts[i], path + strlen(mpath), oflag, 0))
 				return fd;
 	}
+
+	memset(&fd_array[fd], 0, sizeof(struct vfs_file_s));
+
 	errno = ENOENT;
 	return -1;
 }
@@ -302,6 +305,9 @@ DIR* opendir(const char* dirname)
 				return d;
 			}
 	}
+
+	memset(&dd_array[dd], 0, sizeof(struct vfs_dir_s));
+
 	errno = ENOENT;
 	return NULL;
 }
