@@ -98,6 +98,9 @@ struct xenon_atapi_read
 
 int xenon_ata_init();
 int xenon_atapi_init();
+void xenon_atapi_set_modeb(void);
+int xenon_atapi_get_dvd_key_tsh943a(unsigned char *dvdkey);
+int xenon_atapi_set_dvd_key(unsigned char *dvdkey);
 
 #ifdef __cplusplus
    }

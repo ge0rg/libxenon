@@ -94,7 +94,7 @@ xenon_ata_wait_ready(struct xenon_ata_device *dev) {
 
 static inline void
 xenon_ata_wait() {
-	udelay(50);
+	mdelay(50);
 }
 
 static int
@@ -457,6 +457,94 @@ xenon_atapi_inquiry_model(struct xenon_ata_device *dev) {
 	return 0;
 }
 
+void
+xenon_atapi_set_modeb(void)
+{
+	struct xenon_ata_device *dev = &atapi;
+	
+	char buf[0x30];
+	memset(buf,0,sizeof(buf));
+
+	char cdb[12] = {0xE7,0x48,0x49,0x54,0x30,0x90,
+					0x90,0xd0,0x01,0x00,0x00,0x00};
+
+	xenon_atapi_packet(dev,cdb,0);
+	xenon_ata_wait_ready(dev);
+	if (xenon_ata_pio_read(dev,buf,sizeof(buf))){
+		printf("DVD set mode b failed\n");
+	}
+}
+
+
+int
+xenon_atapi_get_dvd_key_tsh943a(unsigned char *dvdkey)
+{
+	struct xenon_ata_device *dev = &atapi;
+	
+	// create mode page buffer
+	char buf[0x10];
+	memset(buf,0,sizeof(buf));
+
+	char cdb[12] = {0xFF,0x08,0x05,0x00,0x05,0x01,
+	                0x03,0x00,0x04,0x07,0x00,0x00};
+	
+	xenon_atapi_packet(dev,cdb,0);
+	xenon_ata_wait_ready(dev);
+	if (xenon_ata_pio_read(dev,buf,sizeof(buf))){
+		int sense = xenon_atapi_request_sense(dev);
+		printf("DVD drive key read failed with sense: %06x\n", sense);
+		return -1;
+	};
+	
+	memcpy(dvdkey,buf,0x10);
+	return 0;
+}
+
+int
+xenon_atapi_set_dvd_key(unsigned char *dvdkey)
+{
+	struct xenon_ata_device *dev = &atapi;
+
+	// create mode page buffer
+	char buf[0x3A];
+	memset(buf,0,0x3A);
+
+	// Mode parameter header(mode select 10) start
+	buf[0] = 0x00; // MODE DATA LENGTH MSB
+	buf[1] = 0x38; // MODE DATA LENGTH LSB
+	// Mode parameter header(mode select 10) end
+	buf[8] = 0xBB; // mode page code (vendor specific, page format required)
+	buf[9] = 0x30; // page length (16 bytes drive key + 32 bytes 0x00 following after mode page code)
+
+	// set drive key in mode page to 0xFF
+	memset(buf + 0x0A,0xFF,0x10);
+
+	char cdb[12] = {0x55,0x00,0x00,0x00,0x00,0x00,
+			                 0x00,0x00,0x3A,0x00,0x00,0x00};
+
+
+	xenon_atapi_packet(dev,cdb,0);
+	xenon_ata_wait_ready(dev);
+	if (xenon_ata_pio_write(dev,buf,sizeof(buf))){
+		int sense = xenon_atapi_request_sense(dev);
+		printf(" ! DVD drive key erase failed with sense: %06x\n", sense);
+		return -1;
+	};
+	
+	//set the key into the buffer
+	memcpy(buf + 0x0A,dvdkey,0x10);
+
+	xenon_atapi_packet(dev,cdb,0);
+	xenon_ata_wait_ready(dev);
+	if (xenon_ata_pio_write(dev,buf,sizeof(buf))){
+		int sense = xenon_atapi_request_sense(dev);
+		printf("DVD drive key set failed with sense: %06x\n", sense);
+		return -1;
+	};
+	
+	return 0;
+}
+
 static int
 xenon_atapi_read_sectors(struct bdev *bdev,
         void *buf, lba_t start_sector, int sector_size) {
@@ -594,39 +682,23 @@ xenon_ata_init1(struct xenon_ata_device *dev, uint32_t ioaddress, uint32_t ioadd
         return -1;
     }
 
-    /* Detect if the device is present by issuing a reset.  */
+	/* Issue a reset.  */
     xenon_ata_regset2(dev, XENON_ATA_REG2_CONTROL, 6);
     xenon_ata_wait();
     xenon_ata_regset2(dev, XENON_ATA_REG2_CONTROL, 2);
-    xenon_ata_wait();
-    xenon_ata_regset(dev, XENON_ATA_REG_DISK, 0);
-    xenon_ata_wait();
+    xenon_ata_regget2(dev, XENON_ATA_REG2_CONTROL);
+    xenon_ata_regget2(dev, XENON_ATA_REG2_CONTROL);
+    xenon_ata_regget2(dev, XENON_ATA_REG2_CONTROL);
+    xenon_ata_regget2(dev, XENON_ATA_REG2_CONTROL);
 
-#if 1
-    /* Enable for ATAPI .  */
-    if (xenon_ata_regget(dev, XENON_ATA_REG_CYLLSB) != 0x14
-            || xenon_ata_regget(dev, XENON_ATA_REG_CYLMSB) != 0xeb)
-#endif
-        if (xenon_ata_regget(dev, XENON_ATA_REG_STATUS) == 0
-                || (xenon_ata_regget(dev, XENON_ATA_REG_CYLLSB) != 0
-                && xenon_ata_regget(dev, XENON_ATA_REG_CYLMSB) != 0
-                && xenon_ata_regget(dev, XENON_ATA_REG_CYLLSB) != 0x3c
-                && xenon_ata_regget(dev, XENON_ATA_REG_CYLLSB) != 0xc3)) {
-            printf("no ata device presented.\n");
-            return -1;
-        }
-
+	xenon_ata_regset(dev, XENON_ATA_REG_DISK, 0);
+    xenon_ata_regget2(dev, XENON_ATA_REG2_CONTROL);
+    xenon_ata_regget2(dev, XENON_ATA_REG2_CONTROL);
+    xenon_ata_regget2(dev, XENON_ATA_REG2_CONTROL);
+    xenon_ata_regget2(dev, XENON_ATA_REG2_CONTROL);
+	
     printf("SATA device at %08lx\n", dev->ioaddress);
     xenon_ata_identify(dev);
-
-#if 0	
-	/* set UDMA 5 mode */
-    xenon_ata_regset(dev, XENON_ATA_REG_DISK, 0xE0);
-    xenon_ata_regset(dev, XENON_ATA_REG_FEATURES, 3);
-    xenon_ata_regset(dev, XENON_ATA_REG_SECTORS, 0x45);
-    xenon_ata_regset(dev, XENON_ATA_REG_CMD, XENON_ATA_CMD_SET_FEATURES);
-	xenon_ata_wait_ready(dev);
-#endif 
 	
 	return 0;
 }
