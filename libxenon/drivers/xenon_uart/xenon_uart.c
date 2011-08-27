@@ -27,3 +27,7 @@ int getch(void)
 	return (*(volatile uint32_t*)(BASE + 0x10)) >> 24;
 }
 
+void uart_puts(unsigned char *s)
+{
+	while(*s) putch(*s++);
+}
