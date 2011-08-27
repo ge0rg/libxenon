@@ -13,6 +13,7 @@
 #include <time/time.h>
 #include <ppc/timebase.h>
 #include <xenon_soc/xenon_power.h>
+#include <elf/elf.h>
 #include <dirent.h>
 
 #define FG_COL -1
@@ -112,6 +113,8 @@ int main(){
 			continue;
 		}
 		
+		if (pad.logo) return 0;
+		
 		if (pad.a){
 			if(entries[pos].d_type&DT_DIR){
 				append_dir_to_path(path,entries[pos].d_name);
@@ -124,26 +127,30 @@ int main(){
 				strcat(fn,entries[pos].d_name);
 				
 				printf("%s\n",fn);
-				
-				FILE * f=fopen(fn,"rb");
-				if(f){
-					int size=1024*1024;
-					int totred=0,red;
-					
-					void * buf=malloc(size);
 
-					u64 beg=mftb();
-					do{
-						red=fread(buf,1,size,f);
-						totred+=red;
-						console_putch('.');
-					}while(red==size);
-					
-					printf("\n%d bytes, %f KB/s\n",totred, (float)(totred/1024.0)/((float)(mftb()-beg)/PPC_TIMEBASE_FREQ));
-					
-					free(buf);
-					
-					fclose(f);
+				if (strstr(entries[pos].d_name,".elf") || strstr(entries[pos].d_name,".elf32")) { // ugly
+					elf_runFromDisk(fn);
+				}else{
+					FILE * f=fopen(fn,"rb");
+					if(f){
+						int size=1024*1024;
+						int totred=0,red;
+
+						void * buf=malloc(size);
+
+						u64 beg=mftb();
+						do{
+							red=fread(buf,1,size,f);
+							totred+=red;
+							console_putch('.');
+						}while(red==size);
+
+						printf("\n%d bytes, %f KB/s\n",totred, (float)(totred/1024.0)/((float)(mftb()-beg)/PPC_TIMEBASE_FREQ));
+
+						free(buf);
+
+						fclose(f);
+					}
 				}
 			}
 		}
@@ -172,7 +179,7 @@ int main(){
 		
 		console_set_colors(BG_COL,FG_COL);
 		console_clrscr();
-		printf("A: select, B: change disk, Back: parent dir\n\n%s\n\n",path);
+		printf("A: select, B: change disk, Back: parent dir, Logo: reload Xell\n\n%s\n\n",path);
 		
 		start=MAX(0,pos-MAX_DISPLAYED_ENTRIES/2);
 		count=MIN(MAX_DISPLAYED_ENTRIES,entrycount-start);
