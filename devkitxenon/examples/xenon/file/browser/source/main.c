@@ -108,7 +108,7 @@ int main(){
 		if (pad.s1_y>STICK_THRESHOLD) --pos;
 		if (pad.s1_y<-STICK_THRESHOLD) ++pos;
 		
-		if (pos<0 || pos>=entrycount){
+		if (entrycount && (pos<0 || pos>=entrycount)){
 			pos=ppos;
 			continue;
 		}
