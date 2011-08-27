@@ -198,6 +198,12 @@ void xenon_set_speed(int new_speed, int vid_delta)
 
 }
 
+int xenon_get_speed()
+{
+	void *cpuregs = (void*)0x20061000;
+	return ld(cpuregs + 0x188) & 0x7;
+}
+
 int xenon_run_thread_task(int thread, void *stack, void *task)
 {
 	if (wait[thread * 2])
@@ -207,11 +213,24 @@ int xenon_run_thread_task(int thread, void *stack, void *task)
 	return 0;
 }
 
+int xenon_is_thread_task_running(int thread)
+{
+	if (wait[thread * 2])
+		return -1; // busy
+	return 0;
+}
+
 static unsigned char stack[5 * 0x1000];
 
 void xenon_make_it_faster(int speed)
 {
 	int i,delta;
+	
+	if (xenon_get_speed()==speed){
+		printf(" * Starting threads only, CPU was already made faster !\n");
+		xenon_thread_startup();
+		return;
+	}
 	
 	xenon_config_init();
 	delta=xenon_config_get_vid_delta();

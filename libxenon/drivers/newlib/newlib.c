@@ -11,6 +11,8 @@
 #include <newlib/vfs.h>
 #include <xenon_soc/xenon_power.h>
 
+#include <usb/usbmain.h>
+
 struct mount_s;
 
 static struct vfs_dir_s dd_array[MAXDD] = {};
@@ -353,16 +355,58 @@ int closedir(DIR* dirp)
  * system functions
  */
 
-extern void return_to_xell();
+extern void return_to_xell(unsigned int nand_addr,unsigned int phy_loading_addr);
+extern void enet_quiesce();
+
+void shutdown_drivers()
+{
+	// some drivers require a shutdown
+	
+	enet_quiesce();
+	usb_shutdown();
+}	
+
+#define XELL_FOOTER_OFFSET (256*1024-16)
+#define XELL_FOOTER_LENGTH 16
+#define XELL_FOOTER "xxxxxxxxxxxxxxxx"
+
+void try_return_to_xell(unsigned int nand_addr,unsigned int phy_loading_addr)
+{
+	if(!memcmp((void*)(nand_addr+XELL_FOOTER_OFFSET),XELL_FOOTER,XELL_FOOTER_LENGTH))
+		return_to_xell(nand_addr,phy_loading_addr);
+}
 
 void _exit(int status)
 {
-	printf("[Exit] with code %d\n", status);
-#if 0
-	getch();
-	xenon_set_single_thread_mode();
-	return_to_xell();
-#endif
+	char s[256];
+	int i,stuck=0;
+	
+	sprintf(s,"[Exit] with code %d\n", status);
+	vfs_console_write(NULL,s,strlen(s));
+
+	for(i=0;i<6;++i)
+	{
+		if (xenon_is_thread_task_running(i)){
+			sprintf(s,"Thread %d is still running !\n",i);
+			vfs_console_write(NULL,s,strlen(s));
+			stuck=1;
+		}
+	}
+	
+	shutdown_drivers();
+	
+	if(stuck){
+		sprintf(s,"Can't reload Xell, looping...");
+		vfs_console_write(NULL,s,strlen(s));
+	}else{
+		sprintf(s,"Reloading Xell...");
+		vfs_console_write(NULL,s,strlen(s));
+		xenon_set_single_thread_mode();
+		
+		try_return_to_xell(0xc8095060,0x1c040000); // xell-2f (freeboot)
+		try_return_to_xell(0xc8100000,0x1c000000); // xell-1f, xell-ggggggg
+	}
+
 	for(;;);
 }
 

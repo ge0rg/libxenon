@@ -141,7 +141,7 @@ b32:
 	bl call_ctors
 	bl main
 
-	bl _exit
+	bl exit
 	
 	b .
 
@@ -167,19 +167,28 @@ secondary:
 	or %r2, %r2, %r2
 	mtctr %r4
 
+	bctrl
+
+	lis %r3, wait@h
+	ori %r3, %r3, wait@l
+	mfspr %r5, pir
+	slwi %r5, %r5, 3
+	add %r3, %r3, %r5
 	li %r4, 0
 	stw %r4, 0(%r3)
 	stw %r4, 4(%r3)
-
-	bctrl
 
 	b 1b
 
 .globl return_to_xell
 return_to_xell:
         	/* Init regs */
-	lis	%r5,0xc810
-	lis	%r6,0x9c00
+	mr	%r31,%r3
+	mr	%r30,%r4
+
+	mr	%r5,%r31
+	mr	%r6,%r30
+	oris	%r6,%r6,0x8000
 
 		/* Copy from Flash, src = %r5, dst = %r6 */
 	lis	%r4,1 /* 256k */
@@ -206,29 +215,8 @@ return_to_xell:
 
 	lis	%r3,0x8000
 	rldicr	%r3,%r3,32,31
-	oris 	%r3,%r3,0x1c00
-	ori	%r3,%r3,0x194 /* HACK: offset to a jump to main(), as start() won't work because of the stupid hardcoded hrmor in Xell... */
+	or 	%r3,%r3,%r30
+	ori	%r3,%r3,0x4 /* 'start_from_libxenon' entry point */
 	mtsrr0	%r3
-
-
-		/* HACK: as I call main() directly, i need to clear BSS and setup stack too... */
-	li	%r3,0
-	lis	%r6,0x9c08
-	lis	%r4,0x8
-	mtctr   %r4
-	1:
-		stw 	%r3,0(%r6)
-		stw 	%r3,4(%r6)
-		stw 	%r3,8(%r6)
-		stw 	%r3,12(%r6)
-		dcbf    %r0,%r6
-		addi	%r6,%r6,0x10
-          	bdnz	1b
-
-	li %sp, 0
-	oris %sp, %sp, 0x8000
-	rldicr %sp, %sp, 32,31
-	oris %sp, %sp, 0x1e00
-	subi %sp, %sp, 0x80
 
 	rfid
