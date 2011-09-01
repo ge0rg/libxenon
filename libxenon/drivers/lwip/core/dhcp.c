@@ -972,11 +972,11 @@ dhcp_bind(struct netif *netif)
     /* subnet mask not given, choose a safe subnet mask given the network class */
     u8_t first_octet = ip4_addr1(&dhcp->offered_ip_addr);
     if (first_octet <= 127) {
-      ip4_addr_set_u32(&sn_mask, PP_HTONL(0xff000000));
+      ip4_addr_set_u32(&sn_mask, PP_HTONL(0xff000000UL));
     } else if (first_octet >= 192) {
-      ip4_addr_set_u32(&sn_mask, PP_HTONL(0xffffff00));
+      ip4_addr_set_u32(&sn_mask, PP_HTONL(0xffffff00UL));
     } else {
-      ip4_addr_set_u32(&sn_mask, PP_HTONL(0xffff0000));
+      ip4_addr_set_u32(&sn_mask, PP_HTONL(0xffff0000UL));
     }
   }
 
@@ -986,7 +986,7 @@ dhcp_bind(struct netif *netif)
     /* copy network address */
     ip_addr_get_network(&gw_addr, &dhcp->offered_ip_addr, &sn_mask);
     /* use first host address on network as gateway */
-    ip4_addr_set_u32(&gw_addr, ip4_addr_get_u32(&gw_addr) | PP_HTONL(0x00000001));
+    ip4_addr_set_u32(&gw_addr, ip4_addr_get_u32(&gw_addr) | PP_HTONL(0x00000001UL));
   }
 
 #if LWIP_DHCP_AUTOIP_COOP
@@ -1681,7 +1681,7 @@ dhcp_create_msg(struct netif *netif, struct dhcp *dhcp, u8_t message_type)
   dhcp->msg_out->secs = 0;
   /* we don't need the broadcast flag since we can receive unicast traffic
      before being fully configured! */
-  dhcp->msg_out->flags = 0x8000;
+  dhcp->msg_out->flags = 0;
   ip_addr_set_zero(&dhcp->msg_out->ciaddr);
   /* set ciaddr to netif->ip_addr based on message_type and state */
   if ((message_type == DHCP_INFORM) || (message_type == DHCP_DECLINE) ||

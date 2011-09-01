@@ -43,6 +43,7 @@
 
 #include "lwip/timers.h"
 #include "lwip/tcp_impl.h"
+
 #if LWIP_TIMERS
 
 #include "lwip/def.h"
@@ -56,6 +57,7 @@
 #include "lwip/igmp.h"
 #include "lwip/dns.h"
 
+
 /** The one and only timeout list */
 static struct sys_timeo *next_timeout;
 #if NO_SYS
@@ -63,8 +65,6 @@ static u32_t timeouts_last_time;
 #endif /* NO_SYS */
 
 #if LWIP_TCP
-
-
 /** global variable that shows if the tcp timer is currently scheduled or not */
 static int tcpip_tcp_timer_active;
 
