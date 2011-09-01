@@ -141,14 +141,14 @@ static const int err_to_errno_table[] = {
   EINPROGRESS,   /* ERR_INPROGRESS -5      Operation in progress    */
   EINVAL,        /* ERR_VAL        -6      Illegal value.           */
   EWOULDBLOCK,   /* ERR_WOULDBLOCK -7      Operation would block.   */
-  ECONNABORTED,  /* ERR_ABRT       -8      Connection aborted.      */
-  ECONNRESET,    /* ERR_RST        -9      Connection reset.        */
-  ESHUTDOWN,     /* ERR_CLSD       -10     Connection closed.       */
-  ENOTCONN,      /* ERR_CONN       -11     Not connected.           */
-  EIO,           /* ERR_ARG        -12     Illegal argument.        */
-  EADDRINUSE,    /* ERR_USE        -13     Address in use.          */
-  -1,            /* ERR_IF         -14     Low-level netif error    */
-  -1,            /* ERR_ISCONN     -15     Already connected.       */
+  EADDRINUSE,    /* ERR_USE        -8      Address in use.          */
+  EALREADY,      /* ERR_ISCONN     -9      Already connected.       */
+  ECONNABORTED,  /* ERR_ABRT       -10     Connection aborted.      */
+  ECONNRESET,    /* ERR_RST        -11     Connection reset.        */
+  ENOTCONN,      /* ERR_CLSD       -12     Connection closed.       */
+  ENOTCONN,      /* ERR_CONN       -13     Not connected.           */
+  EIO,           /* ERR_ARG        -14     Illegal argument.        */
+  -1,            /* ERR_IF         -15     Low-level netif error    */
 };
 
 #define ERR_TO_ERRNO_TABLE_SIZE \
@@ -847,8 +847,12 @@ lwip_sendto(int s, const void *data, size_t size, int flags,
         inet_addr_to_ipaddr_p(remote_addr, &to_in->sin_addr);
         remote_port = ntohs(to_in->sin_port);
       } else {
-        remote_addr = IP_ADDR_ANY;
-        remote_port = 0;
+        remote_addr = &sock->conn->pcb.raw->remote_ip;
+        if (sock->conn->type == NETCONN_RAW) {
+          remote_port = 0;
+        } else {
+          remote_port = sock->conn->pcb.udp->remote_port;
+        }
       }
 
       LOCK_TCPIP_CORE();
@@ -890,7 +894,7 @@ lwip_sendto(int s, const void *data, size_t size, int flags,
     netbuf_fromport(&buf) = 0;
   }
 
-  LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_sendto(%d, data=%p, short_size=%d"U16_F", flags=0x%x to=",
+  LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_sendto(%d, data=%p, short_size=%"U16_F", flags=0x%x to=",
               s, data, short_size, flags));
   ip_addr_debug_print(SOCKETS_DEBUG, &buf.addr);
   LWIP_DEBUGF(SOCKETS_DEBUG, (" port=%"U16_F"\n", remote_port));

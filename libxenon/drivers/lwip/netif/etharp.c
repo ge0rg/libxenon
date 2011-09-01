@@ -628,7 +628,7 @@ etharp_ip_input(struct netif *netif, struct pbuf *p)
   ethhdr = (struct eth_hdr *)p->payload;
   iphdr = (struct ip_hdr *)((u8_t*)ethhdr + SIZEOF_ETH_HDR);
 #if ETHARP_SUPPORT_VLAN
-  if (ethhdr->type == ETHTYPE_VLAN) {
+  if (ethhdr->type == PP_HTONS(ETHTYPE_VLAN)) {
     iphdr = (struct ip_hdr *)((u8_t*)ethhdr + SIZEOF_ETH_HDR + SIZEOF_VLAN_HDR);
   }
 #endif /* ETHARP_SUPPORT_VLAN */
@@ -693,7 +693,7 @@ etharp_arp_input(struct netif *netif, struct eth_addr *ethaddr, struct pbuf *p)
   ethhdr = (struct eth_hdr *)p->payload;
   hdr = (struct etharp_hdr *)((u8_t*)ethhdr + SIZEOF_ETH_HDR);
 #if ETHARP_SUPPORT_VLAN
-  if (ethhdr->type == ETHTYPE_VLAN) {
+  if (ethhdr->type == PP_HTONS(ETHTYPE_VLAN)) {
     hdr = (struct etharp_hdr *)(((u8_t*)ethhdr) + SIZEOF_ETH_HDR + SIZEOF_VLAN_HDR);
   }
 #endif /* ETHARP_SUPPORT_VLAN */
@@ -702,11 +702,10 @@ etharp_arp_input(struct netif *netif, struct eth_addr *ethaddr, struct pbuf *p)
   if ((hdr->hwtype != PP_HTONS(HWTYPE_ETHERNET)) ||
       (hdr->hwlen != ETHARP_HWADDR_LEN) ||
       (hdr->protolen != sizeof(ip_addr_t)) ||
-      (hdr->proto != PP_HTONS(ETHTYPE_IP)) ||
-      (ethhdr->type != PP_HTONS(ETHTYPE_ARP)))  {
+      (hdr->proto != PP_HTONS(ETHTYPE_IP)))  {
     LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_WARNING,
-      ("etharp_arp_input: packet dropped, wrong hw type, hwlen, proto, protolen or ethernet type (%"U16_F"/%"U16_F"/%"U16_F"/%"U16_F"/%"U16_F")\n",
-      hdr->hwtype, hdr->hwlen, hdr->proto, hdr->protolen, ethhdr->type));
+      ("etharp_arp_input: packet dropped, wrong hw type, hwlen, proto, protolen or ethernet type (%"U16_F"/%"U16_F"/%"U16_F"/%"U16_F")\n",
+      hdr->hwtype, hdr->hwlen, hdr->proto, hdr->protolen));
     ETHARP_STATS_INC(etharp.proterr);
     ETHARP_STATS_INC(etharp.drop);
     pbuf_free(p);
@@ -1218,6 +1217,14 @@ ethernet_input(struct pbuf *p, struct netif *netif)
 {
   struct eth_hdr* ethhdr;
   u16_t type;
+  s16_t ip_hdr_offset = SIZEOF_ETH_HDR;
+
+  if (p->len <= SIZEOF_ETH_HDR) {
+    /* a packet with only an ethernet header (or less) is not valid for us */
+    ETHARP_STATS_INC(etharp.proterr);
+    ETHARP_STATS_INC(etharp.drop);
+    goto free_and_return;
+  }
 
   /* points to packet payload, which starts with an Ethernet header */
   ethhdr = (struct eth_hdr *)p->payload;
@@ -1233,6 +1240,12 @@ ethernet_input(struct pbuf *p, struct netif *netif)
 #if ETHARP_SUPPORT_VLAN
   if (type == PP_HTONS(ETHTYPE_VLAN)) {
     struct eth_vlan_hdr *vlan = (struct eth_vlan_hdr*)(((char*)ethhdr) + SIZEOF_ETH_HDR);
+    if (p->len <= SIZEOF_ETH_HDR + SIZEOF_VLAN_HDR) {
+      /* a packet with only an ethernet/vlan header (or less) is not valid for us */
+      ETHARP_STATS_INC(etharp.proterr);
+      ETHARP_STATS_INC(etharp.drop);
+      goto free_and_return;
+    }
 #ifdef ETHARP_VLAN_CHECK /* if not, allow all VLANs */
     if (VLAN_ID(vlan) != ETHARP_VLAN_CHECK) {
       /* silently ignore this packet: not for our VLAN */
@@ -1241,6 +1254,7 @@ ethernet_input(struct pbuf *p, struct netif *netif)
     }
 #endif /* ETHARP_VLAN_CHECK */
     type = vlan->tpid;
+    ip_hdr_offset = SIZEOF_ETH_HDR + SIZEOF_VLAN_HDR;
   }
 #endif /* ETHARP_SUPPORT_VLAN */
 
@@ -1260,7 +1274,7 @@ ethernet_input(struct pbuf *p, struct netif *netif)
       etharp_ip_input(netif, p);
 #endif /* ETHARP_TRUST_IP_MAC */
       /* skip Ethernet header */
-      if(pbuf_header(p, -(s16_t)SIZEOF_ETH_HDR)) {
+      if(pbuf_header(p, -ip_hdr_offset)) {
         LWIP_ASSERT("Can't move over header in packet", 0);
         goto free_and_return;
       } else {

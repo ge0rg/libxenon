@@ -37,7 +37,7 @@ void network_init()
 #ifdef STATS
 	stats_init();
 #endif /* STATS */
-	printf(" * initializing lwip 1.4.0.r2...\n");
+	printf(" * initializing lwip 1.4.0...\n");
 
 	last_tcp=mftb();
 	last_dhcp_fine=mftb();
