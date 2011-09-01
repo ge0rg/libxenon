@@ -7,7 +7,8 @@ TARGET=xenon
 PREFIX=/usr/local/xenon # Install location of your final toolchain
 PARALLEL=""		# Or: PARALLEL="-j 2"
 
-BINUTILS=binutils-2.21.1a
+BINUTILS_TAR=binutils-2.21.1a
+BINUTILS=binutils-2.21.1
 GCC=gcc-4.6.1
 NEWLIB=newlib-1.17.0
 GDB=gdb-6.8
@@ -67,14 +68,14 @@ function toolchain_install
 	# Make working directory
 	echo -e "Creating final xenon toolchain directory: $PREFIX"
 	if [ ! -d $PREFIX ]; then
-		sudo mkdir $PREFIX
-		sudo chown -R `whoami`:`whoami` $PREFIX
+		mkdir $PREFIX
+		chown -R `whoami`:`whoami` $PREFIX
 	fi;
 
 	# Check if binutils sources are available, download it if needed
 	if [ ! -f "$BINUTILS.tar.bz2" ]; then
 		echo -e "Downloading $BINUTILS.tar.bz2"
-		wget -c http://ftp.gnu.org/gnu/binutils/$BINUTILS.tar.bz2 || exit 0
+		wget -c http://ftp.gnu.org/gnu/binutils/$BINUTILS_TAR.tar.bz2 || exit 0
 	fi;
 
 	# Check if gcc sources are available, download it if needed
@@ -95,7 +96,7 @@ function toolchain_install
 
 	if $BUILD_BINUTILS; then
 	echo -e "Extracting binutils..."
-	tar xfj $BINUTILS.tar.bz2 >> $LOGFILE 2>&1 && cat binutils.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
+	tar xfj $BINUTILS_TAR.tar.bz2 >> $LOGFILE 2>&1 && cat binutils.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
 	cd build
 	echo -e "Configuring binutils..."
 	../$BINUTILS/configure --target=$TARGET --prefix=$PREFIX  --enable-multilib   --disable-nls --disable-werror >> $LOGFILE 2>&1 || exit 0
