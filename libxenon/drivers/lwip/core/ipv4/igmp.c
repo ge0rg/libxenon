@@ -93,14 +93,14 @@ Steve Reynolds
 #include "lwip/tcp.h"
 #include "lwip/stats.h"
 
-#include <string.h>
+#include "string.h"
 
 /* 
  * IGMP constants
  */
 #define IGMP_TTL                       1
 #define IGMP_MINLEN                    8
-#define ROUTER_ALERT                   0x9404
+#define ROUTER_ALERT                   0x9404U
 #define ROUTER_ALERTLEN                4
 
 /*
