@@ -1105,6 +1105,7 @@ void xenos_autoset_mode(void)
 	case 0x54: // COMPOSITE + S-VIDEO
 	case 0x57: // NORMAL COMPOSITE
 		break;
+	case 0x0C: // COMPONENT
 	case 0x0F: // COMPONENT
 	case 0x4F: // COMPOSITE - HD MODE
 		mode = VIDEO_MODE_YUV_720P;
