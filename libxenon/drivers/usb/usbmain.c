@@ -238,6 +238,8 @@ int usb_init(void)
 	}
 
 	initdone = 1;
+
+	usb_shutdown();
 	
 	// preinit (start from scratch)
 		// OHCI
