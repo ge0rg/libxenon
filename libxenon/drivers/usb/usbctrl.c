@@ -250,7 +250,7 @@ static int usbctrl_attach(usbdev_t *dev,usb_driver_t *drv)
 		return 0;
 	}
 	
-	softc->is_wireless = (GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x291) || (GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x2aa);
+	softc->is_wireless = (GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x291) || (GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x2aa) || (GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x2a9);
 	
 	int i;
 	for (i = 0; controller_mask & (1<<i); ++i);
