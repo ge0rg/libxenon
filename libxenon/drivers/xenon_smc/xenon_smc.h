@@ -21,6 +21,7 @@ void xenon_smc_set_power_led(int override, int state, int startanim);
 void xenon_smc_power_shutdown(void);
 void xenon_smc_power_reboot(void);
 void xenon_smc_start_bootanim(void);
+void xenon_smc_set_fan_algorithm(int algorithm);
 
 void xenon_smc_query_sensors(uint16_t *data);
 int xenon_smc_read_avpack(void);
