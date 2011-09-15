@@ -1097,6 +1097,7 @@ void xenos_autoset_mode(void)
 	case 0x13: // HDMI_AUDIO
 	case 0x14: // HDMI_AUDIO - GHETTO MOD
 	case 0x1C: // HDMI_AUDIO - GHETTO MOD
+	case 0x1E: // HDMI
 	case 0x1F: // HDMI
 		mode = VIDEO_MODE_HDMI_720P;
 		break;
