@@ -94,6 +94,7 @@ usb_drvlist_t usb_drivers[] = {
     {CLASS_ANY,	0x045e,0x28e,	&usbctrl_driver},
     {CLASS_ANY,	0x045e,0x291,	&usbctrl_driver},
     {CLASS_ANY,	0x045e,0x2aa,	&usbctrl_driver},
+    {CLASS_ANY,	0x045e,0x2a9,	&usbctrl_driver},
     /*
      * Mass storage devices
      */

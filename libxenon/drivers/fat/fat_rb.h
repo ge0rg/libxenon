@@ -42,7 +42,7 @@
 
 /* debug */
 //#define DEBUGF printf
-#define DEBUGF
+#define DEBUGF(args...)
 //#define LDEBUGF printf
 #define LDEBUGF(args...) 
 //#define logf(args...) {printf(args);printf("\n");}

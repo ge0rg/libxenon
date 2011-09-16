@@ -240,3 +240,9 @@ int xenon_smc_read_avpack(void)
 	xenon_smc_receive_response(buf);
 	return buf[1];
 }
+
+void xenon_smc_set_fan_algorithm(int algorithm)
+{
+	uint8_t buf[16] = {0x88, algorithm};
+	xenon_smc_send_message(buf);
+}

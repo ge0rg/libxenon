@@ -1246,6 +1246,7 @@ void Xe_Fatal(struct XenosDevice *xe, const char *fmt, ...)
     va_start(arg, fmt);
 	vprintf(fmt, arg);
 	va_end(arg);
+	printf("\n");
 	abort();
 }
 

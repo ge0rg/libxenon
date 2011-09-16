@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <xenon_smc/xenon_smc.h>
 #include <xenon_soc/xenon_power.h>
 #include <xenon_soc/xenon_io.h>
 #include <xenon_nand/xenon_config.h>
@@ -245,6 +246,8 @@ void xenon_make_it_faster(int speed)
 	xenon_set_single_thread_mode();
 
 	printf(" * Make it faster by making it consume more power...\n");
+
+	xenon_smc_set_fan_algorithm(1);
 
 	xenon_set_speed(speed,delta);
 
