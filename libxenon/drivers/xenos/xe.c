@@ -1884,6 +1884,7 @@ int Xe_pCalcVtxCount(struct XenosDevice *xe, int primtype, int primcnt)
 	case XE_PRIMTYPE_TRIANGLESTRIP:  /* fall trough */
 	case XE_PRIMTYPE_TRIANGLEFAN: return 2 + primcnt;
 	case XE_PRIMTYPE_RECTLIST: return primcnt * 3; 
+	case XE_PRIMTYPE_QUADLIST: return primcnt * 4;
 	default:
 		Xe_Fatal(xe, "unknown primitive type");
 	}
