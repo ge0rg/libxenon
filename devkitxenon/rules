@@ -40,8 +40,9 @@ LDSCRIPT := $(DEVKITXENON)/app.lds
 	@$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -n -T $(LDSCRIPT) -o $@
 
 %.elf32: %.elf
-	@echo converting ... $(notdir $@)
+	@echo converting and stripping ... $(notdir $@)
 	@$(OBJCOPY) -O elf32-powerpc --adjust-vma 0x80000000 $< $@
+	@$(PREFIX)strip $@
 
 #---------------------------------------------------------------------------------
 # canned command sequence for binary data
