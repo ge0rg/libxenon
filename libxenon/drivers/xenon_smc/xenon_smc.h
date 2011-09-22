@@ -57,6 +57,8 @@ int xenon_smc_get_ir();
 
 int xenon_smc_ana_write(uint8_t addr, uint32_t val);
 int xenon_smc_ana_read(uint8_t addr, uint32_t *val);
+
+int xenon_smc_i2c_ddc_lock(int lock);
 int xenon_smc_i2c_write(uint16_t addr, uint8_t val);
 int xenon_smc_i2c_read(uint16_t addr, uint8_t *val);
 

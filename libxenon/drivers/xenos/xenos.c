@@ -1,5 +1,6 @@
 #include <xenos/xenos.h>
 
+#include <xenos/xenos_edid.h>
 #include <xenon_smc/xenon_smc.h>
 #include <xenon_smc/xenon_gpio.h>
 #include <xenon_nand/xenon_config.h>
@@ -18,6 +19,10 @@
 #define FB_BASE 0x1e000000
 
 u32 xenos_id=0; // 5841=slim, 5831=jasper, 5821=zephyr/falcon?, 5811=xenon?
+int xenos_is_hdmi=0;
+
+static struct edid * xenos_edid=NULL;
+
 
 void xenos_write32(int reg, uint32_t val)
 {
@@ -1143,6 +1148,12 @@ void xenos_init(int videoMode)
 
 	xenon_smc_ana_write(0xdf, 0);
 	xenos_write32(AVIVO_D1MODE_DESKTOP_HEIGHT, 0x00000300);
+	
+	if (xenos_current_mode->hdmi){
+		xenos_edid=xenos_get_edid();
+		xenos_is_hdmi=xenos_detect_hdmi_monitor(xenos_edid);
+		if(xenos_is_hdmi) printf("Detected HDMI monitor!\n");
+	}
 }
 
 int xenos_is_overscan()

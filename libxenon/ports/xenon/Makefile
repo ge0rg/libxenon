@@ -83,6 +83,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/xenos/edram.o \
 	../../drivers/xenos/xe.o \
 	../../drivers/xenos/xenos.o \
+	../../drivers/xenos/xenos_edid.o \
 	../../drivers/lwip/core/init.o \
 	../../drivers/lwip/core/tcp_in.o \
 	../../drivers/lwip/core/ipv4/inet_chksum.o \

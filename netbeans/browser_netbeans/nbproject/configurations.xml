@@ -4,6 +4,8 @@
     <df name="browser"
         root="C:/X360 Hack/x360dev/ppc/libxenon/devkitxenon/examples/xenon/file/browser">
       <df name="build">
+        <in>browser.elf.map</in>
+        <in>main.d</in>
       </df>
       <df name="source">
         <in>main.c</in>

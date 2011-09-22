@@ -6,6 +6,10 @@
         <df name="xenon">
           <df name="file">
             <df name="browser">
+              <df name="build">
+                <in>browser.elf.map</in>
+                <in>main.d</in>
+              </df>
               <df name="source">
                 <in>main.c</in>
               </df>
@@ -372,6 +376,8 @@
           <in>xe_internal.h</in>
           <in>xenos.c</in>
           <in>xenos.h</in>
+          <in>xenos_edid.c</in>
+          <in>xenos_edid.h</in>
         </df>
       </df>
       <df name="include">
