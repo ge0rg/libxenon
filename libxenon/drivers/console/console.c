@@ -185,6 +185,11 @@ void console_set_colors(unsigned int background, unsigned int foreground){
 	console_color[1]=foreground;
 }
 
+void console_get_dimensions(unsigned int * width,unsigned int * height){
+	if (width) *width=max_x;
+	if (height) *height=max_y;
+}
+
 void console_close(void)
 {
 	stdout_hook = 0;
