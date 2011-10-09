@@ -5,11 +5,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <debug.h>
+#include <sys/time.h>
+
 
 #include <fat/fat_rb.h>
 #include <fat/file_rb.h>
 #include <newlib/vfs.h>
 #include <xenon_soc/xenon_power.h>
+#include <xenon_smc/xenon_smc.h>
 
 #include <usb/usbmain.h>
 
@@ -260,7 +263,7 @@ int open(const char *path, int oflag, ...)
 	for (i = 0; i < MAXMOUNT; ++i)
 	{
 		const char *mpath = mounts[i].mountpoint;
-		if (*mpath && !strncmp(path, mpath, strlen(mpath)))
+		if (path && *mpath && !strncmp(path, mpath, strlen(mpath)))
 			if (!mounts[i].ops->open(&fd_array[fd], &mounts[i], path + strlen(mpath), oflag, 0))
 				return fd;
 	}
@@ -299,7 +302,7 @@ DIR* opendir(const char* dirname)
 	for (i = 0; i < MAXMOUNT; ++i)
 	{
 		const char *mpath = mounts[i].mountpoint;
-		if (*mpath && !strncmp(dirname, mpath, strlen(mpath)))
+		if (dirname && *mpath && !strncmp(dirname, mpath, strlen(mpath)))
 			if(!mounts[i].ops->opendir(&dd_array[dd], &mounts[i], dirname + strlen(mpath))){
 				DIR * d = &dd_array[dd].dir;
 				memset(d,0,sizeof(*d));
@@ -426,3 +429,34 @@ int unlink(const char *file)
 }
 
 
+#if 1
+// 22 nov 2005 
+#define	RTC_BASE	1132614024UL//1005782400UL
+
+int gettimeofday(struct timeval * tp, void * tzp) {
+    unsigned char msg[16] = {0x04};
+    unsigned long msec;
+    unsigned long sec;
+
+    xenon_smc_send_message(msg);
+    xenon_smc_receive_message(msg);
+
+    msec = msg[1] | (msg[2] << 8) | (msg[3] << 16) | (msg[4] << 24) | ((unsigned long long) msg[5] << 32);
+
+    //      printf("smc ret : %d\r\n", msec);
+
+    sec = msec / 1000;
+
+    tp->tv_sec = sec + RTC_BASE;
+
+    msec -= sec * 1000;
+
+    tp->tv_usec = msec * 1000;
+
+    //printf("s:%d - %ms:%d\r\n", tp->tv_sec, tp->tv_usec);
+
+    //printf("%s\r\n",ctime(&tp->tv_sec));
+    
+    return 0;
+}
+#endif
