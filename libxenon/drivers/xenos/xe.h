@@ -240,7 +240,6 @@ struct XenosDevice
 	u32 fetch_dirty; /* 3 * 2 per bit */
 
 	float clipplane[6*4];
-	int clipcontrol;
 	
 	u32 integer_constants[10*4];
 	u32 controlpacket[9], stencildata[2];
@@ -355,6 +354,9 @@ void Xe_SetStencilOp(struct XenosDevice *xe, int bfff, int fail, int zfail, int 
 void Xe_SetStencilRef(struct XenosDevice *xe, int bfff, int ref);
 void Xe_SetStencilMask(struct XenosDevice *xe, int bfff, int mask);
 void Xe_SetStencilWriteMask(struct XenosDevice *xe, int bfff, int writemask);
+
+void Xe_SetClipPlaneEnables(struct XenosDevice *xe, int enables); // enables is a set of 1<<plane_index
+void Xe_SetClipPlane(struct XenosDevice *xe, int idx, float * plane);
 
 void Xe_InvalidateState(struct XenosDevice *xe);
 void Xe_SetShader(struct XenosDevice *xe, int type, struct XenosShader *sh, int instance);
