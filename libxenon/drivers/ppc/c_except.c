@@ -71,7 +71,6 @@ void crashdump(u32 exception,u64 * context)
 		sprintf(text,"%s%02d=%016llx %02d=%016llx %02d=%016llx %02d=%016llx\n",
 				text,i,context[i],i+8,context[i+8],i+16,context[i+16],i+24,context[i+24]);
 	
-	printf("pouet\n");
 	_cpu_print_stack((void*)(u32)context[36],(void*)(u32)context[32],(void*)(u32)context[1]);
 	
 	console_set_colors(0x000080ff, 0xffffffff);
