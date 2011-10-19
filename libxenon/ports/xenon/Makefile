@@ -54,6 +54,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/ppc/atomic.o \
 	../../drivers/ppc/cache.o \
 	../../drivers/ppc/except.o \
+	../../drivers/ppc/c_except.o \
 	../../drivers/ppc/vm.o \
 	../../drivers/time/time.o \
 	../../drivers/usb/ohci.o \

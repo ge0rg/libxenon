@@ -100,7 +100,9 @@ after_slb:
 	mfspr %r3, pir
 	addi %r3, %r3, 1
 	slwi %r3, %r3, 9 // 0x200 bytes per thread
-	sub %r3, %r1, %r3
+	lis %r4,0x8000
+	andc %r4,%r1,%r4
+	sub %r3, %r4, %r3
 
 	mtsprg1 %r3 // HV context base
 

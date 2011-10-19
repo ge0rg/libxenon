@@ -6,10 +6,6 @@
         <df name="xenon">
           <df name="file">
             <df name="browser">
-              <df name="build">
-                <in>browser.elf.map</in>
-                <in>main.d</in>
-              </df>
               <df name="source">
                 <in>main.c</in>
               </df>
@@ -27,9 +23,14 @@
                 <in>xee.c</in>
                 <in>xee.h</in>
               </df>
+              <in>cube.elf.s</in>
             </df>
           </df>
           <df name="profiling">
+            <df name="build">
+              <in>main.d</in>
+              <in>profiling.elf.map</in>
+            </df>
             <df name="source">
               <in>main.c</in>
             </df>
@@ -280,6 +281,7 @@
         <df name="ppc">
           <in>atomic.S</in>
           <in>atomic.h</in>
+          <in>c_except.c</in>
           <in>cache.S</in>
           <in>cache.h</in>
           <in>except.S</in>
