@@ -38,6 +38,7 @@ LIBOBJS = crti.o crtn.o \
 	../../startup/xenon/startup_from_xell.o \
 	../../startup/xenon/crt1.o \
 	../../drivers/console/console.o \
+	../../drivers/console/telnet_console.o \
 	../../drivers/diskio/diskio.o \
 	../../drivers/diskio/disk_rb.o \
 	../../drivers/diskio/ata.o \
