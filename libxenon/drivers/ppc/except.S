@@ -581,10 +581,6 @@ dump_from_pagefault:
 	rfid
 
 putc:
-	mfspr %r4, lpcr
-	ori %r4,%r4,2 // set RMI (otherwise serial output does not work)
-	mtspr lpcr, %r4
-
 	lis %r4, 0x8000
 	ori %r4, %r4, 0x200
 	rldicr  %r4, %r4, 32,31

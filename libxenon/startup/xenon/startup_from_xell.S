@@ -23,6 +23,14 @@ b 1f
 //	bne after_slb
 
 1:
+		/* setup HID6 - done by newer Xells, added here to stay compatible with old Xells */
+	lis	%r3, 1
+	ori	%r3,%r3, 0x8038
+	rldicr	%r3, %r3, 32,31
+	mtspr	hid6, %r3
+	sync
+	isync
+
 		/* setup SLB identity mapping, N=0, LP=1 */
 	isync
 	slbia
@@ -83,8 +91,6 @@ after_slb:
 	mtspr lpidr, %r3
 
 	mfspr %r5, lpcr
-	li %r3, 2
-	andc %r5, %r5, %r3 // clear RMI (enable caching)
 	ori %r5, %r5, 0x400 // software tlb reload
 	mtspr lpcr, %r5
 
