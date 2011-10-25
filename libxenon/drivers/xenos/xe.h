@@ -18,8 +18,8 @@ extern "C" {
 #define XE_PRIMTYPE_LINELIST 2
 #define XE_PRIMTYPE_LINESTRIP 3
 #define XE_PRIMTYPE_TRIANGLELIST 4
-#define XE_PRIMTYPE_TRIANGLESTRIP 5
-#define XE_PRIMTYPE_TRIANGLEFAN 6
+#define XE_PRIMTYPE_TRIANGLEFAN 5
+#define XE_PRIMTYPE_TRIANGLESTRIP 6
 #define XE_PRIMTYPE_RECTLIST 8
 #define XE_PRIMTYPE_QUADLIST 13
 
@@ -83,6 +83,10 @@ extern "C" {
 #define XE_CLIP_ENABLE_PLANE4  0x0010
 #define XE_CLIP_ENABLE_PLANE5  0x0020
 #define XE_CLIP_MASTER_DISABLE 0x10000
+	
+#define XE_FILL_POINT 0x01
+#define XE_FILL_WIREFRAME 0x25
+#define XE_FILL_SOLID 0x00
 
 struct XenosLock
 {
@@ -236,7 +240,6 @@ struct XenosDevice
 	u32 fetch_dirty; /* 3 * 2 per bit */
 
 	float clipplane[6*4];
-	int clipcontrol;
 	
 	u32 integer_constants[10*4];
 	u32 controlpacket[9], stencildata[2];
@@ -351,6 +354,9 @@ void Xe_SetStencilOp(struct XenosDevice *xe, int bfff, int fail, int zfail, int 
 void Xe_SetStencilRef(struct XenosDevice *xe, int bfff, int ref);
 void Xe_SetStencilMask(struct XenosDevice *xe, int bfff, int mask);
 void Xe_SetStencilWriteMask(struct XenosDevice *xe, int bfff, int writemask);
+
+void Xe_SetClipPlaneEnables(struct XenosDevice *xe, int enables); // enables is a set of 1<<plane_index
+void Xe_SetClipPlane(struct XenosDevice *xe, int idx, float * plane);
 
 void Xe_InvalidateState(struct XenosDevice *xe);
 void Xe_SetShader(struct XenosDevice *xe, int type, struct XenosShader *sh, int instance);

@@ -49,6 +49,7 @@
 #define STATUS_ECC_ER       	0x1Cu			//ECC Error, 3 bits, need to determine each
 #define STATUS_WR_ER        	0x2u			//Write or Erase Error
 #define STATUS_BUSY         	0x1u			//Busy
+#define STATUS_ERROR			(STATUS_ILL_LOG|STATUS_ADDR_ER|STATUS_BB_ER|STATUS_RNP_ER|STATUS_ECC_ER|STATUS_WR_ER)
 
 //Page bitmasks
 #define PAGE_VALID          	0x4000000u
@@ -65,15 +66,18 @@
 
 #define CONFIG_BLOCKS			0x04			//Number of blocks assigned for config data
 
-static unsigned char sfcx_page[MAX_PAGE_SZ];   //Max known hardware physical page size
-static unsigned char sfcx_block[MAX_BLOCK_SZ]; //Max known hardware physical block size
+// variables should NOT be in a header file! anything that uses this header is increased in size by this amount! [cOz]
+// static unsigned char sfcx_page[MAX_PAGE_SZ];   //Max known hardware physical page size
+// static unsigned char sfcx_block[MAX_BLOCK_SZ]; //Max known hardware physical block size
 
 #define RAW_NAND_64				0x4200000
 
 #define SFCX_INITIALIZED		1
 
 // status ok or status ecc corrected
-#define SFCX_SUCCESS(status) (((int) status == STATUS_PIN_BY_N) || ((int) status & STATUS_ECC_ER))
+//#define SFCX_SUCCESS(status) (((int) status == STATUS_PIN_BY_N) || ((int) status & STATUS_ECC_ER))
+// define success as no ecc error and no bad block error
+#define SFCX_SUCCESS(status) ((status&STATUS_ERROR)==0)
 
 struct sfc
 {
@@ -119,8 +123,12 @@ void sfcx_set_blockversion(unsigned char *data, int ver);
 void sfcx_set_pagevalid(unsigned char *data);
 void sfcx_set_pageinvalid(unsigned char *data);
 int sfcx_is_pagevalid(unsigned char *data);
+int sfcx_is_pagezeroed(unsigned char *data);
+int sfcx_is_pageerased(unsigned char *data);
 int sfcx_block_to_address(int block);
 int sfcx_address_to_block(int address);
+int sfcx_block_to_rawaddress(int block);
+int sfcx_rawaddress_to_block(int address);
 
 int sfcx_read_metadata_type(void);
 

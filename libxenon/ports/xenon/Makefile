@@ -38,6 +38,7 @@ LIBOBJS = crti.o crtn.o \
 	../../startup/xenon/startup_from_xell.o \
 	../../startup/xenon/crt1.o \
 	../../drivers/console/console.o \
+	../../drivers/console/telnet_console.o \
 	../../drivers/diskio/diskio.o \
 	../../drivers/diskio/disk_rb.o \
 	../../drivers/diskio/ata.o \
@@ -54,6 +55,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/ppc/atomic.o \
 	../../drivers/ppc/cache.o \
 	../../drivers/ppc/except.o \
+	../../drivers/ppc/c_except.o \
 	../../drivers/ppc/vm.o \
 	../../drivers/time/time.o \
 	../../drivers/usb/ohci.o \
@@ -83,6 +85,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/xenos/edram.o \
 	../../drivers/xenos/xe.o \
 	../../drivers/xenos/xenos.o \
+	../../drivers/xenos/xenos_edid.o \
 	../../drivers/lwip/core/init.o \
 	../../drivers/lwip/core/tcp_in.o \
 	../../drivers/lwip/core/ipv4/inet_chksum.o \

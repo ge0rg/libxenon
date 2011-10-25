@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <ppc/cache.h>
 
+extern int xenos_is_hdmi;
+
 static int snd_base = 0xea001600, wptr, buffer_len;
 static void *buffer;
 
@@ -16,8 +18,7 @@ void xenon_sound_init(void)
 	xenon_gpio_control(0,0x1000,0x1000);
 	xenon_gpio_control(4,0x1000,0x1000);
 
-	int gpuid=read32(0xd0010000)>>16;
-	if(gpuid<0x5841 && gpuid>=0x5821){ // HACK: no slims and no xenons
+	if(xenos_is_hdmi){
 		// HDMI audio enable
 		xenon_smc_i2c_write(0x0214, 0x11);
 		xenon_smc_i2c_write(0x0202, 0x03);

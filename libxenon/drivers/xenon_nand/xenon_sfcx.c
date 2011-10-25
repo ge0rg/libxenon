@@ -349,7 +349,7 @@ int sfcx_is_pagezeroed(unsigned char *data)
 	return 1;
 }
 
-int sfcx_is_pageempty(unsigned char *data)
+int sfcx_is_pageerased(unsigned char *data)
 {
 	int i;
 	for(i = 0; i < sfc.page_sz_phys; i++)

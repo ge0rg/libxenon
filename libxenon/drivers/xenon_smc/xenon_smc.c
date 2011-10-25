@@ -38,15 +38,26 @@ int xenon_smc_receive_message(unsigned char *msg)
 	return -1;
 }
 
+/* store the last IR keypress */
+int xenon_smc_last_ir = -1;
+
+int xenon_smc_get_ir() {
+	int ret = xenon_smc_last_ir;
+	xenon_smc_last_ir = -1;
+	return ret;
+}
+
 void xenon_smc_handle_bulk(unsigned char *msg)
 {
 	switch (msg[1])
 	{
 	case 0x11:
+	case 0x20:
 		printf("SMC power message\n");
 		break;
 	case 0x23:
-		printf("IR RX [%02x %02x]\n", msg[2], msg[3]);
+		//printf("IR RX [%02x %02x]\n", msg[2], msg[3]);
+		xenon_smc_last_ir = msg[3];
 		break;
 	case 0x60 ... 0x65:
 		printf("DVD cover state: %02x\n", msg[1]);
@@ -55,6 +66,21 @@ void xenon_smc_handle_bulk(unsigned char *msg)
 		printf("unknown SMC bulk msg\n");
 		break;
 	}
+}
+
+int xenon_smc_poll()
+{
+	uint8_t buf[16];
+	memset(buf, 0, 16);
+
+	if (!xenon_smc_receive_message(buf)) {
+		if (buf[0] == 0x83)
+		{
+			xenon_smc_handle_bulk(buf);
+		}
+		return 0;
+	}
+	return -1;
 }
 
 int xenon_smc_receive_response(unsigned char *msg)
@@ -131,15 +157,36 @@ int xenon_smc_ana_read(uint8_t addr, uint32_t *val)
 	return 0;
 }
 
+int xenon_smc_i2c_ddc_lock(int lock)
+{
+	uint8_t buf[16];
+    memset(buf, 0, 16);
+	
+	buf[0] = 0x11;
+	buf[1] = (lock)?3:5;
+
+	xenon_smc_send_message(buf);
+
+	xenon_smc_receive_response(buf);
+	if (buf[1] != 0)
+	{
+		printf("xenon_smc_i2c_ddc_lock failed, err=%d\n", buf[1]);
+		return -1;
+	}
+	
+	return 0;
+}
+
 int xenon_smc_i2c_write(uint16_t addr, uint8_t val)
 {
 	uint8_t buf[16];
     memset(buf, 0, 16);
 	
 	int tmp=(addr>=0x200)?0x3d:0x39;
+	int ddc=(addr>=0x1d0 && addr<=0x1f5);
 
     buf[0] = 0x11;
-	buf[1] = 0x20;
+	buf[1] = (ddc)?0x21:0x20;
 	buf[3] = tmp | 0x80; //3d
 	
 	buf[6] = addr & 0xff; //3a
@@ -163,9 +210,10 @@ int xenon_smc_i2c_read(uint16_t addr, uint8_t *val)
 	memset(buf, 0, 16);
 
     int tmp=(addr>=0x200)?0x3d:0x39;
+	int ddc=(addr>=0x1d0 && addr<=0x1f5);
 
 	buf[0] = 0x11; //40
-	buf[1] = 0x10;//((addr-0x1d0)>0x25)?0x10:0x11; //3f
+	buf[1] = (ddc)?0x11:0x10;//3f
 	buf[2] = 1; //3e
 	buf[3] = buf[5] = tmp | 0x80; //3d 3b
     buf[6] = addr & 0xff; //3a

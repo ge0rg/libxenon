@@ -23,6 +23,7 @@
                 <in>xee.c</in>
                 <in>xee.h</in>
               </df>
+              <in>cube.elf.s</in>
             </df>
           </df>
           <df name="profiling">
@@ -276,6 +277,7 @@
         <df name="ppc">
           <in>atomic.S</in>
           <in>atomic.h</in>
+          <in>c_except.c</in>
           <in>cache.S</in>
           <in>cache.h</in>
           <in>except.S</in>
@@ -372,6 +374,8 @@
           <in>xe_internal.h</in>
           <in>xenos.c</in>
           <in>xenos.h</in>
+          <in>xenos_edid.c</in>
+          <in>xenos_edid.h</in>
         </df>
       </df>
       <df name="include">

@@ -10,6 +10,10 @@
 #define REG_CTR 33
 #define REG_CR 34
 #define REG_XER 35
+#define REG_SRR0 36
+#define REG_SRR1 37
+#define REG_DAR 38
+#define REG_PIR 39
 #define DEBUG_LOCK 36
 
 .extern pagetable
@@ -552,158 +556,29 @@ dump:
 //	li %r3, debug_lock@l
 //	bl lock
 
-	bl puthex
-
-	li %r3, '\n'
-	bl putc
-
 dump_from_pagefault:
+	mfsrr0 %r4
+	std %r4, OFF_REG(REG_SRR0)(%r31)
+	mfsrr1 %r4
+	std %r4, OFF_REG(REG_SRR1)(%r31)
+	mfdar %r4
+	std %r4, OFF_REG(REG_DAR)(%r31)
+	mfpir %r4
+	std %r4, OFF_REG(REG_PIR)(%r31)
 
-	li %r3, 'P'
-	bl putc
-	li %r3, 'I'
-	bl putc
-	li %r3, 'R'
-	bl putc
-	li %r3, '='
-	bl putc
-	mfspr %r3, 1023
-	bl puthex
+	lis %r4,crashdump@h
+	ori %r4,%r4,crashdump@l
+	mtsrr0 %r4
 
-	li %r3, '\n'
-	bl putc
+	mr %r30,%r3
+	mr %r3,%r31
+	li %r4,0x200
+	bl memdcbf
+	mr %r3,%r30
 
-	li %r3, 's'
-	bl putc
-	li %r3, 'r'
-	bl putc
-	li %r3, '0'
-	bl putc
-	li %r3, '='
-	bl putc
-	mfsrr0 %r3
-	bl puthex
+	oris %r4,%r31,0x8000
 
-	li %r3, '\n'
-	bl putc
-
-	li %r3, 'l'
-	bl putc
-	li %r3, 'r'
-	bl putc
-	li %r3, ' '
-	bl putc
-	li %r3, '='
-	bl putc
-	mfsprg1 %r31
-	ld %r3, OFF_REG(REG_LR)(%r31)
-	bl puthex
-
-	li %r3, '\n'
-	bl putc
-
-	li %r3, 's'
-	bl putc
-	li %r3, 'r'
-	bl putc
-	li %r3, '1'
-	bl putc
-	li %r3, '='
-	bl putc
-
-	mfsrr1 %r3
-	bl puthex
-
-	li %r3, '\n'
-	bl putc
-	li %r3, 'D'
-	bl putc
-	li %r3, 'A'
-	bl putc
-	li %r3, 'R'
-	bl putc
-	li %r3, '='
-	bl putc
-
-	mfdar %r3
-	bl puthex
-
-	li %r3, '\n'
-	bl putc
-
-	li %r5, 32
-	mtctr %r5
-
-	li %r5, 0
-	li %r10, 10
-	mfsprg1 %r8
-	subi %r8, %r8, 8
-1:
-	li %r3, 'r'
-	bl putc
-	divw %r3,%r5,%r10
-	mulli %r4, %r3, 10
-	addi %r3, %r3, '0'
-	subf %r6, %r4, %r5
-	bl putc
-	addi %r3, %r6, '0'
-	bl putc
-	li %r3, '='
-	bl putc
-	ldu %r3, 8(%r8)
-	bl puthex
-	li %r3, '\n'
-	bl putc
-	addi %r5, %r5, 1
-	bdnz 1b
-
-	li %r3, '\n'
-	bl putc
-
-	li %r3, 'S'
-	bl putc
-	li %r3, 't'
-	bl putc
-	li %r3, 'a'
-	bl putc
-	li %r3, 'c'
-	bl putc
-	li %r3, 'k'
-	bl putc
-	li %r3, '\n'
-	bl putc
-	
-	li %r5, 32
-	mtctr %r5
-	lis %r5,0x8000
-	andc %sp,%sp,%r5
-1:
-	mr %r3,%sp
-	bl puthex
-	li %r3, '='
-	bl putc
-	ld %r3,0(%sp)
-	bl puthex
-	li %r3, '\n'
-	bl putc
-	addi %sp,%sp,8
-	bdnz 1b
-	
-	li %r3, '\n'
-	bl putc
-
-	li %r3, 'F'
-	bl putc
-	li %r3, 'A'
-	bl putc
-	li %r3, 'I'
-	bl putc
-	li %r3, 'L'
-	bl putc
-	li %r3, debug_lock@l
-	bl unlock
-
- 	b .
+	rfid
 
 putc:
 	mfspr %r4, lpcr
@@ -790,22 +665,8 @@ ex_interrupt:
 
 page_fault:
 
-	li %r3, 'S'
-	bl putc
-	li %r3, 'I'
-	bl putc
-	li %r3, 'G'
-	bl putc
-	li %r3, 'S'
-	bl putc
-	li %r3, 'E'
-	bl putc
-	li %r3, 'G'
-	bl putc
-	li %r3, 'V'
-	bl putc
-	li %r3, '\n'
-	bl putc
+	li %r3,0
+
 	b dump_from_pagefault
 
 

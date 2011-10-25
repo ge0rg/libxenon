@@ -1128,7 +1128,7 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 	rput32(0x000005c8); rput32(0x00020000);
 	rput32(0x00002203); rput32(0x00000000);
 	rput32(0x00022100); rput32(0x0000ffff); rput32(0x00000000); rput32(0x00000000); 
-	rput32(0x00022204); rput32((xe->clipcontrol&0x3f)?xe->clipcontrol:0x00010000); rput32(0x00010000); rput32(0x00000300); 
+	rput32(0x00022204); rput32(0x00010000); rput32(0x00010000); rput32(0x00000300); 
 	rput32(0x00002312); rput32(0x0000ffff); 
 	rput32(0x0000200d); rput32(0x00000000);
 
@@ -1613,13 +1613,26 @@ void Xe_SetStencilWriteMask(struct XenosDevice *xe, int bfff, int writemask)
 void Xe_SetScissor(struct XenosDevice *xe, int enable, int left, int top, int right, int bottom)
 {
 	xe->scissor_enable=enable;
-	xe->scissor_ltrb[0]=left;
-	xe->scissor_ltrb[1]=top;
-	xe->scissor_ltrb[2]=right;
-	xe->scissor_ltrb[3]=bottom;
+	if (left>=0) xe->scissor_ltrb[0]=left;
+	if (top>=0) xe->scissor_ltrb[1]=top;
+	if (right>=0) xe->scissor_ltrb[2]=right;
+	if (bottom>=0) xe->scissor_ltrb[3]=bottom;
 	xe->dirty |= DIRTY_MISC;
 }
 
+void Xe_SetClipPlaneEnables(struct XenosDevice *xe, int enables)
+{
+	xe->controlpacket[4] &= ~0x3f;
+	xe->controlpacket[4] |= enables&0x3f;
+	xe->dirty |= DIRTY_CONTROL;
+}
+
+void Xe_SetClipPlane(struct XenosDevice *xe, int idx, float * plane)
+{
+	assert(idx>=0 && idx<6);
+	memcpy(&xe->clipplane[idx*4],plane,4*4);
+	xe->dirty |= DIRTY_CLIP;
+}
 
 void Xe_InvalidateState(struct XenosDevice *xe)
 {
@@ -1884,6 +1897,7 @@ int Xe_pCalcVtxCount(struct XenosDevice *xe, int primtype, int primcnt)
 	case XE_PRIMTYPE_TRIANGLESTRIP:  /* fall trough */
 	case XE_PRIMTYPE_TRIANGLEFAN: return 2 + primcnt;
 	case XE_PRIMTYPE_RECTLIST: return primcnt * 3; 
+	case XE_PRIMTYPE_QUADLIST: return primcnt * 4;
 	default:
 		Xe_Fatal(xe, "unknown primitive type");
 	}
