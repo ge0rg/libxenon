@@ -91,7 +91,7 @@ after_slb:
 	mtspr lpidr, %r3
 
 	mfspr %r5, lpcr
-	ori %r5, %r5, 0x400 // software tlb reload
+	ori %r5, %r5, 0x402 // software tlb reload + force RMCI
 	mtspr lpcr, %r5
 
 	li %r3, 1  // hrmor
