@@ -490,6 +490,7 @@ user_segfault_handler:
 	lis %r9,vm_segfault_handler@ha - 0x80000000
 	lwz %r9,vm_segfault_handler@l(%r9)
 
+	li %r3,0
 	cmplwi %r9,0
 	beq dump_from_pagefault // no user handler -> call system handler
 

@@ -50,12 +50,36 @@ void vm_create_user_mapping(uint32_t virt_addr, uint64_t phys_addr, int size, in
 	while (size)
 	{
 		userpagetable[page_idx]=page_addr;
+
+		asm volatile ("tlbiel %0"::"r"(virt_addr));
 		
 		size-=VM_USER_PAGE_SIZE;
 		++page_idx;
 		page_addr+=VM_USER_PAGE_SIZE;
+		virt_addr+=VM_USER_PAGE_SIZE;
 	}
 }
+
+void vm_destroy_user_mapping(uint32_t virt_addr, int size)
+{
+	assert(!(virt_addr&VM_USER_PAGE_MASK));
+	assert(!(size&VM_USER_PAGE_MASK));
+	assert(virt_addr>=0x40000000 && virt_addr<0x80000000);
+	
+	int page_idx=(virt_addr&~0x40000000)>>VM_USER_PAGE_BITS;
+	
+	while (size)
+	{
+		userpagetable[page_idx]=0;
+		
+		asm volatile ("tlbiel %0"::"r"(virt_addr));
+		
+		size-=VM_USER_PAGE_SIZE;
+		++page_idx;
+		virt_addr+=VM_USER_PAGE_SIZE;
+	}
+}
+
 
 void vm_set_user_mapping_segfault_handler(vm_segfault_handler_t handler)
 {

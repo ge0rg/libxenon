@@ -15,6 +15,7 @@
 typedef void (*vm_segfault_handler_t)(int, void *,void *); // processor id, address of the op causing the segfault, accessed address
 
 void vm_create_user_mapping(uint32_t virt_addr, uint64_t phys_addr, int size, int wimg);
+void vm_destroy_user_mapping(uint32_t virt_addr, int size);
 void vm_set_user_mapping_segfault_handler(vm_segfault_handler_t handler);
 
 #endif
