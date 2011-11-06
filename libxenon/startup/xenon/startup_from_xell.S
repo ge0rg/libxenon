@@ -36,11 +36,14 @@ b 1f
 	slbia
 	isync
 
-		/* set page size: 16MB for both */
+		/* set page size: 64K for both */
 	mfspr %r3, hid6
 	li %r4, 0xF
 	sldi %r4, %r4, 44
 	andc %r3, %r3, %r4
+	li %r4, 0xa
+	sldi %r4, %r4, 44
+	or %r3, %r3, %r4
 	mtspr  hid6, %r3
 
 	li %r3, 0x10
@@ -105,14 +108,14 @@ after_slb:
 
 	mfspr %r3, pir
 	addi %r3, %r3, 1
-	slwi %r3, %r3, 9 // 0x200 bytes per thread
+	slwi %r3, %r3, 13 // 0x2000 bytes per thread
 	lis %r4,0x8000
 	andc %r4,%r1,%r4
 	sub %r3, %r4, %r3
 
 	mtsprg1 %r3 // HV context base
 
-	subi %r1, %r1, 0x1000
+	subis %r1, %r1, 1
 
 		/* wake up secondary thread */
 	li %r4, 0

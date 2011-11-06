@@ -27,6 +27,10 @@
             </df>
           </df>
           <df name="profiling">
+            <df name="build">
+              <in>main.d</in>
+              <in>profiling.elf.map</in>
+            </df>
             <df name="source">
               <in>main.c</in>
             </df>

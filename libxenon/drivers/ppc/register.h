@@ -1,6 +1,8 @@
 #ifndef __ppc_register_h
 #define __ppc_register_h
 
+#include "xenonsprs.h"
+
 #define __stringify(rn) #rn
 
 #define mfmsr()   ({unsigned long long rval; \

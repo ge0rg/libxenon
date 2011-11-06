@@ -14,7 +14,6 @@
 #define REG_SRR1 37
 #define REG_DAR 38
 #define REG_PIR 39
-#define DEBUG_LOCK 36
 
 .extern pagetable
 
@@ -169,11 +168,13 @@ ex_isi:
 	rldicl %r4, %r3, 36, 60 // extract high nibble
 
 	sldi %r4, %r4, 2
-	addis %r4, %r4, pagetable@h - 0x80000000
+	addis %r4, %r4, pagetable@ha - 0x80000000
 	lwz %r4, pagetable@l(%r4)
 
 	cmpldi %r4, 0
 	beq page_fault
+
+	
 
 	rldicl %r3, %r3, 0, 36 // extract rest of addr
 	rldicr %r5, %r4, 10, 40
@@ -184,7 +185,7 @@ ex_isi:
 	mfspr %r4, PpeTlbIndexHint
 
 	rldicl %r2, %r3, 64-PAGE_BITS, 64-PAGE_BITS-1 // page nr
-	rldicr %r2, %r2, 0, 39 // round down to 16M (was 47)
+	rldicr %r2, %r2, 0, 47 // round down to 64K
 
 	rldimi  %r4, %r2, 63-26, 16 //  put into bits 16..26
 
@@ -218,7 +219,7 @@ ex_isi:
 	mtspr PpeTlbIndex, %r15
 
 		/* ARPN */
-	rldicr %r2, %r3, 0, 39 // round down to 16M (was 47)
+	rldicr %r2, %r3, 0, 47 // round down to 64K
 
 	or %r2, %r2, %r6
 
@@ -369,6 +370,9 @@ ex_dsi:
 	cmpldi %r4, 0
 	beq page_fault
 
+	cmpwi %r4, -1
+	beq user_page_handler
+
 	rldicl %r3, %r3, 0, 36  // &0x0FFFFFFF
 	rldicr %r5, %r4, 10, 40 // shift left addr << 10
 	rldicl %r6, %r4, 0, 50  // leave lower 14 bits of RPN
@@ -378,7 +382,7 @@ ex_dsi:
 
 	rldicl %r2, %r3, 64-PAGE_BITS, 64-PAGE_BITS // page nr
 
-	rldicr %r2, %r2, 0, 39 // round down to 16M (was 47)
+	rldicr %r2, %r2, 0, 47 // round down to 64K
 
 	rldimi  %r4, %r2, 63-26, 16 //  put into bits 16..26
 
@@ -412,7 +416,7 @@ ex_dsi:
 	mtspr PpeTlbIndex, %r15
 
 		/* ARPN */
-	rldicr %r2, %r3, 0, 39 /* round down to 16M */
+	rldicr %r2, %r3, 0, 47 // round down to 64K
 
 	or %r2, %r2, %r6 /* OR in page attributes */
 
@@ -443,6 +447,110 @@ ex_dsi:
 // 00000000_00004481
 
 	mtspr PpeTlbVpn, %r2
+	
+	b except_return
+
+user_page_handler:
+	mr %r15, %r3
+
+	rldicl %r4,%r15,48,50 // calc idx in userpagetable
+	sldi %r4,%r4,2
+
+	addis %r4, %r4, userpagetable@ha - 0x80000000
+	lwz %r4, userpagetable@l(%r4)
+
+	cmplwi %r4,0
+	beq user_segfault_handler
+	
+	rldicr %r5, %r4, 0, 50  
+	rldicl %r6, %r4, 0, 50  // leave lower 14 bits of RPN
+
+	mfspr %r4, PpeTlbIndexHint
+	
+		/* index + LVPN */
+	srdi %r2,%r15,12
+	andi. %r2,%r2,0x7ff
+	rldimi  %r4, %r2, 63-26, 16 //  put into bits 16..26
+	mtspr PpeTlbIndex, %r4
+
+		/* ARPN */
+	rldicr %r2, %r5, 0, 47 // round down to 64K
+	or %r2, %r2, %r6 /* OR in page attributes */
+	mtspr PpeTlbRpn, %r2
+
+		/* calculate AVPN */
+	srdi %r2,%r15,12-7+11
+	rldicl %r3,%r3,0,56
+	ori %r2, %r2, 5 // set V|L  (valid, large)
+	mtspr PpeTlbVpn, %r2
+
+	b except_return
+
+user_segfault_handler:
+	lis %r9,vm_segfault_handler@ha - 0x80000000
+	lwz %r9,vm_segfault_handler@l(%r9)
+
+	cmplwi %r9,0
+	beq dump_from_pagefault // no user handler -> call system handler
+
+	/*
+	calling user code can throw exceptions,
+	to preserve original HV context base I increment context pointer before calling user
+	and decrement it after, to create a sort of context stack
+	TODO: there's room for 16 nested contexts per thread right now, no idea if it's enough...
+	*/
+
+	mfsprg1 %r31
+	mfsrr0 %r4
+	std %r4, OFF_REG(REG_SRR0)(%r31)
+	mfsrr1 %r4
+	std %r4, OFF_REG(REG_SRR1)(%r31)
+	mfsprg0 %r4
+	std %r4, OFF_REG(31)(%r31)
+
+
+	mfsprg1 %r8
+	addi %r8,%r8,0x200
+	mtsprg1 %r8
+	
+	mfpir %r3
+	mfsrr0 %r4
+	mfdar %r5
+	
+	mfmsr %r8
+
+	lis %r10, sfh32@h
+	ori %r10, %r10, sfh32@l
+	mtsrr0 %r10
+	rfid
+
+sfh32:
+	mtsprg3 %r8
+
+	mtctr %r9 
+	bctrl
+
+	mfsprg3 %r3
+	mtsrr1 %r3
+	
+	lis %r4, sfh64@h - 0x80000000
+	ori %r4, %r4, sfh64@l
+	mtsrr0 %r4
+	rfid
+
+sfh64:
+	mfsprg1 %r8
+	subi %r8,%r8,0x200
+	mtsprg1 %r8
+
+	mfsprg1 %r31
+	ld %r3, OFF_REG(REG_SRR0)(%r31)
+	mtsrr0 %r3
+	ld %r3, OFF_REG(REG_SRR1)(%r31)
+	mtsrr1 %r3
+	ld %r3, OFF_REG(31)(%r31)
+	mtsprg0 %r3
+	
 except_return:
 
 	mfsprg1 %r31
@@ -581,6 +689,10 @@ dump_from_pagefault:
 	rfid
 
 putc:
+/*	mfpir %r4
+	cmplwi %r4,0
+	bnelr*/
+
 	lis %r4, 0x8000
 	ori %r4, %r4, 0x200
 	rldicr  %r4, %r4, 32,31

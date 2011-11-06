@@ -1,7 +1,11 @@
 #include <ppc/vm.h>
+#include <assert.h>
+#include <stdio.h>
 
-#define WIMG_CACHED 0x190
-#define WIMG_GUARDED 0x1B8
+#include "register.h"
+#include "elf/elf_abi.h"
+#include "nocfe/lib_physio.h"
+#include "usb/tinyehci/ehci_types.h"
 
 /* Goal is to provide a *simple* memory layout with the following features:
 	-	addresses at 0 should pagefault,
@@ -13,26 +17,47 @@
 uint32_t pagetable[] __attribute__ ((section (".pagetable"))) = {
 	0, /* zero "page", should pagefault */
 	0,
-	(0x20000000000ULL >> 10) | WIMG_GUARDED, // CPU stuff
+	(0x20000000000ULL >> 10) | VM_WIMG_GUARDED, // CPU stuff
 	0, 
 	
-	0, 0, 0, 0,
+	-1, -1, -1, -1, // 1GB user pages
 
-	(0x00000000 >> 10) | WIMG_CACHED,
-	(0x10000000 >> 10) | WIMG_CACHED,
+	(0x00000000 >> 10) | VM_WIMG_CACHED,
+	(0x10000000 >> 10) | VM_WIMG_CACHED,
 
-	(0x00000000 >> 10) | WIMG_GUARDED,
-	(0x10000000 >> 10) | WIMG_GUARDED,
+	(0x00000000 >> 10) | VM_WIMG_GUARDED,
+	(0x10000000 >> 10) | VM_WIMG_GUARDED,
 
-	(0xc0000000 >> 10) | WIMG_GUARDED, // Flash (at 0xc8000000)
-	(0xd0000000 >> 10) | WIMG_GUARDED, // PCI config space
-	(0xe0000000 >> 10) | WIMG_GUARDED, // PCI space
+	(0xc0000000 >> 10) | VM_WIMG_GUARDED, // Flash (at 0xc8000000)
+	(0xd0000000 >> 10) | VM_WIMG_GUARDED, // PCI config space
+	(0xe0000000 >> 10) | VM_WIMG_GUARDED, // PCI space
 	0,
 };
 
-#if 0
-void vm_create_mapping(uint32_t virt_addr, uint64_t phys_addr, int wimg)
+uint32_t userpagetable[1024*1024*1024/VM_USER_PAGE_SIZE] = {0};
+vm_segfault_handler_t vm_segfault_handler=NULL;
+
+void vm_create_user_mapping(uint32_t virt_addr, uint64_t phys_addr, int size, int wimg)
 {
-	/* todo */
+	assert(!(virt_addr&VM_USER_PAGE_MASK));
+	assert(!(phys_addr&VM_USER_PAGE_MASK));
+	assert(!(size&VM_USER_PAGE_MASK));
+	assert(virt_addr>=0x40000000 && virt_addr<0x80000000);
+	
+	int page_idx=(virt_addr&~0x40000000)>>VM_USER_PAGE_BITS;
+	int page_addr=phys_addr | wimg;	
+	
+	while (size)
+	{
+		userpagetable[page_idx]=page_addr;
+		
+		size-=VM_USER_PAGE_SIZE;
+		++page_idx;
+		page_addr+=VM_USER_PAGE_SIZE;
+	}
 }
-#endif
+
+void vm_set_user_mapping_segfault_handler(vm_segfault_handler_t handler)
+{
+	vm_segfault_handler=handler;
+}
