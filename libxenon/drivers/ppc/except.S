@@ -531,8 +531,8 @@ sfh32:
 	mtctr %r9 
 	bctrl
 
-	mfsprg3 %r3
-	mtsrr1 %r3
+	mfsprg3 %r4
+	mtsrr1 %r4
 	
 	lis %r4, sfh64@h - 0x80000000
 	ori %r4, %r4, sfh64@l
@@ -545,7 +545,11 @@ sfh64:
 	mtsprg1 %r8
 
 	mfsprg1 %r31
+
+	cmplwi %r3,0
+	bne 1f
 	ld %r3, OFF_REG(REG_SRR0)(%r31)
+1:
 	mtsrr0 %r3
 	ld %r3, OFF_REG(REG_SRR1)(%r31)
 	mtsrr1 %r3
@@ -666,6 +670,10 @@ dump:
 //	bl lock
 
 dump_from_pagefault:
+	mfsprg1 %r31
+	addi %r8,%r31,0x200 /* move to next context in stack in case there's nested segfaults */
+	mtsprg1 %r8
+	
 	mfsrr0 %r4
 	std %r4, OFF_REG(REG_SRR0)(%r31)
 	mfsrr1 %r4

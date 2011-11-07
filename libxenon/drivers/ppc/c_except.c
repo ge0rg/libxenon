@@ -68,23 +68,27 @@ static void flush_console()
 
 void crashdump(u32 exception,u64 * context)
 {
+	console_set_colors(0x000080ff, 0xffffffff);
+	console_init();
+	console_clrscr();
+	
 	if (exception){
 		sprintf(text,"\nException vector! (%p)\n\n",exception);
 	}else{
 		strcpy(text,"\nSegmentation fault!\n\n");
 	}
 		
+	flush_console();
+	
 	sprintf(text,"%spir=%016llx dar=%016llx\nsr0=%016llx sr1=%016llx lr=%016llx\n\n",
 			text,context[39],context[38],context[36],context[37],context[32]);
+	
+	flush_console();
 	
 	int i;
 	for(i=0;i<8;++i)
 		sprintf(text,"%s%02d=%016llx %02d=%016llx %02d=%016llx %02d=%016llx\n",
 				text,i,context[i],i+8,context[i+8],i+16,context[i+16],i+24,context[i+24]);
-	
-	console_set_colors(0x000080ff, 0xffffffff);
-	console_init();
-	console_clrscr();
 	
 	flush_console();
 	
