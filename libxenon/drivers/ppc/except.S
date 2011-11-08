@@ -498,7 +498,6 @@ user_segfault_handler:
 	calling user code can throw exceptions,
 	to preserve original HV context base I increment context pointer before calling user
 	and decrement it after, to create a sort of context stack
-	TODO: there's room for 16 nested contexts per thread right now, no idea if it's enough...
 	*/
 
 	mfsprg1 %r31
