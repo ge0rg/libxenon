@@ -459,9 +459,22 @@ user_page_handler:
 	addis %r4, %r4, userpagetable@ha - 0x80000000
 	lwz %r4, userpagetable@l(%r4)
 
+	mfdsisr %r6
+	rldicl %r6,%r6,39,63
+
+		/* no mapping -> segfault */
 	cmplwi %r4,0
 	beq user_segfault_handler
-	
+
+		/* if write in read only page, segfault too */
+	rldicl %r5,%r4,0,62
+	cmplwi %r5,3
+	bne 1f
+	cmplwi %r6,1
+	bne 1f
+	b user_segfault_handler
+1:
+
 	rldicr %r5, %r4, 0, 50  
 	rldicl %r6, %r4, 0, 50  // leave lower 14 bits of RPN
 

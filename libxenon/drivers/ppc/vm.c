@@ -37,14 +37,20 @@ uint32_t pagetable[] __attribute__ ((section (".pagetable"))) = {
 uint32_t userpagetable[1024*1024*1024/VM_USER_PAGE_SIZE] = {0};
 vm_segfault_handler_t vm_segfault_handler=NULL;
 
-void vm_create_user_mapping(uint32_t virt_addr, uint64_t phys_addr, int size, int wimg)
+static int vm_common_check_get_idx(uint32_t virt_addr, int size)
 {
 	assert(!(virt_addr&VM_USER_PAGE_MASK));
-	assert(!(phys_addr&VM_USER_PAGE_MASK));
 	assert(!(size&VM_USER_PAGE_MASK));
 	assert(virt_addr>=0x40000000 && virt_addr<0x80000000);
+
+	return (virt_addr&~0x40000000)>>VM_USER_PAGE_BITS;
+}
+
+void vm_create_user_mapping(uint32_t virt_addr, uint64_t phys_addr, int size, int wimg)
+{
+	assert(!(phys_addr&VM_USER_PAGE_MASK));
 	
-	int page_idx=(virt_addr&~0x40000000)>>VM_USER_PAGE_BITS;
+	int page_idx=vm_common_check_get_idx(virt_addr,size);
 	int page_addr=phys_addr | wimg;	
 	
 	while (size)
@@ -62,11 +68,7 @@ void vm_create_user_mapping(uint32_t virt_addr, uint64_t phys_addr, int size, in
 
 void vm_destroy_user_mapping(uint32_t virt_addr, int size)
 {
-	assert(!(virt_addr&VM_USER_PAGE_MASK));
-	assert(!(size&VM_USER_PAGE_MASK));
-	assert(virt_addr>=0x40000000 && virt_addr<0x80000000);
-	
-	int page_idx=(virt_addr&~0x40000000)>>VM_USER_PAGE_BITS;
+	int page_idx=vm_common_check_get_idx(virt_addr,size);
 	
 	while (size)
 	{
@@ -80,6 +82,25 @@ void vm_destroy_user_mapping(uint32_t virt_addr, int size)
 	}
 }
 
+void vm_set_user_mapping_flags(uint32_t virt_addr, int size, int wimg)
+{
+	int page_idx=vm_common_check_get_idx(virt_addr,size);
+	
+	while (size)
+	{
+		if(userpagetable[page_idx])
+		{
+			userpagetable[page_idx]&=~VM_USER_PAGE_MASK;
+			userpagetable[page_idx]|=wimg;
+		}
+		
+		asm volatile ("tlbiel %0"::"r"(virt_addr));
+		
+		size-=VM_USER_PAGE_SIZE;
+		++page_idx;
+		virt_addr+=VM_USER_PAGE_SIZE;
+	}
+}
 
 void vm_set_user_mapping_segfault_handler(vm_segfault_handler_t handler)
 {
