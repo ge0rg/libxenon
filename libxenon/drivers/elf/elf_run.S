@@ -54,6 +54,9 @@ b64:
 
 		/* reset page sizes */
 	mfspr %r3, hid6
+	li %r4, 0xF
+	sldi %r4, %r4, 44
+	andc %r3, %r3, %r4
 	li %r4, 0x8
 	sldi %r4, %r4, 44
 	or %r3, %r3, %r4
