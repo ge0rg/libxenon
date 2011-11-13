@@ -37,6 +37,13 @@ uint32_t pagetable[] __attribute__ ((section (".pagetable"))) = {
 uint32_t userpagetable[1024*1024*1024/VM_USER_PAGE_SIZE] = {0};
 vm_segfault_handler_t vm_segfault_handler=NULL;
 
+static void vm_invalidate_tlb(uint32_t ea)
+{
+	asm volatile ("tlbiel %0,1"::"r"(ea));
+	asm volatile ("ptesync");
+	asm volatile ("eieio");
+}
+
 static int vm_common_check_get_idx(uint32_t virt_addr, int size)
 {
 	assert(!(virt_addr&VM_USER_PAGE_MASK));
@@ -57,7 +64,7 @@ void vm_create_user_mapping(uint32_t virt_addr, uint64_t phys_addr, int size, in
 	{
 		userpagetable[page_idx]=page_addr;
 
-		asm volatile ("tlbiel %0"::"r"(virt_addr));
+		vm_invalidate_tlb(virt_addr);
 		
 		size-=VM_USER_PAGE_SIZE;
 		++page_idx;
@@ -74,7 +81,7 @@ void vm_destroy_user_mapping(uint32_t virt_addr, int size)
 	{
 		userpagetable[page_idx]=0;
 		
-		asm volatile ("tlbiel %0"::"r"(virt_addr));
+		vm_invalidate_tlb(virt_addr);
 		
 		size-=VM_USER_PAGE_SIZE;
 		++page_idx;
@@ -92,9 +99,9 @@ void vm_set_user_mapping_flags(uint32_t virt_addr, int size, int wimg)
 		{
 			userpagetable[page_idx]&=~VM_USER_PAGE_MASK;
 			userpagetable[page_idx]|=wimg;
+			
+			vm_invalidate_tlb(virt_addr);
 		}
-		
-		asm volatile ("tlbiel %0"::"r"(virt_addr));
 		
 		size-=VM_USER_PAGE_SIZE;
 		++page_idx;
