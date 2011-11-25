@@ -14,12 +14,13 @@
 #define ELF_DEVTREE_MAX_SIZE 0x10000
 
 #define ELF_CODE_RELOC_START ((void*)0x87FF0000) /* TODO: must keep this synced with lis %r4,0x87ff and lis %r4,0x07ff in elf_run.S */
+#define ELF_TEMP_BEGIN ((void*)0x87F80000)
 #define ELF_DATA_RELOC_START ((void*)0x88000000)
 #define ELF_GET_RELOCATED(x) (ELF_CODE_RELOC_START+((unsigned long)(x)-(unsigned long)elfldr_start))
 
 extern void shutdown_drivers();
 
-extern char elfldr_start[], elfldr_end[];
+extern unsigned char elfldr_start[], elfldr_end[], pagetable_end[];
 extern void elf_run(unsigned long entry,unsigned long devtree);
 extern void elf_hold_thread();
 
@@ -74,7 +75,7 @@ static inline __attribute__((always_inline)) void elf_sync_before_exec(unsigned 
 {
 	dst=(unsigned char *)((unsigned long)dst&(~(LINESIZE-1)));
 	
-	l+=LINESIZE;
+	l+=(LINESIZE-1);
 	l&=~(LINESIZE-1);
 	
 	while (l > 0)
@@ -93,6 +94,8 @@ static void __attribute__ ((section (".elfldr"),noreturn,flatten,optimize("O2"))
 	Elf32_Ehdr *ehdr;
 	Elf32_Shdr *shdr;
 	unsigned char *strtab = 0;
+	unsigned long begin_size=(unsigned long)pagetable_end&0x7fffffff;
+	int had_begin_overwrite=0;
 	int i;
 
 	ehdr = (Elf32_Ehdr *) addr;
@@ -124,13 +127,43 @@ static void __attribute__ ((section (".elfldr"),noreturn,flatten,optimize("O2"))
 
 		if (shdr->sh_type == SHT_NOBITS) {
 			elf_memset (target, 0, shdr->sh_size);
+			elf_sync_before_exec (target, shdr->sh_size);
 		} else {
-			elf_memcpy ((void *) target,
-				(unsigned char *) addr + shdr->sh_offset,
-				shdr->sh_size);
+			unsigned char *tgt=target;
+			unsigned char *off=(unsigned char *) addr + shdr->sh_offset;
+			unsigned long siz=shdr->sh_size;
+			
+			// we can't overwrite exception code and page table, else tlb load wouldn't work anymore...
+			if ((unsigned long)tgt < (unsigned long)pagetable_end) {
+				
+				if((((unsigned long)tgt + siz) < (unsigned long)pagetable_end) || had_begin_overwrite){
+					// unhandled case...
+					elf_putch('!');
+					elf_putch('P');
+					elf_putch('T');
+					elf_putch('\r');
+					elf_putch('\n');
+					for(;;);
+				}
+				
+				had_begin_overwrite=1;
+				elf_memcpy(ELF_TEMP_BEGIN, off, begin_size);
+				tgt=pagetable_end;
+				siz=siz-begin_size;
+				off=off+begin_size;
+			}
+
+			elf_memcpy (tgt, off, siz);
+			elf_sync_before_exec (tgt, siz);
 		}
-		elf_sync_before_exec (target, shdr->sh_size);
 	}
+
+	if (had_begin_overwrite){
+		//now we can overwrite it!
+		elf_memcpy((void*)0x80000000, ELF_TEMP_BEGIN, begin_size);
+		elf_sync_before_exec ((void*)0x80000000, begin_size);
+	}
+	
 	elf_putch('\r');
 	elf_putch('\n');
 	elf_putch('E');

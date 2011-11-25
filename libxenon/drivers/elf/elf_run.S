@@ -19,6 +19,7 @@ elf_hold_thread:
 	beq 1b
 
 //	or %r2, %r2, %r2
+	li %r4,0
 
 .globl elf_run
 elf_run:
@@ -46,7 +47,6 @@ elf_run:
 	rfid
 
 b64:
-
 		/* invalidate all SLBs */
 	isync
 	slbia
@@ -54,14 +54,23 @@ b64:
 
 		/* reset page sizes */
 	mfspr %r3, hid6
+	li %r4, 0xF
+	sldi %r4, %r4, 44
+	andc %r3, %r3, %r4
 	li %r4, 0x8
 	sldi %r4, %r4, 44
 	or %r3, %r3, %r4
-	mtspr  hid6, %r3
+	mtspr hid6, %r3
+	sync
+	isync
 
-		/* reset LPCR */
-	li %r3, 0
+		/* reset TLB reload */
+	mfspr %r3, lpcr
+	li %r4, 0x400
+	andc %r3,%r3,%r4
 	mtspr lpcr, %r3
+	sync
+	isync
 
 		/* gogogo :) */
 	mfspr	%r3, pir /* linux wants thread # in r3 for secondary threads */

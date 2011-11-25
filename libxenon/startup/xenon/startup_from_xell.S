@@ -23,16 +23,27 @@ b 1f
 //	bne after_slb
 
 1:
+		/* setup HID6 - done by newer Xells, added here to stay compatible with old Xells */
+	lis	%r3, 1
+	ori	%r3,%r3, 0x8038
+	rldicr	%r3, %r3, 32,31
+	mtspr	hid6, %r3
+	sync
+	isync
+
 		/* setup SLB identity mapping, N=0, LP=1 */
 	isync
 	slbia
 	isync
 
-		/* set page size: 16MB for both */
+		/* set page size: 64K for both */
 	mfspr %r3, hid6
 	li %r4, 0xF
 	sldi %r4, %r4, 44
 	andc %r3, %r3, %r4
+	li %r4, 0xa
+	sldi %r4, %r4, 44
+	or %r3, %r3, %r4
 	mtspr  hid6, %r3
 
 	li %r3, 0x10
@@ -83,9 +94,7 @@ after_slb:
 	mtspr lpidr, %r3
 
 	mfspr %r5, lpcr
-	li %r3, 2
-	andc %r5, %r5, %r3 // clear RMI (enable caching)
-	ori %r5, %r5, 0x400 // software tlb reload
+	ori %r5, %r5, 0x402 // software tlb reload + force RMCI
 	mtspr lpcr, %r5
 
 	li %r3, 1  // hrmor
@@ -99,14 +108,15 @@ after_slb:
 
 	mfspr %r3, pir
 	addi %r3, %r3, 1
-	slwi %r3, %r3, 9 // 0x200 bytes per thread
+	slwi %r3, %r3, 16 // 0x10000 bytes per thread
 	lis %r4,0x8000
 	andc %r4,%r1,%r4
 	sub %r3, %r4, %r3
 
 	mtsprg1 %r3 // HV context base
 
-	subi %r1, %r1, 0x1000
+	lis %r3,8
+	subf %r1, %r3, %r1
 
 		/* wake up secondary thread */
 	li %r4, 0

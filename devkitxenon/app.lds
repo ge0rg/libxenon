@@ -2,7 +2,7 @@ ENTRY(_start)
 SECTIONS
 {
 	. = 0x80000000;
-	.text : {  *(.except*); *(.pagetable); *(.text*); *(.init*); }
+	.text : {  *(.except*); *(.pagetable); pagetable_end = .; *(.text*); *(.init*); }
 	.elfldr : { elfldr_start = .;*(.elfldr); elfldr_end = .;}
 	
 	.data : { *(.data*) }

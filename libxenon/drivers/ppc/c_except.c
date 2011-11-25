@@ -55,34 +55,49 @@ static void _cpu_print_stack(void *pc,void *lr,void *r1)
 	}
 }
 
+static void flush_console()
+{
+	char * p=text;
+	while(*p){
+		putch(*p);
+		console_putch(*p++);
+	}
+
+	text[0]='\0';
+}
+
 void crashdump(u32 exception,u64 * context)
 {
+	console_set_colors(0x000080ff, 0xffffffff);
+	console_init();
+	console_clrscr();
+	
 	if (exception){
 		sprintf(text,"\nException vector! (%p)\n\n",exception);
 	}else{
 		strcpy(text,"\nSegmentation fault!\n\n");
 	}
 		
+	flush_console();
+	
 	sprintf(text,"%spir=%016llx dar=%016llx\nsr0=%016llx sr1=%016llx lr=%016llx\n\n",
 			text,context[39],context[38],context[36],context[37],context[32]);
+	
+	flush_console();
 	
 	int i;
 	for(i=0;i<8;++i)
 		sprintf(text,"%s%02d=%016llx %02d=%016llx %02d=%016llx %02d=%016llx\n",
 				text,i,context[i],i+8,context[i+8],i+16,context[i+16],i+24,context[i+24]);
 	
+	flush_console();
+	
 	_cpu_print_stack((void*)(u32)context[36],(void*)(u32)context[32],(void*)(u32)context[1]);
 	
-	console_set_colors(0x000080ff, 0xffffffff);
-	console_init();
-	console_clrscr();
-	
-	char * p=text;
-	while(*p){
-		putch(*p);
-		console_putch(*p++);
-	}
-	
+	strcat(text,"\n\nOn uart: 'x'=Xell, 'h'=Halt, 'r'=Reboot\n\n");
+
+	flush_console();
+
 	for(;;){
 		switch(getch()){
 			case 'x':

@@ -40,6 +40,8 @@
           <in>console.c</in>
           <in>console.h</in>
           <in>font_8x16.h</in>
+          <in>telnet_console.c</in>
+          <in>telnet_console.h</in>
         </df>
         <df name="diskio">
           <in>ata.c</in>
