@@ -49,7 +49,6 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/iso9660/iso9660.o \
 	../../drivers/input/input.o \
 	../../drivers/newlib/newlib.o \
-	../../drivers/newlib/malloc_lock.o \
 	../../drivers/nocfe/lib_malloc.o \
 	../../drivers/nocfe/lib_queue.o \
 	../../drivers/pci/io.o \
