@@ -52,6 +52,7 @@ IR_CH_DOWN =			0x6D };
 
 void xenon_smc_send_message(const unsigned char *msg);
 int xenon_smc_receive_message(unsigned char *msg);
+int xenon_smc_receive_response(unsigned char *msg);
 int xenon_smc_poll();
 int xenon_smc_get_ir();
 
