@@ -13,11 +13,10 @@
 #define BLOCK_OFFSET 3 //We want the 3rd block of the 4 config blocks)
 
 extern struct sfc sfc;
-extern unsigned char sfcx_page[MAX_PAGE_SZ];   //Max known hardware physical page size
-
 struct XCONFIG_SECURED_SETTINGS secured_settings = {0};
 
 static int xenon_config_initialized=0;
+unsigned char pagebuf[MAX_PAGE_SZ];   //Max known hardware physical page size
 
 void xenon_config_init(void)
 {
@@ -35,12 +34,12 @@ void xenon_config_init(void)
 	{
 		//calc our address (specific for our one structure)
 		int addr = sfc.addr_config + (BLOCK_OFFSET * sfc.block_sz) + sfc.page_sz;
-		int status = sfcx_read_page(sfcx_page, addr, 0);
+		int status = sfcx_read_page(pagebuf, addr, 0);
 
 		//read from nand
 		if (SFCX_SUCCESS(status)){
 			//TODO: check if we got erased or zeroed nand data
-			memcpy(&secured_settings, &sfcx_page[0x0], sizeof secured_settings);
+			memcpy(&secured_settings, &pagebuf[0x0], sizeof secured_settings);
 			xenon_config_initialized=1;
 		}
 	}
