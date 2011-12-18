@@ -1,5 +1,5 @@
---- binutils-2.21.1/config.sub	2010-06-01 19:53:40.000000000 +0200
-+++ binutils-2.21.1/config.sub	2011-05-04 21:15:40.585309896 +0200
+--- binutils-2.22/config.sub	2010-06-01 19:53:40.000000000 +0200
++++ binutils-2.22/config.sub	2011-05-04 21:15:40.585309896 +0200
 @@ -962,6 +962,10 @@
  	ppc64le-* | powerpc64little-*)
  		basic_machine=powerpc64le-`echo $basic_machine | sed 's/^[^-]*-//'`
