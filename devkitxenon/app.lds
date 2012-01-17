@@ -13,7 +13,7 @@ SECTIONS
 	.dtors : {__DTOR_LIST__ = .; *(.dtors); __DTOR_END__ = .; }
 
 	.eh_frame_hdr : { *(.eh_frame_hdr) }
-	.eh_frame : { KEEP (*(.eh_frame)) }
+	.eh_frame ALIGN(0x4): { PROVIDE (__eh_frame_start = .); KEEP (*(.eh_frame)) LONG (0); }
 	.gcc_except_table :  { *(.gcc_except_table .gcc_except_table.*) }
 
 	bss_start = .;
