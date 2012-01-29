@@ -13,6 +13,11 @@ GCC=gcc-4.6.1
 NEWLIB=newlib-1.17.0
 GDB=gdb-6.8
 
+ZLIB=zlib-1.2.5
+LIBPNG=libpng-1.5.7
+BZIP2=bzip2-1.0.6
+FREETYPE=freetype-2.4.8
+
 BUILD_BINUTILS=true
 BUILD_GCC=true
 BUILD_NEWLIB=true
@@ -162,6 +167,110 @@ function toolchain_install
 
 }
 
+function zlib_install
+{
+	if [ ! -f "$ZLIB.tar.bz2" ]; then
+		echo -e "Downloading $ZLIB.tar.bz2"
+		wget -c http://zlib.net/$ZLIB.tar.bz2 || exit 0
+	fi;
+
+	echo -e "Extracting zlib..."
+	rm -rf $ZLIB
+	tar xjf $ZLIB.tar.bz2 >> $LOGFILE 2>&1 || exit 0
+	cd $ZLIB
+
+	CC=xenon-gcc
+	CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 $DEVKITXENON/usr/lib/libxenon.a -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
+	LDFLAGS=""
+	TARGET=`gcc -v 2>&1 | sed -n '2p' | awk '{print $2}'`
+
+	echo -e "Configuring zlib..."
+	./configure --prefix=$DEVKITXENON/usr >> $LOGFILE 2>&1 || exit 0
+
+	sed '/cp $(SHAREDLIBV) $(DESTDIR)$(sharedlibdir)/d' Makefile > Makefile.xenon
+
+	echo -e "Building zlib..."
+	make $PARALLEL -f Makefile.xenon CROSS_COMPILE=xenon- >> $LOGFILE 2>&1 || exit 0
+	echo -e "Installing zlib..."
+	make -f Makefile.xenon CROSS_COMPILE=xenon- install >> $LOGFILE 2>&1 || exit 0
+	cd ..
+	rm -rf $ZLIB
+	echo -e "Done"
+}
+
+function libpng_install
+{
+	if [ ! -f "$LIBPNG.tar.xz" ]; then
+		echo -e "Downloading $LIBPNG.tar.xz"
+		wget -c http://download.sourceforge.net/libpng/$LIBPNG.tar.xz || exit 0
+	fi;
+
+	echo -e "Extracting libpng..."
+	rm -rf $LIBPNG
+	tar xJf $LIBPNG.tar.xz >> $LOGFILE 2>&1 && cat ../libxenon/ports/libpng/libpng.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
+	cd $LIBPNG
+
+	CC=xenon-gcc
+	CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 $DEVKITXENON/usr/lib/libxenon.a -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
+	LDFLAGS=""
+
+	echo -e "Configuring libpng..."
+	./configure --disable-shared --enable-static --prefix=$DEVKITXENON/usr --host=ppc-elf >> $LOGFILE 2>&1 || exit 0
+
+	echo -e "Building libpng..."
+	make $PARALLEL CROSS_COMPILE=xenon- >> $LOGFILE 2>&1 || exit 0
+	echo -e "Installing libpng..."	
+	make CROSS_COMPILE=xenon- install >> $LOGFILE 2>&1 || exit 0
+	cd ..
+	rm -rf $LIBPNG
+	echo -e "Done"
+}
+
+function bzip2_install
+{
+	if [ ! -f "$BZIP2.tar.gz" ]; then
+		echo -e "Downloading $BZIP2.tar.gz"
+		wget -c http://bzip.org/1.0.6/$BZIP2.tar.gz || exit 0
+	fi;
+
+	echo -e "Extracting bzip2..."
+	rm -rf $BZIP2
+	tar xzf $BZIP2.tar.gz >> $LOGFILE 2>&1 && cat ../libxenon/ports/bzip2/bzip2.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
+	cd $BZIP2
+
+	echo -e "Building bzip2..."
+	make $PARALLEL CROSS_COMPILE=xenon- >> $LOGFILE 2>&1 || exit 0
+	echo -e "Installing bzip2..."
+	make CROSS_COMPILE=xenon- install >> $LOGFILE 2>&1 || exit 0
+	cd ..
+	rm -rf $BZIP2
+	echo -e "Done"
+}
+
+function freetype_install
+{
+	if [ ! -f "$FREETYPE.tar.gz" ]; then
+		echo -e "Downloading $FREETYPE.tar.gz"
+		wget -c http://download.savannah.gnu.org/releases/freetype/$FREETYPE.tar.gz || exit 0
+	fi;
+	
+	echo -e "Extracting freetype..."
+	rm -rf $FREETYPE
+	tar xzf $FREETYPE.tar.gz >> $LOGFILE 2>&1 && cat ../libxenon/ports/freetype/freetype.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
+	cd $FREETYPE
+
+	echo -e "Configuring freetype..."
+	./configure --prefix=$DEVKITXENON/usr --host=ppc-elf --disable-shared >> $LOGFILE 2>&1 || exit 0
+
+	echo -e "Building freetype..."
+	make $PARALLEL CROSS_COMPILE=xenon- >> $LOGFILE 2>&1 || exit 0
+	echo -e "Installing freetype..."
+	make CROSS_COMPILE=xenon- install >> $LOGFILE 2>&1 || exit 0
+	cd ..
+	rm -rf $FREETYPE
+	echo -e "Done"
+}
+
 function cube
 {
 	rm -rf free60 &>/dev/null
@@ -251,12 +360,24 @@ if [ "$1" == "toolchain" ]; then
 	all_done
 elif [ "$1" == "libxenon" ]; then
 	libxenon_install
+elif [ "$1" == "zlib" ]; then
+	zlib_install
+elif [ "$1" == "libpng" ]; then
+	libpng_install
+elif [ "$1" == "bzip2" ]; then
+	bzip2_install
+elif [ "$1" == "freetype" ]; then
+	freetype_install
 elif [ "$1" == "cube" ]; then
 	cube
 else
 	echo -e "Usage:"
 	echo -e "\"$0 toolchain\" (install toolchain + libxenon)"
 	echo -e "\"$0 libxenon\" (install or update libxenon)"
+	echo -e "\"$0 zlib\" (install or update zlib)"
+	echo -e "\"$0 libpng\" (install or update libpng)"
+	echo -e "\"$0 bzip2\" (install or update bzip2)"
+	echo -e "\"$0 freetype\" (install or update freetype)"
 	echo -e "\"$0 cube\" (compile the cube sample)"
 	echo
 	exit 0
