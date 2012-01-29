@@ -179,10 +179,10 @@ function zlib_install
 	tar xjf $ZLIB.tar.bz2 >> $LOGFILE 2>&1 || exit 0
 	cd $ZLIB
 
-	CC=xenon-gcc
-	CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 $DEVKITXENON/usr/lib/libxenon.a -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
-	LDFLAGS=""
-	TARGET=`gcc -v 2>&1 | sed -n '2p' | awk '{print $2}'`
+	export CC=xenon-gcc
+	export CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 $DEVKITXENON/usr/lib/libxenon.a -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
+	export LDFLAGS=""
+	export TARGET=`gcc -v 2>&1 | sed -n '2p' | awk '{print $2}'`
 
 	echo -e "Configuring zlib..."
 	./configure --prefix=$DEVKITXENON/usr >> $LOGFILE 2>&1 || exit 0
@@ -195,6 +195,12 @@ function zlib_install
 	make -f Makefile.xenon CROSS_COMPILE=xenon- install >> $LOGFILE 2>&1 || exit 0
 	cd ..
 	rm -rf $ZLIB
+
+	export CC=""
+	export CFLAGS=""
+	export LDFLAGS=""
+	export TARGET=""
+
 	echo -e "Done"
 }
 
@@ -210,9 +216,9 @@ function libpng_install
 	tar xJf $LIBPNG.tar.xz >> $LOGFILE 2>&1 && cat ../libxenon/ports/libpng/libpng.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
 	cd $LIBPNG
 
-	CC=xenon-gcc
-	CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 $DEVKITXENON/usr/lib/libxenon.a -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
-	LDFLAGS=""
+	export CC=xenon-gcc
+	export CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 $DEVKITXENON/usr/lib/libxenon.a -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
+	export LDFLAGS=""
 
 	echo -e "Configuring libpng..."
 	./configure --disable-shared --enable-static --prefix=$DEVKITXENON/usr --host=ppc-elf >> $LOGFILE 2>&1 || exit 0
@@ -223,6 +229,11 @@ function libpng_install
 	make CROSS_COMPILE=xenon- install >> $LOGFILE 2>&1 || exit 0
 	cd ..
 	rm -rf $LIBPNG
+
+        export CC=""
+        export CFLAGS=""
+        export LDFLAGS=""
+
 	echo -e "Done"
 }
 
@@ -239,9 +250,9 @@ function bzip2_install
 	cd $BZIP2
 
 	echo -e "Building bzip2..."
-	make $PARALLEL CROSS_COMPILE=xenon- >> $LOGFILE 2>&1 || exit 0
+	make $PARALLEL >> $LOGFILE 2>&1 || exit 0
 	echo -e "Installing bzip2..."
-	make CROSS_COMPILE=xenon- install >> $LOGFILE 2>&1 || exit 0
+	make install >> $LOGFILE 2>&1 || exit 0
 	cd ..
 	rm -rf $BZIP2
 	echo -e "Done"
@@ -259,6 +270,10 @@ function freetype_install
 	tar xzf $FREETYPE.tar.gz >> $LOGFILE 2>&1 && cat ../libxenon/ports/freetype/freetype.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
 	cd $FREETYPE
 
+	export CC=xenon-gcc
+	export CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 $DEVKITXENON/usr/lib/libxenon.a -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
+	export LDFLAGS=""
+
 	echo -e "Configuring freetype..."
 	./configure --prefix=$DEVKITXENON/usr --host=ppc-elf --disable-shared >> $LOGFILE 2>&1 || exit 0
 
@@ -268,6 +283,11 @@ function freetype_install
 	make CROSS_COMPILE=xenon- install >> $LOGFILE 2>&1 || exit 0
 	cd ..
 	rm -rf $FREETYPE
+
+        export CC=""
+        export CFLAGS=""
+        export LDFLAGS=""
+
 	echo -e "Done"
 }
 
