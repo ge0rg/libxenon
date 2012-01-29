@@ -291,6 +291,17 @@ function freetype_install
 	echo -e "Done"
 }
 
+function bin2s_install
+{
+	cd ../libxenon/ports/xenon/
+	echo -e "Building bin2s..."
+	gcc bin2s.c -o bin2s || exit 0
+	echo -e "Installing bin2s..."
+	mv bin2s $DEVKITXENON/bin
+	chmod a+x $DEVKITXENON/bin/bin2s
+	echo -e "Done"
+}
+
 function cube
 {
 	rm -rf free60 &>/dev/null
@@ -378,6 +389,13 @@ if [ "$1" == "toolchain" ]; then
 	toolchain_install
 	libxenon_install
 	all_done
+elif [ "$1" == "libs" ]; then
+        libxenon_install
+	zlib_install
+	libpng_install
+	bzip2_install
+	freetype_install
+	bin2s_install
 elif [ "$1" == "libxenon" ]; then
 	libxenon_install
 elif [ "$1" == "zlib" ]; then
@@ -388,11 +406,14 @@ elif [ "$1" == "bzip2" ]; then
 	bzip2_install
 elif [ "$1" == "freetype" ]; then
 	freetype_install
+elif [ "$1" == "bin2s" ]; then
+        bin2s_install
 elif [ "$1" == "cube" ]; then
 	cube
 else
 	echo -e "Usage:"
 	echo -e "\"$0 toolchain\" (install toolchain + libxenon)"
+	echo -e "\"$0 libs\" (install libxenon + bin2s + libraries seen below)"
 	echo -e "\"$0 libxenon\" (install or update libxenon)"
 	echo -e "\"$0 zlib\" (install or update zlib)"
 	echo -e "\"$0 libpng\" (install or update libpng)"
