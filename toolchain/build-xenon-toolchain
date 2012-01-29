@@ -13,7 +13,7 @@ GCC=gcc-4.6.1
 NEWLIB=newlib-1.17.0
 GDB=gdb-6.8
 
-ZLIB=zlib-1.2.5
+ZLIB=zlib-1.2.6
 LIBPNG=libpng-1.5.7
 BZIP2=bzip2-1.0.6
 FREETYPE=freetype-2.4.8
