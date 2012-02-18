@@ -249,7 +249,12 @@ static int enet_open(struct netif *netif)
     xenon_gpio_control(4,0,0x10);
 
     phy_write(0, 0x9000);
-	while (phy_read(0) & 0x8000);
+
+	while (phy_read(0) & 0x8000){
+		mdelay(500);
+		tries--;
+		if (tries<=0) break;		
+	};
 
 //	phy_write(0x10, 0x8058);
 //	phy_write(4, 0x5e1);
