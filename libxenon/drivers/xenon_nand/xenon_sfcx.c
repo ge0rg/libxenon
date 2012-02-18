@@ -1,8 +1,12 @@
 #include <xetypes.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "xenon_sfcx.h"
 
 struct sfc sfc = {0};
+unsigned char* blockbuf;
 //static unsigned char sfcx_page[MAX_PAGE_SZ];   //Max known hardware physical page size
 //static unsigned char sfcx_block[MAX_BLOCK_SZ]; //Max known hardware physical block size
 
@@ -378,6 +382,89 @@ int sfcx_block_to_rawaddress(int block)
 int sfcx_rawaddress_to_block(int address)
 {
         return address / sfc.block_sz_phys;
+}
+
+int rawflash_writeImage(int len, int f)
+{
+	int i=0;
+	int secondPgOffset = sfc.page_sz_phys;
+	int addr, addrphy, status, r;
+	int readsz = sfc.pages_in_block*sfc.page_sz_phys;
+	int numblocks = (len/sfc.block_sz_phys);
+	blockbuf = malloc(readsz);
+	if(blockbuf == NULL)
+	{
+		printf("ERROR: unable to allocate 0x%x bytes for a buffer!\n", readsz);
+		return 0;
+	}
+	if(sfc.meta_type == META_TYPE_2)
+		secondPgOffset = 0x1080; // 0x210*8
+	while(i < numblocks)
+	{
+		printf("processing block 0x%04x of 0x%04x    \r", i+1, numblocks);
+		addr = i*sfc.block_sz;
+		// check first two pages of each block to find out if it's a good block
+		status = sfcx_read_block(blockbuf, addr, 1);
+		if((sfcx_is_pagevalid(blockbuf) == 0) || (sfcx_is_pagevalid(&blockbuf[secondPgOffset]) == 0))
+			status = status | STATUS_BB_ER;
+		r = read(f, blockbuf, readsz);
+		if (r < 0)
+		{
+			printf("ERROR: failed to read %d bytes from file\n\n",readsz);
+			return 0;
+		}
+		if((status & (STATUS_BB_ER|STATUS_ECC_ER)) == 0)
+		{
+			addr = i*sfc.block_sz_phys;
+			addrphy = i*sfc.block_sz;
+			sfcx_erase_block(addrphy);
+			sfcx_write_block(blockbuf, addrphy);
+		}
+		else
+			printf("block 0x%x seems bad, status 0x%08x\n", i, status);
+		i++;
+	}
+	printf("\n\n");
+	return 1;
+}
+
+void try_rawflash(char *filename)
+{
+	struct stat s;
+	int size;
+	int f = open(filename, O_RDONLY);
+	if (f < 0)
+	{
+		return;
+	}
+        printf(" * rawflash v4 started (by cOz)\n");
+        
+	fstat(f, &s);
+	size = s.st_size;
+	if((size == (RAW_NAND_64*4)) || (size == (RAW_NAND_64*8))) // 256 or 512M NAND image, only flash 64M
+	{
+		size = RAW_NAND_64;
+	}
+	else if((size != 0x1080000)&& (size != RAW_NAND_64)) // 16 M size
+	{
+		printf("error: %s - size %d is not valid image size!\n", filename, size);
+		close(f);
+		return;
+	}
+        printf("\n * found '%s'. press power NOW if you don't want to flash the NAND.\n",filename);
+        delay(15);
+        
+	printf("%s opened OK, attempting to write 0x%x bytes to flash...\n",filename, size);
+	if(rawflash_writeImage(size, f) == 1)
+		printf("image written, shut down now!\n");
+	else
+		printf("failed to write image :(\n");
+
+	close(f);
+	if(blockbuf != NULL)
+		free(blockbuf);
+        
+        for(;;); // loop
 }
 
 /*
