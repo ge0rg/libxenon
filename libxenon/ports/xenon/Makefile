@@ -113,8 +113,13 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/lwip/xenon/netif/enet.o \
 	../../drivers/network/network.o\
 	../../drivers/elf/elf.o \
-	../../drivers/elf/elf_run.o
-
+	../../drivers/elf/elf_run.o \
+	../../drivers/libfdt/fdt.o \
+	../../drivers/libfdt/fdt_ro.o \
+	../../drivers/libfdt/fdt_rw.o \
+	../../drivers/libfdt/fdt_strerror.o \
+	../../drivers/libfdt/fdt_sw.o \
+	../../drivers/libfdt/fdt_wip.o
 
 # Build rules
 all: $(TARGETS)
