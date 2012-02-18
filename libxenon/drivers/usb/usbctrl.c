@@ -318,7 +318,7 @@ static int usbctrl_ireq_callback(usbreq_t *ur)
 			//printf("Wireless controller %i has connected\n", uhid->wireless_index);
 			int i;
 			for (i = 0; controller_mask & (1<<i); ++i);
-			//printf("attached controller %d\n", i);
+			printf("attached controller %d\n", i);
 			uhid->index = i;
 			setcontroller(uhid, uhid->index);
 			controller_mask |= 1<<i;
@@ -330,7 +330,7 @@ static int usbctrl_ireq_callback(usbreq_t *ur)
 		if (b[0] == 0x8 && b[1] == 0x0)
 		{
 			//printf("Wireless controller %i has disconnected\n", uhid->wireless_index);
-			//printf("detatched controller %d\n", uhid->index);
+			printf("detatched controller %d\n", uhid->index);
 			setcontroller(NULL, uhid->index);
 			controller_mask &= ~(1<<uhid->index);
 
