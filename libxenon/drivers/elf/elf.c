@@ -1,3 +1,11 @@
+/*  devtree preparation & initrd handling
+
+Copyright (C) 2010-2011  Hector Martin "marcan" <hector@marcansoft.com>
+
+This code is licensed to you under the terms of the GNU GPL, version 2;
+see file COPYING or http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -7,11 +15,18 @@
 #include <ppc/cache.h>
 #include <ppc/timebase.h>
 #include <time/time.h>
+#include <libfdt/libfdt.h>
+#include <nocfe/addrspace.h>
 
+#include "elf.h"
 #include "elf_abi.h"
+
+#define INITRD_RELOC_START ((void*)0x85FE0000)
+#define INITRD_MAX_SIZE (32*1024*1024)
 
 #define ELF_DEVTREE_START ((void*)0x87FE0000)
 #define ELF_DEVTREE_MAX_SIZE 0x10000
+#define MAX_CMDLINE_SIZE 255
 
 #define ELF_CODE_RELOC_START ((void*)0x87FF0000) /* TODO: must keep this synced with lis %r4,0x87ff and lis %r4,0x07ff in elf_run.S */
 #define ELF_TEMP_BEGIN ((void*)0x87F80000)
@@ -25,6 +40,11 @@ extern void elf_run(unsigned long entry,unsigned long devtree);
 extern void elf_hold_thread();
 
 extern volatile unsigned long elf_secondary_hold_addr;
+
+static char bootargs[MAX_CMDLINE_SIZE];
+
+static uint8_t *initrd_start = NULL;
+static size_t initrd_size = 0;
 
 static inline __attribute__((always_inline)) void elf_putch(unsigned char c)
 {
@@ -187,6 +207,7 @@ void elf_runFromMemory (void *addr, int size)
 {
 	int i;
 	
+        printf(" * Executing...\n");
 	shutdown_drivers();
 	
 	// relocate code
@@ -239,13 +260,134 @@ int elf_runFromDisk (char *filename)
 
 void elf_runWithDeviceTree (void *elf_addr, int elf_size, void *dt_addr, int dt_size)
 {
+	int res, node;
+
 	if (dt_size>ELF_DEVTREE_MAX_SIZE){
 		printf("[ELF loader] Device tree too big (> %d bytes) !\n",ELF_DEVTREE_MAX_SIZE);
 		return;
 	}		
 	memset(ELF_DEVTREE_START,0,ELF_DEVTREE_MAX_SIZE);
-	memcpy(ELF_DEVTREE_START,dt_addr,dt_size);
-	memdcbst(ELF_DEVTREE_START,ELF_DEVTREE_MAX_SIZE);
+
+        res = fdt_open_into(dt_addr, ELF_DEVTREE_START, ELF_DEVTREE_MAX_SIZE);
+	if (res < 0){
+		printf(" ! fdt_open_into() failed\n"); 
+                return;
+        }
+
+	node = fdt_path_offset(ELF_DEVTREE_START, "/chosen");
+	if (node < 0){
+		printf(" ! /chosen node not found in devtree\n"); 
+                return;
+        }
+
+        if (bootargs[0])
+        {
+                res = fdt_setprop(ELF_DEVTREE_START, node, "bootargs", bootargs, strlen(bootargs)+1);
+                if (res < 0){
+                printf(" ! couldn't set chosen.bootargs property\n"); 
+                return;
+                }
+        }
+	
+        if (initrd_start && initrd_size)
+        {
+                kernel_relocate_initrd(initrd_start,initrd_size);
+                
+                u64 start, end;
+		start = (u32)PHYSADDR((u32)initrd_start);
+		res = fdt_setprop(ELF_DEVTREE_START, node, "linux,initrd-start", &start, sizeof(start));
+		if (res < 0){
+			printf("couldn't set chosen.linux,initrd-start property\n");
+                        return;
+                }
+
+		end = (u32)PHYSADDR(((u32)initrd_start + (u32)initrd_size));
+		res = fdt_setprop(ELF_DEVTREE_START, node, "linux,initrd-end", &end, sizeof(end));
+		if (res < 0) {
+			printf("couldn't set chosen.linux,initrd-end property\n");
+                        return;
+                }
+		res = fdt_add_mem_rsv(ELF_DEVTREE_START, start, initrd_size);
+		if (res < 0) {
+			printf("couldn't add reservation for the initrd\n");
+                        return;
+                }
+	}
+        
+	 node = fdt_path_offset(ELF_DEVTREE_START, "/memory");
+	 if (node < 0){
+		printf(" ! /memory node not found in devtree\n"); 
+                return;
+         }
+/*
+	res = fdt_add_mem_rsv(ELF_DEVTREE_START, (uint64_t)ELF_DEVTREE_START, ELF_DEVTREE_MAX_SIZE);
+	if (res < 0){
+    	printf("couldn't add reservation for the devtree\n"); 
+    	return;
+	}
+*/
+
+	res = fdt_pack(ELF_DEVTREE_START);
+	if (res < 0){
+		printf(" ! fdt_pack() failed\n"); 
+                return;
+        }
+
+	printf(" * Device tree prepared\n"); 
 	
 	elf_runFromMemory(elf_addr,elf_size);
+}
+
+void kernel_prepare_initrd(void *start, size_t size)
+{       
+	if (size > INITRD_MAX_SIZE){
+                printf(" ! Initrd bigger than 32 MB, Aborting!\n");
+		return;
+	}
+        
+        if(initrd_start != NULL)
+            free(initrd_start);
+        initrd_start = (uint8_t*)malloc(size);
+        
+        memcpy(initrd_start,start,size);
+        initrd_size = size;
+}
+
+void kernel_relocate_initrd(void *start, size_t size)
+{       
+        printf(" * Relocating initrd...\n");
+        
+        memset(INITRD_RELOC_START,0,INITRD_MAX_SIZE);
+        memcpy(INITRD_RELOC_START,start,size);
+        
+        initrd_start = INITRD_RELOC_START;
+        initrd_size = size;
+        
+        printf("Initrd at %p/0x%lx: %ld bytes (%ldKiB)\n", initrd_start, \
+        (u32)PHYSADDR((u32)initrd_start), initrd_size, initrd_size/1024);
+}
+
+void kernel_reset_initrd(void)
+{   
+    if (initrd_start != NULL)
+        free(initrd_start);
+    
+    initrd_start = NULL;
+    initrd_size = 0;
+}
+
+void kernel_build_cmdline(const char *parameters, const char *root)
+{
+	bootargs[0] = 0;
+
+	if (root) {
+		strlcat(bootargs, "root=", MAX_CMDLINE_SIZE);
+		strlcat(bootargs, root, MAX_CMDLINE_SIZE);
+		strlcat(bootargs, " ", MAX_CMDLINE_SIZE);
+	}
+
+	if (parameters)
+		strlcat(bootargs, parameters, MAX_CMDLINE_SIZE);
+
+	printf("Kernel command line: '%s'\n", bootargs);
 }
