@@ -37,7 +37,8 @@ static int console_width, console_height,
     console_size;
 
 /* Colors in BGRA: background and foreground */
-static uint32_t console_color[2] = { 0x00000000, 0xFFA0A000 };
+uint32_t console_color[2] = { 0x00000000, 0xFFA0A000 };
+uint32_t console_oldbg, console_oldfg;
 
 static unsigned char *console_fb = 0LL;
 
