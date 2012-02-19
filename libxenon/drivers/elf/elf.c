@@ -332,7 +332,8 @@ void elf_runWithDeviceTree (void *elf_addr, int elf_size, void *dt_addr, int dt_
 		printf(" ! fdt_pack() failed\n"); 
                 return;
         }
-
+	
+	memdcbst(ELF_DEVTREE_START,ELF_DEVTREE_MAX_SIZE);
 	printf(" * Device tree prepared\n"); 
 	
 	elf_runFromMemory(elf_addr,elf_size);
@@ -359,6 +360,7 @@ void kernel_relocate_initrd(void *start, size_t size)
         
         memset(INITRD_RELOC_START,0,INITRD_MAX_SIZE);
         memcpy(INITRD_RELOC_START,start,size);
+	memdcbst(INITRD_RELOC_START,INITRD_MAX_SIZE);
         
         initrd_start = INITRD_RELOC_START;
         initrd_size = size;
