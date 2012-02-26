@@ -1124,6 +1124,12 @@ void xenos_autoset_mode(void)
 	default:
 		break;
 	}
+		
+	// check for edid from hdmi/dvi
+	if(mode!=VIDEO_MODE_HDMI_720P)
+		if(xenos_get_edid()){
+			mode = VIDEO_MODE_HDMI_720P;
+		}
 	
 	xenos_set_mode(&xenos_modes[mode]);
 }
