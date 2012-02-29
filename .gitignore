@@ -1,0 +1,4 @@
+*.o
+nbproject/*
+toolchain/build.log
+libxenon/ports/xenon/libxenon.a
