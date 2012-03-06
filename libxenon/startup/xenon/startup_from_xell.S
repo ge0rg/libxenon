@@ -108,7 +108,7 @@ after_slb:
 
 	mfspr %r3, pir
 	addi %r3, %r3, 1
-	slwi %r3, %r3, 16 // 0x10000 bytes per thread
+	slwi %r3, %r3, 18 // 0x40000 bytes per thread
 	lis %r4,0x8000
 	andc %r4,%r1,%r4
 	sub %r3, %r4, %r3

@@ -6,6 +6,7 @@
 #define PAGE_BITS 12
 
 #define OFF_REG(r) r * 8
+#define OFF_FPREG(r) (r+40) * 8
 #define REG_LR 32
 #define REG_CTR 33
 #define REG_CR 34
@@ -14,6 +15,8 @@
 #define REG_SRR1 37
 #define REG_DAR 38
 #define REG_PIR 39
+
+#define HV_CONTEXT_SIZE 0x400
 
 .extern pagetable
 
@@ -112,6 +115,7 @@ ex_isi:
 	std %r28, OFF_REG(28)(%r31)
 	std %r29, OFF_REG(29)(%r31)
 	std %r30, OFF_REG(30)(%r31)
+
 	mfsprg0 %r4
 	std %r4, OFF_REG(31)(%r31)
 	mflr %r4
@@ -521,9 +525,45 @@ user_segfault_handler:
 	mfsprg0 %r4
 	std %r4, OFF_REG(31)(%r31)
 
+	mfmsr %r5
+	ori %r5, %r5, 0x2000 // FP available
+	mtmsr %r5
+
+	stfd %f0, OFF_FPREG(0)(%r31)
+	stfd %f1, OFF_FPREG(1)(%r31)
+	stfd %f2, OFF_FPREG(2)(%r31)
+	stfd %f3, OFF_FPREG(3)(%r31)
+	stfd %f4, OFF_FPREG(4)(%r31)
+	stfd %f5, OFF_FPREG(5)(%r31)
+	stfd %f6, OFF_FPREG(6)(%r31)
+	stfd %f7, OFF_FPREG(7)(%r31)
+	stfd %f8, OFF_FPREG(8)(%r31)
+	stfd %f9, OFF_FPREG(9)(%r31)
+	stfd %f10, OFF_FPREG(10)(%r31)
+	stfd %f11, OFF_FPREG(11)(%r31)
+	stfd %f12, OFF_FPREG(12)(%r31)
+	stfd %f13, OFF_FPREG(13)(%r31)
+	stfd %f14, OFF_FPREG(14)(%r31)
+	stfd %f15, OFF_FPREG(15)(%r31)
+	stfd %f16, OFF_FPREG(16)(%r31)
+	stfd %f17, OFF_FPREG(17)(%r31)
+	stfd %f18, OFF_FPREG(18)(%r31)
+	stfd %f19, OFF_FPREG(19)(%r31)
+	stfd %f20, OFF_FPREG(20)(%r31)
+	stfd %f21, OFF_FPREG(21)(%r31)
+	stfd %f22, OFF_FPREG(22)(%r31)
+	stfd %f23, OFF_FPREG(23)(%r31)
+	stfd %f24, OFF_FPREG(24)(%r31)
+	stfd %f25, OFF_FPREG(25)(%r31)
+	stfd %f26, OFF_FPREG(26)(%r31)
+	stfd %f27, OFF_FPREG(27)(%r31)
+	stfd %f28, OFF_FPREG(28)(%r31)
+	stfd %f29, OFF_FPREG(29)(%r31)
+	stfd %f30, OFF_FPREG(30)(%r31)
+	stfd %f31, OFF_FPREG(31)(%r31)
 
 	mfsprg1 %r8
-	addi %r8,%r8,0x200
+	addi %r8,%r8,HV_CONTEXT_SIZE
 	mtsprg1 %r8
 	
 	mfpir %r3
@@ -553,10 +593,43 @@ sfh32:
 
 sfh64:
 	mfsprg1 %r8
-	subi %r8,%r8,0x200
+	subi %r8,%r8,HV_CONTEXT_SIZE
 	mtsprg1 %r8
 
 	mfsprg1 %r31
+
+	lfd %f0, OFF_FPREG(0)(%r31)
+	lfd %f1, OFF_FPREG(1)(%r31)
+	lfd %f2, OFF_FPREG(2)(%r31)
+	lfd %f3, OFF_FPREG(3)(%r31)
+	lfd %f4, OFF_FPREG(4)(%r31)
+	lfd %f5, OFF_FPREG(5)(%r31)
+	lfd %f6, OFF_FPREG(6)(%r31)
+	lfd %f7, OFF_FPREG(7)(%r31)
+	lfd %f8, OFF_FPREG(8)(%r31)
+	lfd %f9, OFF_FPREG(9)(%r31)
+	lfd %f10, OFF_FPREG(10)(%r31)
+	lfd %f11, OFF_FPREG(11)(%r31)
+	lfd %f12, OFF_FPREG(12)(%r31)
+	lfd %f13, OFF_FPREG(13)(%r31)
+	lfd %f14, OFF_FPREG(14)(%r31)
+	lfd %f15, OFF_FPREG(15)(%r31)
+	lfd %f16, OFF_FPREG(16)(%r31)
+	lfd %f17, OFF_FPREG(17)(%r31)
+	lfd %f18, OFF_FPREG(18)(%r31)
+	lfd %f19, OFF_FPREG(19)(%r31)
+	lfd %f20, OFF_FPREG(20)(%r31)
+	lfd %f21, OFF_FPREG(21)(%r31)
+	lfd %f22, OFF_FPREG(22)(%r31)
+	lfd %f23, OFF_FPREG(23)(%r31)
+	lfd %f24, OFF_FPREG(24)(%r31)
+	lfd %f25, OFF_FPREG(25)(%r31)
+	lfd %f26, OFF_FPREG(26)(%r31)
+	lfd %f27, OFF_FPREG(27)(%r31)
+	lfd %f28, OFF_FPREG(28)(%r31)
+	lfd %f29, OFF_FPREG(29)(%r31)
+	lfd %f30, OFF_FPREG(30)(%r31)
+	lfd %f31, OFF_FPREG(31)(%r31)
 
 	cmplwi %r3,0
 	bne 1f
@@ -571,6 +644,7 @@ sfh64:
 except_return:
 
 	mfsprg1 %r31
+
 	ld %r0, OFF_REG(0)(%r31)
 	ld %r5, OFF_REG(5)(%r31)
 	ld %r6, OFF_REG(6)(%r31)
@@ -683,7 +757,7 @@ dump:
 
 dump_from_pagefault:
 	mfsprg1 %r31
-	addi %r8,%r31,0x200 /* move to next context in stack in case there's nested segfaults */
+	addi %r8,%r31,HV_CONTEXT_SIZE /* move to next context in stack in case there's nested segfaults */
 	mtsprg1 %r8
 	
 	mfsrr0 %r4
@@ -701,7 +775,7 @@ dump_from_pagefault:
 
 	mr %r30,%r3
 	mr %r3,%r31
-	li %r4,0x200
+	li %r4,HV_CONTEXT_SIZE
 	bl memdcbf
 	mr %r3,%r30
 
