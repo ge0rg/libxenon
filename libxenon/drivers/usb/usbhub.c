@@ -45,17 +45,7 @@
     ********************************************************************* */
 
 
-#ifndef _CFE_
-#include <stdio.h>
-#include <time.h>
-#include <memory.h>
-#include <stdint.h>
-#include "usbhack.h"
-#include "lib_malloc.h"
-#include "lib_queue.h"
-#else
 #include "cfe.h"
-#endif
 
 #include "usbchap9.h"
 #include "usbd.h"
@@ -352,7 +342,7 @@ static int usbhub_attach(usbdev_t *dev,usb_driver_t *drv)
 {
     usb_device_status_t devstatus;
     usb_config_descr_t *cfgdscr;
-    usb_interface_descr_t *ifdscr;
+//    usb_interface_descr_t *ifdscr;
     usb_endpoint_descr_t *epdscr;
     usbhub_softc_t *softc;
     
@@ -374,7 +364,7 @@ static int usbhub_attach(usbdev_t *dev,usb_driver_t *drv)
 
     cfgdscr = dev->ud_cfgdescr;
     epdscr = usb_find_cfg_descr(dev,USB_ENDPOINT_DESCRIPTOR_TYPE,0);
-    ifdscr = usb_find_cfg_descr(dev,USB_INTERFACE_DESCRIPTOR_TYPE,0);
+    /*ifdscr =*/ usb_find_cfg_descr(dev,USB_INTERFACE_DESCRIPTOR_TYPE,0);
 
     /*
      * Get device status (is this really necessary?)

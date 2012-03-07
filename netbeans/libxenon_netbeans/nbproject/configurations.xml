@@ -23,7 +23,6 @@
                 <in>xee.c</in>
                 <in>xee.h</in>
               </df>
-              <in>cube.elf.s</in>
             </df>
           </df>
           <df name="profiling">
@@ -253,23 +252,16 @@
         </df>
         <df name="newlib">
           <in>dirent.h</in>
+          <in>malloc_lock.h</in>
           <in>newlib.c</in>
           <in>vfs.h</in>
         </df>
         <df name="nocfe">
-          <in>addrspace.h</in>
           <in>cfe.h</in>
-          <in>cfe_console.h</in>
-          <in>cfe_timer.h</in>
-          <in>cpu_config.h</in>
           <in>lib_malloc.c</in>
           <in>lib_malloc.h</in>
-          <in>lib_physio.c</in>
-          <in>lib_physio.h</in>
-          <in>lib_printf.h</in>
           <in>lib_queue.c</in>
           <in>lib_queue.h</in>
-          <in>lib_string.h</in>
           <in>lib_types.h</in>
         </df>
         <df name="pci">
@@ -388,7 +380,14 @@
         <in>xetypes.h</in>
       </df>
       <df name="ports">
+        <df name="bzip2">
+        </df>
+        <df name="freetype">
+        </df>
+        <df name="libpng">
+        </df>
         <df name="xenon">
+          <in>bin2s.c</in>
           <in>crt0.s</in>
           <in>crt1.s</in>
           <in>crti.s</in>
@@ -403,6 +402,8 @@
       </df>
     </df>
     <df name="toolchain" root="../../toolchain">
+      <df name="libpng-1.5.7">
+      </df>
     </df>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -437,6 +438,9 @@
               <pElem>../../libxenon/drivers/lwip/include/ipv4</pElem>
               <pElem>../../libxenon/drivers/lwip/xenon/include</pElem>
             </incDir>
+            <preprocessorList>
+              <Elem>_CFE_</Elem>
+            </preprocessorList>
           </cTool>
         </makeTool>
       </makefileType>

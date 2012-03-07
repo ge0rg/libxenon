@@ -47,37 +47,16 @@
     ********************************************************************* */
 
 
-#ifdef __mips
-#if ((defined(__MIPSEB)+defined(__MIPSEL)) != 1)
-#error "Either __MIPSEB or __MIPSEL must be defined!"
-#endif
-#endif
-
-
 #ifndef _LIB_TYPES_H
 #define _LIB_TYPES_H
-
-/*  *********************************************************************
-    *  Constants
-    ********************************************************************* */
-
-#ifndef NULL
-#define NULL 0
-#endif
-
-#ifndef TRUE
-#define TRUE 1
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
 
 /*  *********************************************************************
     *  Basic types
     ********************************************************************* */
 
+#include <stdio.h>
 #include <stdint.h>
+#include <xetypes.h>
 
 #define unsigned signed		/* Kludge to get unsigned size-shaped type. */
 typedef __SIZE_TYPE__ intptr_t;
@@ -85,20 +64,12 @@ typedef __SIZE_TYPE__ intptr_t;
 typedef __SIZE_TYPE__ uintptr_t;
 
 /*  *********************************************************************
-    *  Macros
-    ********************************************************************* */
-
-#ifndef offsetof
-#define offsetof(type,memb) ((size_t)&((type *)0)->memb)
-#endif
-
-/*  *********************************************************************
     *  Structures
     ********************************************************************* */
 
-typedef struct cons_s {
+/*typedef struct cons_s {
     char *str;
     int num;
-} cons_t;
+} cons_t;*/
 
 #endif

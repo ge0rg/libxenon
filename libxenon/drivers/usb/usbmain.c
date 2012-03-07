@@ -46,13 +46,13 @@
 
 
 #include <nocfe/cfe.h>
-#include <nocfe/lib_physio.h>
 
 #if CFG_PCI
 #include "pcireg.h"
 #include "pcivar.h"
 #endif
 
+#include "usbmain.h"
 #include "usbchap9.h"
 #include "usbd.h"
 #include "pci/io.h"

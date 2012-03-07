@@ -10,7 +10,7 @@
             <sourceEncoding>US-ASCII</sourceEncoding>
             <make-dep-projects/>
             <sourceRootList>
-                <sourceRootElem>C:/X360 Hack/x360dev/ppc/libxenon/devkitxenon/examples/xenon/file/browser</sourceRootElem>
+                <sourceRootElem>../../devkitxenon/examples/xenon/file/browser</sourceRootElem>
             </sourceRootList>
             <confList>
                 <confElem>

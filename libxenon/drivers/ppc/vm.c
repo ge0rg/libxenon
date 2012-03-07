@@ -4,7 +4,6 @@
 
 #include "register.h"
 #include "elf/elf_abi.h"
-#include "nocfe/lib_physio.h"
 #include "usb/tinyehci/ehci_types.h"
 
 /* Goal is to provide a *simple* memory layout with the following features:

@@ -46,17 +46,7 @@
     ********************************************************************* */
 
 
-#ifndef _CFE_
-#include <stdio.h>
-#include <time.h>
-#include <memory.h>
-#include <stdint.h>
-#include "usbhack.h"
-#include "lib_malloc.h"
-#include "lib_queue.h"
-#else
 #include "cfe.h"
-#endif
 
 #include "usbchap9.h"
 #include "usbd.h"

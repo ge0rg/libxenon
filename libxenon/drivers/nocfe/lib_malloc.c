@@ -53,8 +53,9 @@
 #include <stdlib.h>
 #endif
 
+#include <stdio.h>
+#include <stdlib.h>
 #include "lib_types.h"
-#include "lib_printf.h"
 #include "lib_malloc.h"
 
 #define memnode_data(t,m) (t) (((memnode_t *) (m))+1)

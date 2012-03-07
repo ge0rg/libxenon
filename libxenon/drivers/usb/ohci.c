@@ -59,7 +59,6 @@
 #include "lib_queue.h"
 #else
 #include "cfe.h"
-#include "lib_physio.h"
 #endif
 
 #include "usbchap9.h"
@@ -122,13 +121,13 @@ extern void *ptov(uint32_t x);
 #define OHCI_VTOD(ptr) (PHYS_TO_DMA(OHCI_VTOP(ptr)))
 
 #define OHCI_WRITECSR(softc,x,y) \
-    phys_write32(((softc)->ohci_regs + (x)),(y))
+    write32(((softc)->ohci_regs + (x)),(y))
 #define OHCI_READCSR(softc,x) \
-    phys_read32(((softc)->ohci_regs + (x)))
+    read32(((softc)->ohci_regs + (x)))
 #endif /* _CFE_ */
 
-#define OHCI_INVAL_RANGE(s,l)   CACHE_DMA_INVAL(s,l)
-#define OHCI_FLUSH_RANGE(s,l)   CACHE_DMA_SYNC(s,l)
+#define OHCI_INVAL_RANGE(s,l)   memdcbf(s,l)
+#define OHCI_FLUSH_RANGE(s,l)   memdcbst(s,l)
 
 /*
  * Debug message macro
@@ -1846,7 +1845,7 @@ static int ohci_roothub_strdscr(uint8_t *ptr,char *str)
 static int ohci_roothub_req(ohci_softc_t *softc,usb_device_request_t *req)
 {
     uint8_t *ptr;
-    uint16_t wLength;
+//    uint16_t wLength;
     uint16_t wValue;
     uint16_t wIndex;
     usb_port_status_t ups;
@@ -1858,7 +1857,7 @@ static int ohci_roothub_req(ohci_softc_t *softc,usb_device_request_t *req)
 
     ptr = softc->ohci_rh_buf;
 
-    wLength = GETUSBFIELD(req,wLength);
+//    wLength = GETUSBFIELD(req,wLength);
     wValue  = GETUSBFIELD(req,wValue);
     wIndex  = GETUSBFIELD(req,wIndex);
 
@@ -2163,7 +2162,7 @@ static int ohci_roothub_xfer(usbbus_t *bus,usb_ept_t *uept,usbreq_t *ur)
 {
     ohci_softc_t *softc = (ohci_softc_t *) bus->ub_hwsoftc;
     ohci_endpoint_t *ept = (ohci_endpoint_t *) uept;
-    int res;
+//    int res;
 
     switch (ept->ep_num) {
 
@@ -2186,7 +2185,7 @@ static int ohci_roothub_xfer(usbbus_t *bus,usb_ept_t *uept,usbreq_t *ur)
 
 		req = (usb_device_request_t *) ur->ur_buffer;
 
-		res = ohci_roothub_req(softc,req);
+		/*res =*/ ohci_roothub_req(softc,req);
 #ifdef _OHCI_DEBUG_
 		if (res != 0) printf("Root hub request returned an error\n");
 #endif
