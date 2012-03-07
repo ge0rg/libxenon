@@ -115,7 +115,7 @@ after_slb:
 
 	mtsprg1 %r3 // HV context base
 
-	lis %r3,8
+	lis %r3,32
 	subf %r1, %r3, %r1
 
 		/* wake up secondary thread */
