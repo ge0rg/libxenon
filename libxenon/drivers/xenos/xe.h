@@ -7,8 +7,6 @@
 extern "C" {
 #endif
 
-#include <nocfe/lib_malloc.h>
-
 #define XE_MAX_INDICES_PER_DRAW 65535
 
 #define SHADER_TYPE_PIXEL 1
@@ -258,7 +256,6 @@ struct XenosDevice
 	int dirty;
 
 		/* private */
-    mempool_t mempool;
 	u32 rb_secondary_base;
 	volatile void *rb, *rb_primary, *rb_secondary;
 	int rb_primary_wptr, rb_secondary_wptr;

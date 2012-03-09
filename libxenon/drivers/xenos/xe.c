@@ -13,13 +13,7 @@
 #include <time/time.h>
 #include <debug.h>
 
-#define RINGBUFFER_BASE 0x10000000
-#define RINGBUFFER_SIZE 0x0E000000
-
-#define RINGBUFFER_RESERVED_ZONE 0x20000
-
-#define MEMPOOL_BASE (RINGBUFFER_BASE+RINGBUFFER_RESERVED_ZONE)
-#define MEMPOOL_SIZE (RINGBUFFER_SIZE-RINGBUFFER_RESERVED_ZONE)
+#define WRITEBACK_ZONE_SIZE 0x20000
 
 #define RPTR_WRITEBACK 0x10000
 #define SCRATCH_WRITEBACK 0x10100
@@ -71,7 +65,7 @@ void *Xe_pAlloc(struct XenosDevice *xe, u32 *phys, int size, int align)
 	if (!align)
 		align = size;
 
-    r=kmalloc(&xe->mempool,size,align);
+    r=memalign(align,size);
     if (!r)
         Xe_Fatal(xe, "out of memory\n");
 
@@ -83,7 +77,7 @@ void *Xe_pAlloc(struct XenosDevice *xe, u32 *phys, int size, int align)
 
 void Xe_pFree(struct XenosDevice *xe, void * ptr)
 {
-    kfree(&xe->mempool,ptr);
+    free(ptr);
 }
 
 void Xe_pInvalidateGpuCache_Primary(struct XenosDevice *xe, int base, int size)
@@ -962,11 +956,8 @@ void Xe_Init(struct XenosDevice *xe)
 {
 	memset(xe, 0, sizeof(*xe));
 
-    xe->regs = (void*)0xec800000;
-    xe->rb = xe->rb_primary = (void*)(RINGBUFFER_BASE | 0x80000000);
+	xe->regs = (void*)0xec800000;
 
-    kmeminit(&xe->mempool,(unsigned char *)(MEMPOOL_BASE | 0x80000000),MEMPOOL_SIZE);
-	
 	xe->tex_fb.ptr = r32(0x6110);
 	xe->tex_fb.wpitch = r32(0x6120) * 4;
 	xe->tex_fb.width = r32(0x6134);
@@ -978,23 +969,24 @@ void Xe_Init(struct XenosDevice *xe)
 	
 	printf("Framebuffer %d x %d @ %08x\n", xe->tex_fb.width, xe->tex_fb.height, xe->tex_fb.ptr);
 
+	u32 rb_phys=0;
+	xe->rb = Xe_pAlloc(xe,&rb_phys,WRITEBACK_ZONE_SIZE,WRITEBACK_ZONE_SIZE);
+
 	u32 rb_primary_phys = Xe_pRBAlloc(xe);
 
-//	memset((void*)xe->rb, 0xCC, RINGBUFFER_SIZE);
-
 	Xe_pMasterInit(xe, rb_primary_phys);
-	Xe_pEnableWriteback(xe, RINGBUFFER_BASE + RPTR_WRITEBACK, 6);
+	Xe_pEnableWriteback(xe, rb_phys + RPTR_WRITEBACK, 6);
 	
 	Xe_pSyncFromDevice(xe, xe->rb + RPTR_WRITEBACK, 4);
 	
-	Xe_pWriteReg(xe, 0x0774, RINGBUFFER_BASE + SCRATCH_WRITEBACK);
+	Xe_pWriteReg(xe, 0x0774, rb_phys + SCRATCH_WRITEBACK);
 	Xe_pWriteReg(xe, 0x0770, 0x20033);
 
 	Xe_pWriteReg(xe, 0x15e0, 0x1234567);
 	
 	Xe_pGInit(xe);
 
-	Xe_pInvalidateGpuCache(xe, RINGBUFFER_BASE, RINGBUFFER_SIZE);
+	Xe_pInvalidateGpuCache(xe, 0, 0x20000000); // whole DRAM
 }
 
 void Xe_SetRenderTarget(struct XenosDevice *xe, struct XenosSurface *rt)
@@ -1689,7 +1681,7 @@ void Xe_pSetState(struct XenosDevice *xe)
 	if (xe->dirty & DIRTY_INTEGER)
 		Xe_pUploadIntegerConstants(xe);
 
-//	if (xe->dirty & DIRTY_MISC)
+	if (xe->dirty & DIRTY_MISC)
 	{
 		if (xe->scissor_enable)
 			Xe_pSetSurfaceClip(xe, 0, 0, xe->scissor_ltrb[0], xe->scissor_ltrb[1], xe->scissor_ltrb[2], xe->scissor_ltrb[3]);

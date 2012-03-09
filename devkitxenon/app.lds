@@ -22,7 +22,7 @@ SECTIONS
 	bss_end = .;
 
 	heap_begin = .;
-	. = 0x90000000;
+	. = 0x9E000000;
 	__libc_stack_end = . ;
 	heap_end = .;
 	. = 0xa0000000;
