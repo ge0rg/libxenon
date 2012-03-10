@@ -16,7 +16,7 @@ see file COPYING or http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 #include <ppc/timebase.h>
 #include <time/time.h>
 #include <libfdt/libfdt.h>
-#include <nocfe/addrspace.h>
+#include <nocfe/cfe.h>
 
 #include "elf.h"
 #include "elf_abi.h"
