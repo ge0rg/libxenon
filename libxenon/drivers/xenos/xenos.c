@@ -1127,7 +1127,7 @@ void xenos_autoset_mode(void)
 		
 	// check for edid from hdmi/dvi
 	if(mode!=VIDEO_MODE_HDMI_720P)
-		if(xenos_get_edid()){
+		if(xenos_detect_hdmi_monitor()){
 			mode = VIDEO_MODE_HDMI_720P;
 		}
 	
