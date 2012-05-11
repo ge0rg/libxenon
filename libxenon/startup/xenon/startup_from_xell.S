@@ -6,11 +6,15 @@
 
 .align 8
 _start:
+	b 1f
+	.long	0x5f617267
 
-b 1f
+__argv:
+	.long	0 // magic value
+	.long	0 // argc
+	.long	0 // argv
 
 . = _start + 0x60
-
 2:
 	mfspr %r3, pir
 	lwz %r4, secondary_lock@l(0)
@@ -152,11 +156,7 @@ after_slb:
 b32:
 	bl c_register_frame
 	bl call_ctors
-	bl main
-
-	bl exit
-	
-	b .
+	b __crtmain
 
 .globl wait
 wait:
@@ -233,3 +233,11 @@ return_to_xell:
 	mtsrr0	%r3
 
 	rfid
+
+.globl		__system_argv
+.section	.sdata, "aw", @progbits
+.align		2
+.type		__system_argv, @object
+.size		__system_argv, 4
+__system_argv:
+	.long 	__argv

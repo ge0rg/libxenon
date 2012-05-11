@@ -18,6 +18,7 @@ see file COPYING or http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 #include <libfdt/libfdt.h>
 #include <nocfe/cfe.h>
 
+#include "xetypes.h"
 #include "elf.h"
 #include "elf_abi.h"
 
@@ -28,9 +29,10 @@ see file COPYING or http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 #define ELF_DEVTREE_MAX_SIZE 0x10000
 #define MAX_CMDLINE_SIZE 255
 
-#define ELF_CODE_RELOC_START ((void*)0x87FF0000) /* TODO: must keep this synced with lis %r4,0x87ff and lis %r4,0x07ff in elf_run.S */
-#define ELF_TEMP_BEGIN ((void*)0x87F80000)
-#define ELF_DATA_RELOC_START ((void*)0x88000000)
+#define ELF_CODE_RELOC_START	((void*)0x87FF0000) /* TODO: must keep this synced with lis %r4,0x87ff and lis %r4,0x07ff in elf_run.S */
+#define ELF_TEMP_BEGIN		((void*)0x87F80000)
+#define ELF_DATA_RELOC_START	((void*)0x88000000)
+#define ELF_ARGV_BEGIN		((void*)0x8A000000)
 #define ELF_GET_RELOCATED(x) (ELF_CODE_RELOC_START+((unsigned long)(x)-(unsigned long)elfldr_start))
 
 extern void shutdown_drivers();
@@ -195,12 +197,47 @@ static void __attribute__ ((section (".elfldr"),noreturn,flatten,optimize("O2"))
 	elf_putch('\n');
 
 	*(volatile unsigned long *)ELF_GET_RELOCATED(&elf_secondary_hold_addr) = ehdr->e_entry + 0x60;
-	
+
+	// load the argv struct
+	void *new_argv = 0x80000008 + ehdr->e_entry;
+	elf_memcpy(new_argv, ELF_ARGV_BEGIN, sizeof(struct __argv));
+	elf_sync_before_exec(new_argv, sizeof(struct __argv));
+
 	// call elf_run()
 	void(*call)(unsigned long,unsigned long) = ELF_GET_RELOCATED(elf_run);
 	call(ehdr->e_entry,((unsigned long)ELF_DEVTREE_START)&0x7fffffff);
 	
 	for(;;);
+}
+
+void elf_setArgcArgv(int argc, char *argv[])
+{
+	int i;
+
+	// create argv struct and initialize it
+	struct __argv args;
+	memset(&args, 0, sizeof(struct __argv));
+	args.magic = ARGV_MAGIC;
+	args.argc = argc;
+
+	// set the start of the argv array
+	args.argv = (char*) ELF_ARGV_BEGIN + sizeof(struct __argv);
+	char *position = args.argv + (sizeof(char*) * argc);
+
+	// copy all the argument strings
+	for (i = 0; i < argc; i++) {
+		strcpy(position, argv[i]);
+		args.argv[i] = position;
+		position += strlen(argv[i]);
+
+		// be sure its null terminated
+		strcpy(position, "\0");
+		position++;
+	}
+
+	// move the struct to its final position
+	memmove(ELF_ARGV_BEGIN, &args, sizeof(args));
+	elf_sync_before_exec(ELF_ARGV_BEGIN, sizeof(args) + position);
 }
 
 void elf_runFromMemory (void *addr, int size)

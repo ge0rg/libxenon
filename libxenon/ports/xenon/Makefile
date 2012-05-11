@@ -35,6 +35,7 @@ CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -fpermissive -Wno-sign-compare -W
 AFLAGS = -Iinclude -m32 $(INCLUDES)
 
 LIBOBJS = crti.o crtn.o \
+	../../startup/xenon/argv.o \
 	../../startup/xenon/startup_from_xell.o \
 	../../startup/xenon/crt1.o \
 	../../drivers/console/console.o \

@@ -73,6 +73,15 @@ typedef unsigned int BOOL;
 #endif /* BYTE_ORDER */
 /*+----------------------------------------------------------------------------------------------+*/
 
+struct __argv {
+	int magic;	// magic value to indicate a valid struct
+	int argc;	// count of arguments passed
+	char **argv;	// pointer array containing arguments
+};
+
+extern struct __argv * __system_argv;
+
+#define ARGV_MAGIC 0x5f617267
 
 #ifdef __cplusplus
    }
