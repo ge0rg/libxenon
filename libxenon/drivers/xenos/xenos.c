@@ -1125,11 +1125,19 @@ void xenos_autoset_mode(void)
 		break;
 	}
 		
-	// check for edid from hdmi/dvi
-	if(mode!=VIDEO_MODE_HDMI_720P)
-		if(xenos_detect_hdmi_monitor(xenos_get_edid())){
+	struct edid * monitor_edid = xenos_get_edid();
+
+	// fix some non standart mode (vga + yuv or hdmi/dvi + yuv )
+	if(monitor_edid){
+		// HDMI or DVI
+		if(monitor_edid->input&DRM_EDID_INPUT_DIGITAL){
 			mode = VIDEO_MODE_HDMI_720P;
 		}
+		// VGA
+		else{
+			mode = VIDEO_MODE_VGA_1024x768;
+		}
+	}
 	
 	xenos_set_mode(&xenos_modes[mode]);
 }
@@ -1164,6 +1172,10 @@ void xenos_init(int videoMode)
 
 int xenos_is_overscan()
 {
-	assert(xenos_current_mode);
-	return xenos_current_mode->overscan;
+	if(xenos_current_mode)
+		return xenos_current_mode->overscan;
+	else{
+		printf("Xenos not initialized\n");
+		exit(-1);
+	}
 }
