@@ -1,47 +1,47 @@
 /*  *********************************************************************
     *  Broadcom Common Firmware Environment (CFE)
-    *  
+    *
     *  USB Mass-Storage driver			File: usbmass.c
-    *  
+    *
     *  This driver deals with mass-storage devices that support
     *  the SCSI Transparent command set and USB Bulk-Only protocol
-    *  
+    *
     *  Author:  Mitch Lichtenberg
-    *  
-    *********************************************************************  
+    *
+    *********************************************************************
     *
     *  Copyright 2000,2001,2002,2003
     *  Broadcom Corporation. All rights reserved.
-    *  
-    *  This software is furnished under license and may be used and 
-    *  copied only in accordance with the following terms and 
-    *  conditions.  Subject to these conditions, you may download, 
-    *  copy, install, use, modify and distribute modified or unmodified 
-    *  copies of this software in source and/or binary form.  No title 
+    *
+    *  This software is furnished under license and may be used and
+    *  copied only in accordance with the following terms and
+    *  conditions.  Subject to these conditions, you may download,
+    *  copy, install, use, modify and distribute modified or unmodified
+    *  copies of this software in source and/or binary form.  No title
     *  or ownership is transferred hereby.
-    *  
-    *  1) Any source code used, modified or distributed must reproduce 
-    *     and retain this copyright notice and list of conditions 
+    *
+    *  1) Any source code used, modified or distributed must reproduce
+    *     and retain this copyright notice and list of conditions
     *     as they appear in the source file.
-    *  
-    *  2) No right is granted to use any trade name, trademark, or 
-    *     logo of Broadcom Corporation.  The "Broadcom Corporation" 
-    *     name may not be used to endorse or promote products derived 
-    *     from this software without the prior written permission of 
+    *
+    *  2) No right is granted to use any trade name, trademark, or
+    *     logo of Broadcom Corporation.  The "Broadcom Corporation"
+    *     name may not be used to endorse or promote products derived
+    *     from this software without the prior written permission of
     *     Broadcom Corporation.
-    *  
+    *
     *  3) THIS SOFTWARE IS PROVIDED "AS-IS" AND ANY EXPRESS OR
     *     IMPLIED WARRANTIES, INCLUDING BUT NOT LIMITED TO, ANY IMPLIED
-    *     WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
-    *     PURPOSE, OR NON-INFRINGEMENT ARE DISCLAIMED. IN NO EVENT 
-    *     SHALL BROADCOM BE LIABLE FOR ANY DAMAGES WHATSOEVER, AND IN 
+    *     WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+    *     PURPOSE, OR NON-INFRINGEMENT ARE DISCLAIMED. IN NO EVENT
+    *     SHALL BROADCOM BE LIABLE FOR ANY DAMAGES WHATSOEVER, AND IN
     *     PARTICULAR, BROADCOM SHALL NOT BE LIABLE FOR DIRECT, INDIRECT,
-    *     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+    *     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
     *     (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
     *     GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-    *     BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY 
-    *     OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
-    *     TORT (INCLUDING NEGLIGENCE OR OTHERWISE), EVEN IF ADVISED OF 
+    *     BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+    *     OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+    *     TORT (INCLUDING NEGLIGENCE OR OTHERWISE), EVEN IF ADVISED OF
     *     THE POSSIBILITY OF SUCH DAMAGE.
     ********************************************************************* */
 
@@ -164,13 +164,13 @@ usbdev_t *usbmass_dev = NULL;		/* XX hack for testing only */
 
 /*  *********************************************************************
     *  usbmass_mass_storage_reset(dev,ifc)
-    *  
+    *
     *  Do a bulk-only mass-storage reset.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   dev - device to reset
     *      ifc - interface number to reset (bInterfaceNum)
-    *  	   
+    *
     *  Return value:
     *  	   status
     ********************************************************************* */
@@ -181,13 +181,13 @@ usbdev_t *usbmass_dev = NULL;		/* XX hack for testing only */
 #if 0
 /*  *********************************************************************
     *  usbmass_get_max_lun(dev,lunp)
-    *  
+    *
     *  Get maximum LUN from device
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   dev - device to reset
     *      lunp - pointer to int to receive max lun
-    *  	   
+    *
     *  Return value:
     *  	   status
     ********************************************************************* */
@@ -210,12 +210,12 @@ static int usbmass_get_max_lun(usbdev_t *dev,int *lunp)
 
 /*  *********************************************************************
     *  usbmass_stall_recovery(dev)
-    *  
+    *
     *  Do whatever it takes to unstick a stalled mass-storage device.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   dev - usb device
-    *  	   
+    *
     *  Return value:
     *  	   nothing
     ********************************************************************* */
@@ -234,14 +234,14 @@ static void usbmass_stall_recovery(usbdev_t *dev)
 
 /*  *********************************************************************
     *  usbmass_read_capacity(dev,sectornum,buffer)
-    *  
+    *
     *  Reads a sector from the device.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   dev - usb device
     *  	   sectornum - sector number to read
     *  	   buffer - place to put sector we read
-    *  	   
+    *
     *  Return value:
     *  	   status
     ********************************************************************* */
@@ -289,7 +289,7 @@ int usbmass_request_sense(usbdev_t *dev)
     softc->umass_curtag++;
 
     /*
-     * Send the CBW 
+     * Send the CBW
      */
 
     res = usb_make_sync_request(dev,softc->umass_outpipe,(uint8_t *) cbw,
@@ -321,15 +321,15 @@ int usbmass_request_sense(usbdev_t *dev)
 
 /*  *********************************************************************
     *  usbmass_read_sector(dev,sectornum,seccnt,buffer)
-    *  
+    *
     *  Reads a sector from the device.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   dev - usb device
     *  	   sectornum - sector number to read
     * 	   seccnt - count of sectors to read
     *  	   buffer - place to put sector we read
-    *  	   
+    *
     *  Return value:
     *  	   status
     ********************************************************************* */
@@ -346,7 +346,7 @@ int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
     uint8_t *sector;
     usbmass_cbw_t *cbw;
     usbmass_csw_t *csw;
-	
+
 	usbmass_softc_t *softc;
 	int res;
 
@@ -381,7 +381,7 @@ int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
     softc->umass_curtag++;
 
     /*
-     * Send the CBW 
+     * Send the CBW
      */
 
     ur1 = usb_make_request(dev,softc->umass_outpipe,(uint8_t *) cbw,
@@ -395,7 +395,7 @@ int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
 
 	ur2 = usb_make_request(dev,softc->umass_inpipe,sector,
 				512*seccnt,UR_FLAG_IN | UR_FLAG_SHORTOK);
-	
+
 	usb_queue_request(ur2);
 
     /*
@@ -454,15 +454,15 @@ int usbmass_read_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt,
 
 /*  *********************************************************************
     *  usbmass_write_sector(dev,sectornum,seccnt,buffer)
-    *  
+    *
     *  Writes a sector to the device
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   dev - usb device
     *  	   sectornum - sector number to write
     * 	   seccnt - count of sectors to write
     *  	   buffer - place to get sector to write
-    *  	   
+    *
     *  Return value:
     *  	   status
     ********************************************************************* */
@@ -509,7 +509,7 @@ static int usbmass_write_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt
     softc->umass_curtag++;
 
     /*
-     * Send the CBW 
+     * Send the CBW
      */
 
     res = usb_make_sync_request(dev,softc->umass_outpipe,(uint8_t *) cbw,
@@ -547,14 +547,14 @@ static int usbmass_write_sector(usbdev_t *dev,uint32_t sectornum,uint32_t seccnt
 
 /*  *********************************************************************
     *  usbmass_read_capacity(dev,sectornum,buffer)
-    *  
+    *
     *  Reads a sector from the device.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   dev - usb device
     *  	   sectornum - sector number to read
     *  	   buffer - place to put sector we read
-    *  	   
+    *
     *  Return value:
     *  	   status
     ********************************************************************* */
@@ -605,7 +605,7 @@ int usbmass_read_capacity(usbdev_t *dev,uint32_t *size)
     softc->umass_curtag++;
 
     /*
-     * Send the CBW 
+     * Send the CBW
      */
 
     res = usb_make_sync_request(dev,softc->umass_outpipe,(uint8_t *) cbw,
@@ -651,27 +651,17 @@ int usbmass_read_capacity(usbdev_t *dev,uint32_t *size)
 
 }
 
-#include <diskio/diskio.h>
-
-int usbmass_read(struct bdev *dev, void *data, lba_t lba, int num);
-int usbmass_write(struct bdev *dev, const void *data, lba_t lba, int num);
-struct bdev_ops usbmass_ops =
-{
-	.read = usbmass_read,
-	.write = usbmass_write
-};
-
 /*  *********************************************************************
     *  usbmass_attach(dev,drv)
-    *  
+    *
     *  This routine is called when the bus scan stuff finds a mass-storage
     *  device.  We finish up the initialization by configuring the
     *  device and allocating our softc here.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   dev - usb device, in the "addressed" state.
     *  	   drv - the driver table entry that matched
-    *  	   
+    *
     *  Return value:
     *  	   0
     ********************************************************************* */
@@ -748,7 +738,7 @@ static int usbmass_attach(usbdev_t *dev,usb_driver_t *drv)
     static int num = 0;
     char name[10];
     sprintf(name, "ud%c", 'a' + num); num++; num %= 26;
-    softc->bdev = register_bdev(softc, &usbmass_ops, name);
+    //softc->bdev = register_bdev(softc, &usbmass_ops, name);
 
     usbmass_dev = dev;
 
@@ -757,15 +747,15 @@ static int usbmass_attach(usbdev_t *dev,usb_driver_t *drv)
 
 /*  *********************************************************************
     *  usbmass_detach(dev)
-    *  
+    *
     *  This routine is called when the bus scanner notices that
     *  this device has been removed from the system.  We should
     *  do any cleanup that is required.  The pending requests
     *  will be cancelled automagically.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   dev - usb device
-    *  	   
+    *
     *  Return value:
     *  	   0
     ********************************************************************* */
@@ -775,27 +765,27 @@ static int usbmass_detach(usbdev_t *dev)
     usbmass_softc_t *softc;
     softc = (usbmass_softc_t *) dev->ud_private;
 
-    unregister_bdev(softc->bdev);
+    //unregister_bdev(softc->bdev);
 
     KFREE(softc);
     return 0;
 }
- 
+
 
 #if 0
 
 /*  *********************************************************************
     *  usbdisk_sectorshift(size)
-    *  
+    *
     *  Given a sector size, return log2(size).  We cheat; this is
     *  only needed for 2048 and 512-byte sectors.
     *  Explicitly using shifts and masks in sector number calculations
     *  helps on 32-bit-only platforms, since we probably won't need
     *  a helper library.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   size - sector size
-    *  	   
+    *
     *  Return value:
     *  	   # of bits to shift
     ********************************************************************* */
@@ -805,21 +795,21 @@ static int usbmass_detach(usbdev_t *dev)
 
 /*  *********************************************************************
     *  usbdisk_probe(drv,probe_a,probe_b,probe_ptr)
-    *  
+    *
     *  Our probe routine.  Attach an empty USB disk device to the firmware.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   drv - driver structure
     *  	   probe_a - not used
     *  	   probe_b - not used
     *  	   probe_ptr - not used
-    *  	   
+    *
     *  Return value:
     *  	   nothing
     ********************************************************************* */
 
 static void usbdisk_probe(cfe_driver_t *drv,
-			      unsigned long probe_a, unsigned long probe_b, 
+			      unsigned long probe_a, unsigned long probe_b,
 			      void *probe_ptr)
 {
     usbdisk_t *softc;
@@ -842,14 +832,14 @@ static void usbdisk_probe(cfe_driver_t *drv,
 
 /*  *********************************************************************
     *  usbdisk_open(ctx)
-    *  
+    *
     *  Process the CFE OPEN call for this device.  For IDE disks,
-    *  the device is reset and identified, and the geometry is 
+    *  the device is reset and identified, and the geometry is
     *  determined.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   ctx - device context
-    *  	   
+    *
     *  Return value:
     *  	   0 if ok, else error code
     ********************************************************************* */
@@ -876,15 +866,15 @@ static int usbdisk_open(cfe_devctx_t *ctx)
 
 /*  *********************************************************************
     *  usbdisk_read(ctx,buffer)
-    *  
+    *
     *  Process a CFE READ command for the IDE device.  This is
     *  more complex than it looks, since CFE offsets are byte offsets
     *  and we may need to read partial sectors.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   ctx - device context
     *  	   buffer - buffer descriptor
-    *  	   
+    *
     *  Return value:
     *  	   number of bytes read, or <0 if an error occured
     ********************************************************************* */
@@ -958,14 +948,14 @@ out:
 
 /*  *********************************************************************
     *  usbdisk_inpstat(ctx,inpstat)
-    *  
+    *
     *  Test input status for the IDE disk.  Disks are always ready
     *  to read.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   ctx - device context
     *  	   inpstat - input status structure
-    *  	   
+    *
     *  Return value:
     *  	   0
     ********************************************************************* */
@@ -980,15 +970,15 @@ static int usbdisk_inpstat(cfe_devctx_t *ctx,iocb_inpstat_t *inpstat)
 
 /*  *********************************************************************
     *  usbdisk_write(ctx,buffer)
-    *  
+    *
     *  Process a CFE WRITE command for the IDE device.  If the write
     *  involves partial sectors, the affected sectors are read first
     *  and the changes are merged in.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   ctx - device context
     *  	   buffer - buffer descriptor
-    *  	   
+    *
     *  Return value:
     *  	   number of bytes write, or <0 if an error occured
     ********************************************************************* */
@@ -1062,19 +1052,19 @@ out:
 
 /*  *********************************************************************
     *  usbdisk_ioctl(ctx,buffer)
-    *  
+    *
     *  Process device I/O control requests for the IDE device.
-    * 
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   ctx - device context
     *  	   buffer - buffer descriptor
-    *  	   
+    *
     *  Return value:
     *  	   0 if ok
     *  	   else error code
     ********************************************************************* */
 
-static int usbdisk_ioctl(cfe_devctx_t *ctx,iocb_buffer_t *buffer) 
+static int usbdisk_ioctl(cfe_devctx_t *ctx,iocb_buffer_t *buffer)
 {
     usbdisk_t *softc = ctx->dev_softc;
     unsigned int info;
@@ -1105,12 +1095,12 @@ static int usbdisk_ioctl(cfe_devctx_t *ctx,iocb_buffer_t *buffer)
 
 /*  *********************************************************************
     *  usbdisk_close(ctx)
-    *  
+    *
     *  Close the I/O device.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   ctx - device context
-    *  	   
+    *
     *  Return value:
     *  	   0 if ok, else error code
     ********************************************************************* */
@@ -1132,7 +1122,7 @@ int usbmass_read(struct bdev *dev, void *data, lba_t lba, int num)
 	char * p = (char *)data;
 	usbmass_softc_t *softc = dev->ctx;
 	lba += dev->offset;
-	
+
 	int r = 0;
 	while (num)
 	{
@@ -1146,7 +1136,7 @@ int usbmass_read(struct bdev *dev, void *data, lba_t lba, int num)
 		r += tl;
 		lba += tl;
 	}
-	
+
 	return r;
 }
 
@@ -1155,7 +1145,7 @@ int usbmass_write(struct bdev *dev, const void *data, lba_t lba, int num)
 	char * p = (char *)data;
 	usbmass_softc_t *softc = dev->ctx;
 	lba += dev->offset;
-	
+
 	int r = 0;
 	while (num)
 	{
@@ -1169,7 +1159,7 @@ int usbmass_write(struct bdev *dev, const void *data, lba_t lba, int num)
 		r += tl;
 		lba += tl;
 	}
-	
+
 	return r;
 }
 

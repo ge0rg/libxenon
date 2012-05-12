@@ -91,10 +91,10 @@ usb_drvlist_t usb_drivers[] = {
      */
 
     {USB_DEVICE_CLASS_HUMAN_INTERFACE,	VENDOR_ANY,PRODUCT_ANY,	&usbhid_driver},
-    {CLASS_ANY,	0x045e,0x28e,	&usbctrl_driver},
-    {CLASS_ANY,	0x045e,0x291,	&usbctrl_driver},
-    {CLASS_ANY,	0x045e,0x2aa,	&usbctrl_driver},
-    {CLASS_ANY,	0x045e,0x2a9,	&usbctrl_driver},
+    {CLASS_ANY,	0x045e,0x291,	&usbctrl_driver}, // RF unit
+    {CLASS_ANY,	0x045e,0x28e,	&usbctrl_driver}, // wired controller
+    {CLASS_ANY,	0x045e,0x2aa,	&usbctrl_driver}, // wireless controller
+    {CLASS_ANY,	0x045e,0x2a9,	&usbctrl_driver}, // wireless controller
     /*
      * Mass storage devices
      */

@@ -1,7 +1,7 @@
 #ifndef __XETYPES_H__
 #define __XETYPES_H__
 
-//#include <stdbool.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -41,7 +41,7 @@ typedef double f64;
 typedef volatile float vf32;
 typedef volatile double vf64;
 /*+----------------------------------------------------------------------------------------------+*/
-
+typedef unsigned long long lba_t;
 
 typedef unsigned int BOOL;
 /*+----------------------------------------------------------------------------------------------+*/

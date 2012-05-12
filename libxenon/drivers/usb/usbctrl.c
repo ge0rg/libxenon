@@ -318,7 +318,7 @@ static int usbctrl_ireq_callback(usbreq_t *ur)
 			//printf("Wireless controller %i has connected\n", uhid->wireless_index);
 			int i;
 			for (i = 0; controller_mask & (1<<i); ++i);
-			printf("attached controller %d\n", i);
+			//printf("attached controller %d\n", i);
 			uhid->index = i;
 			setcontroller(uhid, uhid->index);
 			controller_mask |= 1<<i;
@@ -457,7 +457,9 @@ static int usbctrl_attach(usbdev_t *dev,usb_driver_t *drv)
 	usb_endpoint_descr_t *epdscr;
 	usb_interface_descr_t *ifdscr;
 
-	int wireless = (GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x291) || (GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x2aa) || (GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x2a9);
+	int wireless = (GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x291) || 
+			(GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x2aa) ||
+			(GETUSBFIELD(&dev->ud_devdescr, idProduct) == 0x2a9);
 
 	if(wireless)
 	{
