@@ -697,38 +697,61 @@ xenon_ata_init1(struct xenon_ata_device *dev, uint32_t ioaddress, uint32_t ioadd
 	return 0;
 }
 
-static int ATA_True(void) {
-	return true;
-}
-
 static int ata_ready = 0;
 static int atapi_ready = 0;
 
-static int ata_inserted() {
-	return ata_ready;
-}
-
-static int atapi_inserted() {
+static bool atapi_inserted() {
 	return atapi_ready;
 }
 
+static bool ata_startup(void){
+	return true;
+}
+static bool ata_inserted(void) {
+	return ata_ready;
+}
+static bool ata_readsectors(sec_t sector, sec_t numSectors, void* buffer) {
+	if(xenon_ata_read_sectors(sector,numSectors,buffer))
+		return true;
+	return false;
+}
+static bool atapi_readsectors(sec_t sector, sec_t numSectors, void* buffer) {
+	if(xenon_atapi_read_sectors(sector,numSectors,buffer))
+		return true;
+	return false;
+}
+static bool ata_writesectors(sec_t sector, sec_t numSectors, const void* buffer){
+	if(xenon_ata_write_sectors(sector,numSectors,buffer))
+		return true;
+	else
+		return false;
+}
+static bool ata_clearstatus(void){
+	/**todo*/
+	return true;
+}
+static bool ata_shutdown(void){
+	/**todo*/
+	return true;
+}
+
 DISC_INTERFACE xenon_ata_ops = {
-	.readSectors = (FN_MEDIUM_READSECTORS) & xenon_ata_read_sectors,
-	.writeSectors = (FN_MEDIUM_WRITESECTORS) & xenon_ata_write_sectors,
-	.clearStatus = (FN_MEDIUM_CLEARSTATUS) & ATA_True,
-	.shutdown = (FN_MEDIUM_SHUTDOWN) & ATA_True,
+	.readSectors = (FN_MEDIUM_READSECTORS) & ata_readsectors,
+	.writeSectors = (FN_MEDIUM_WRITESECTORS) & ata_writesectors,
+	.clearStatus = (FN_MEDIUM_CLEARSTATUS) & ata_clearstatus,
+	.shutdown = (FN_MEDIUM_SHUTDOWN) & ata_shutdown,
 	.isInserted = (FN_MEDIUM_ISINSERTED) & ata_inserted,
-	.startup = (FN_MEDIUM_STARTUP) & ATA_True,
+	.startup = (FN_MEDIUM_STARTUP) & ata_startup,
 	.ioType = FEATURE_XENON_ATA,
 	.features = FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_XENON_ATA,
 };
 
 DISC_INTERFACE xenon_atapi_ops = {
-	.readSectors = (FN_MEDIUM_READSECTORS) & xenon_atapi_read_sectors,
-	.clearStatus = (FN_MEDIUM_CLEARSTATUS) & ATA_True,
-	.shutdown = (FN_MEDIUM_SHUTDOWN) & ATA_True,
-	.isInserted = (FN_MEDIUM_ISINSERTED) & ATA_True,
-	.startup = (FN_MEDIUM_STARTUP) & atapi_inserted,
+	.readSectors = (FN_MEDIUM_READSECTORS) & atapi_readsectors,
+	.clearStatus = (FN_MEDIUM_CLEARSTATUS) & ata_clearstatus,
+	.shutdown = (FN_MEDIUM_SHUTDOWN) & ata_shutdown,
+	.isInserted = (FN_MEDIUM_ISINSERTED) & atapi_inserted,
+	.startup = (FN_MEDIUM_STARTUP) & ata_startup,
 	.ioType = FEATURE_XENON_ATAPI,
 	.features = FEATURE_MEDIUM_CANREAD | FEATURE_XENON_ATAPI,
 };
