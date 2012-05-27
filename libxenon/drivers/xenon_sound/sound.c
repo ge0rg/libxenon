@@ -9,7 +9,9 @@
 extern int xenos_is_hdmi;
 
 static int snd_base = 0xea001600, wptr, buffer_len;
-static void *buffer;
+
+static uint8_t buffer[65536] __attribute__ ((aligned (256)));
+static uint32_t descr[0x160] __attribute__ ((aligned (256)));
 
 void xenon_sound_init(void)
 {
@@ -38,11 +40,9 @@ void xenon_sound_init(void)
 	static unsigned char smc_snd[32] = {0x8d, 1, 1};
 	xenon_smc_send_message(smc_snd);
 
-	uint32_t *descr = memalign(256, 0x20 * 8);
 	int descr_base = ((int)descr) & 0x1FFFFFFF;
 	
 	buffer_len = 64*1024;
-	buffer = memalign(256, buffer_len);
 	memset(buffer, 0, buffer_len);
 	memdcbst(buffer, buffer_len);
 	
