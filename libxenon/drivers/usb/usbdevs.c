@@ -96,7 +96,9 @@ usb_drvlist_t usb_drivers[] = {
     {CLASS_ANY,	0x045e,0x28e,	&usbctrl_driver}, // wired controller
     {CLASS_ANY,	0x045e,0x2aa,	&usbctrl_driver}, // wireless controller
     {CLASS_ANY,	0x045e,0x2a9,	&usbctrl_driver}, // wireless controller
-    {CLASS_ANY, 0x045e,0x2b0,   &dummy_driver}, // Kinect, not handled so we load a dummy driver
+    {CLASS_ANY, 0x045e,0x2b0,   &dummy_driver}, // Kinect, not handled so we load a dummy drive
+    {CLASS_ANY,	0x1bad,0xf900,	&usbctrl_driver}, // PDP Afterglow controller
+
     /*
      * Mass storage devices
      */
