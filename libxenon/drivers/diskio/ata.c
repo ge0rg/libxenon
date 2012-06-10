@@ -663,7 +663,9 @@ xenon_ata_init1(struct xenon_ata_device *dev, uint32_t ioaddress, uint32_t ioadd
 	dev->ioaddress2 = ioaddress2;
 
 	dev->prds = memalign(0x10000, MAX_PRDS * sizeof (struct xenon_ata_dma_prd));
-
+	
+	xenon_ata_identify(dev);
+	
 	/* Try to detect if the port is in use by writing to it,
 	   waiting for a while and reading it again.  If the value
 	   was preserved, there is a device connected.  */
@@ -692,7 +694,6 @@ xenon_ata_init1(struct xenon_ata_device *dev, uint32_t ioaddress, uint32_t ioadd
 	xenon_ata_regget2(dev, XENON_ATA_REG2_CONTROL);
 
 	printf("SATA device at %08lx\n", dev->ioaddress);
-	xenon_ata_identify(dev);
 
 	return 0;
 }
