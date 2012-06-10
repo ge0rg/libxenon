@@ -41,6 +41,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/console/console.o \
 	../../drivers/console/telnet_console.o \
 	../../drivers/diskio/ata.o \
+	../../drivers/iso9660/iso9660.o \
 	../../drivers/input/input.o \
 	../../drivers/newlib/newlib.o \
 	../../drivers/newlib/xenon_syscalls.o \
