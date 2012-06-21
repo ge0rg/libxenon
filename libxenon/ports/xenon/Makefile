@@ -54,6 +54,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/ppc/c_except.o \
 	../../drivers/ppc/vm.o \
 	../../drivers/time/time.o \
+	../../drivers/usb/dummy.o \
 	../../drivers/usb/ohci.o \
 	../../drivers/usb/usbctrl.o \
 	../../drivers/usb/usbd.o \

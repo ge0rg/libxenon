@@ -77,6 +77,7 @@ extern usb_driver_t usbcatc_driver;
 extern usb_driver_t usbrtek_driver;
 extern usb_driver_t usbklsi_driver;
 extern usb_driver_t usbasix_driver;
+extern usb_driver_t dummy_driver;
 
 usb_drvlist_t usb_drivers[] = {
 
@@ -95,6 +96,7 @@ usb_drvlist_t usb_drivers[] = {
     {CLASS_ANY,	0x045e,0x28e,	&usbctrl_driver}, // wired controller
     {CLASS_ANY,	0x045e,0x2aa,	&usbctrl_driver}, // wireless controller
     {CLASS_ANY,	0x045e,0x2a9,	&usbctrl_driver}, // wireless controller
+    {CLASS_ANY, 0x045e,0x2b0,   &dummy_driver}, // Kinect, not handled so we load a dummy driver
     /*
      * Mass storage devices
      */
