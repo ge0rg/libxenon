@@ -183,6 +183,19 @@ usb_driver_t *usb_find_driver(usbdev_t *dev)
 	    }
 	list++;
 	}
+	
+	// try to detected wired controller
+	int i;
+	for (i = 0; i < devdescr->bNumConfigurations; i++) {
+		usb_interface_descr_t * cfgdescr = usb_find_cfg_descr(dev, USB_INTERFACE_DESCRIPTOR_TYPE, i);
+		if (cfgdescr) {
+			if(cfgdescr && cfgdescr->bInterfaceSubClass == 93){
+				printf("Wired controller ?\n");
+				return &usbctrl_driver;	
+			}
+
+		}
+	}
 
     printf("Not found.\n");
 
