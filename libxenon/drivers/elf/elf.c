@@ -199,9 +199,12 @@ static void __attribute__ ((section (".elfldr"),noreturn,flatten,optimize("O2"))
 	*(volatile unsigned long *)ELF_GET_RELOCATED(&elf_secondary_hold_addr) = ehdr->e_entry + 0x60;
 
 	// load the argv struct
-	void *new_argv = 0x80000008 + ehdr->e_entry;
-	elf_memcpy(new_argv, ELF_ARGV_BEGIN, sizeof(struct __argv));
-	elf_sync_before_exec(new_argv, sizeof(struct __argv));
+	if(ehdr->e_entry != 0){
+		// disable argument for linux
+		void *new_argv = 0x80000008 + ehdr->e_entry;
+		elf_memcpy(new_argv, ELF_ARGV_BEGIN, sizeof(struct __argv));
+		elf_sync_before_exec(new_argv, sizeof(struct __argv));
+	}
 
 	// call elf_run()
 	void(*call)(unsigned long,unsigned long) = ELF_GET_RELOCATED(elf_run);
