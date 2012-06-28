@@ -371,7 +371,7 @@ static int usbctrl_ireq_callback(usbreq_t *ur)
 	c.y = !!(b[3] & 0x80);
 	
 	c.start = !!(b[2] & 0x10);
-	c.select  = !!(b[2] & 0x20);
+	c.back  = !!(b[2] & 0x20);
 	
 	c.up = !!(b[2] & 1);
 	c.down = !!(b[2] & 2);
