@@ -1,21 +1,30 @@
-/* modified for libxenon */
+/****************************************************************************
+ * ISO9660 devoptab
+ * 
+ * Copyright (C) 2008-2010
+ * tipoloski, clava, shagkur, Tantric, joedj
+ ****************************************************************************/
 
-/* KallistiOS 1.2.0
+#ifndef __ISO9660_H__
+#define __ISO9660_H__
 
-   dc/fs/iso9660.h
-   (c)2000-2001 Dan Potter
+#include <xetypes.h>
+#include <sys/iosupport.h>
+#include <diskio/disc_io.h>
 
-   $Id: fs_iso9660.h,v 1.5 2003/04/24 03:14:20 bardtx Exp $
-*/
+#define ISO_MAXPATHLEN		128
 
-#ifndef __DC_FS_ISO9660_H
-#define __DC_FS_ISO9660_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include <newlib/vfs.h>
+bool ISO9660_Mount(const char* name, const DISC_INTERFACE* disc_interface);
+bool ISO9660_Unmount(const char* name);
+const char *ISO9660_GetVolumeLabel(const char *name);
 
-#define MAX_ISO_FILES 8
+#ifdef __cplusplus
+}
+#endif
 
-extern struct vfs_mountop_s vfs_iso9660_mount_ops;
-
-#endif	/* __DC_FS_ISO9660_H */
+#endif
 

@@ -35,20 +35,16 @@ CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -fpermissive -Wno-sign-compare -W
 AFLAGS = -Iinclude -m32 $(INCLUDES)
 
 LIBOBJS = crti.o crtn.o \
+	../../startup/xenon/argv.o \
 	../../startup/xenon/startup_from_xell.o \
 	../../startup/xenon/crt1.o \
 	../../drivers/console/console.o \
 	../../drivers/console/telnet_console.o \
-	../../drivers/diskio/diskio.o \
-	../../drivers/diskio/disk_rb.o \
 	../../drivers/diskio/ata.o \
-	../../drivers/fat/fat.o \
-	../../drivers/fat/fat_rb.o \
-	../../drivers/fat/file_rb.o \
-	../../drivers/fat/dir_rb.o \
 	../../drivers/iso9660/iso9660.o \
 	../../drivers/input/input.o \
 	../../drivers/newlib/newlib.o \
+	../../drivers/newlib/xenon_syscalls.o \
 	../../drivers/nocfe/lib_malloc.o \
 	../../drivers/nocfe/lib_queue.o \
 	../../drivers/pci/io.o \
@@ -58,6 +54,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/ppc/c_except.o \
 	../../drivers/ppc/vm.o \
 	../../drivers/time/time.o \
+	../../drivers/usb/dummy.o \
 	../../drivers/usb/ohci.o \
 	../../drivers/usb/usbctrl.o \
 	../../drivers/usb/usbd.o \
@@ -81,6 +78,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/xenon_uart/xenon_uart.o \
 	../../drivers/xenon_nand/xenon_sfcx.o \
 	../../drivers/xenon_nand/xenon_config.o \
+	../../drivers/xenon_post/xenon_post.o \
 	../../drivers/xenos/ucode.o \
 	../../drivers/xenos/edram.o \
 	../../drivers/xenos/xe.o \
@@ -150,8 +148,9 @@ install: libxenon.a
 	mkdir -p $(DEVKITXENON)/usr/lib/
 	cp libxenon.a $(DEVKITXENON)/usr/lib/
 	mkdir -p $(DEVKITXENON)/usr/include/
+	mkdir -p $(DEVKITXENON)/usr/include/sys
 	cp -r ../../drivers/* $(DEVKITXENON)/usr/include/
-	cp ../../include/* $(DEVKITXENON)/usr/include/
+	cp -r ../../include/* $(DEVKITXENON)/usr/include/
 	mkdir -p $(DEVKITXENON)/usr/include/lwip/
 	cp ../../drivers/lwip/include/lwip/* $(DEVKITXENON)/usr/include/lwip/
 	cp ../../drivers/lwip/include/$(LWIP_MODE)/lwip/* $(DEVKITXENON)/usr/include/lwip/
@@ -160,5 +159,9 @@ install: libxenon.a
 	mkdir -p $(DEVKITXENON)/usr/include/arch/
 	cp ../../drivers/lwip/xenon/include/arch/* $(DEVKITXENON)/usr/include/arch/
 	mkdir -p $(DEVKITXENON)/usr/include/sys/
-	cp ../../drivers/newlib/dirent.h $(DEVKITXENON)/usr/include/sys/
+	install -m 0775 ../../../devkitxenon/rules $(DEVKITXENON)/
+	install -m 0664 ../../../devkitxenon/app.lds $(DEVKITXENON)/
+	install -m 0664 ../../startup/xenon/crt1.o $(DEVKITXENON)/xenon/lib/
+	install -m 0664 crti.o $(DEVKITXENON)/xenon/lib/
+	install -m 0664 crtn.o $(DEVKITXENON)/xenon/lib/
 	find $(DEVKITXENON)/usr/include/ -type f \! -name "*.h" -delete

@@ -77,6 +77,7 @@ extern usb_driver_t usbcatc_driver;
 extern usb_driver_t usbrtek_driver;
 extern usb_driver_t usbklsi_driver;
 extern usb_driver_t usbasix_driver;
+extern usb_driver_t dummy_driver;
 
 usb_drvlist_t usb_drivers[] = {
 
@@ -91,10 +92,11 @@ usb_drvlist_t usb_drivers[] = {
      */
 
     {USB_DEVICE_CLASS_HUMAN_INTERFACE,	VENDOR_ANY,PRODUCT_ANY,	&usbhid_driver},
-    {CLASS_ANY,	0x045e,0x28e,	&usbctrl_driver},
-    {CLASS_ANY,	0x045e,0x291,	&usbctrl_driver},
-    {CLASS_ANY,	0x045e,0x2aa,	&usbctrl_driver},
-    {CLASS_ANY,	0x045e,0x2a9,	&usbctrl_driver},
+    {CLASS_ANY,	0x045e,0x291,	&usbctrl_driver}, // RF unit
+    {CLASS_ANY,	0x045e,0x28e,	&usbctrl_driver}, // wired controller
+    {CLASS_ANY,	0x045e,0x2aa,	&usbctrl_driver}, // wireless controller
+    {CLASS_ANY,	0x045e,0x2a9,	&usbctrl_driver}, // wireless controller
+    {CLASS_ANY, 0x045e,0x2b0,   &dummy_driver}, // Kinect, not handled so we load a dummy driver
     /*
      * Mass storage devices
      */
@@ -180,6 +182,19 @@ usb_driver_t *usb_find_driver(usbdev_t *dev)
 	    return list->udl_disp;
 	    }
 	list++;
+	}
+	
+	// try to detected wired controller
+	int i;
+	for (i = 0; i < devdescr->bNumConfigurations; i++) {
+		usb_interface_descr_t * cfgdescr = usb_find_cfg_descr(dev, USB_INTERFACE_DESCRIPTOR_TYPE, i);
+		if (cfgdescr) {
+			if(cfgdescr && cfgdescr->bInterfaceSubClass == 93){
+				printf("Wired controller ?\n");
+				return &usbctrl_driver;	
+			}
+
+		}
 	}
 
     printf("Not found.\n");

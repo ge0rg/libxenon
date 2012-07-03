@@ -4,17 +4,21 @@
 
 #include <debug.h>
 #include <xenos/xenos.h>
-#include <diskio/dvd.h>
 #include <diskio/ata.h>
 #include <input/input.h>
 #include <console/console.h>
-#include <diskio/diskio.h>
+#include <diskio/disc_io.h>
+#include <sys/iosupport.h>
 #include <usb/usbmain.h>
 #include <time/time.h>
 #include <ppc/timebase.h>
 #include <xenon_soc/xenon_power.h>
 #include <elf/elf.h>
 #include <dirent.h>
+
+#include <libfat/fat.h>
+
+int bdev_enum(int handle, const char **name);
 
 #define FG_COL -1
 #define BG_COL 0
@@ -90,7 +94,9 @@ int main(){
 	
 	xenon_ata_init();
 
-	dvd_init();
+	xenon_atapi_init();
+	
+	fatInitDefault();
 
 	handle=-1;
     handle=bdev_enum(handle,&s);
