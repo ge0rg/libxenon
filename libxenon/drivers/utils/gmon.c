@@ -37,6 +37,7 @@ static char sccsid[] = "@(#)gmon.c	8.1 (Berkeley) 6/4/93";
 
 #include <sys/param.h>
 #include <sys/time.h>
+#include <arch/lib.h>
 #include "gmon.h"
 //#include <sys/sysctl.h>
 
@@ -165,7 +166,6 @@ _mcleanup()
 	struct gmonparam *p = &_gmonparam;
 	struct gmonhdr gmonhdr, *hdr;
 	struct clockinfo clockinfo;
-	int mib[2];
 	size_t size;
 #ifdef DEBUG
 	int log, len;
