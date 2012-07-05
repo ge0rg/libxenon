@@ -407,7 +407,7 @@ enet_input(struct netif *netif)
 		/* update ARP table */
 		etharp_ip_input(netif, p);
 		/* skip Ethernet header */
-		pbuf_header(p, sizeof(struct eth_hdr));
+		pbuf_header(p, -((s16_t)sizeof(struct eth_hdr)));
 		/* pass to network layer */
 		netif->input(p, netif);
 		break;
