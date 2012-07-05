@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time/time.h>
 #include "xenon_sfcx.h"
 
 struct sfc sfc = {0};
