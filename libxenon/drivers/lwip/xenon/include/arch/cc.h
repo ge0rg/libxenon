@@ -53,7 +53,8 @@ typedef u64_t mem_ptr_t;
 #define X32_F "x"
 #define X16_F "hx"
 
-#define PACK_STRUCT_FIELD(x) x __attribute__((packed))
+//#define PACK_STRUCT_FIELD(x) x __attribute__((packed))
+#define PACK_STRUCT_FIELD(x) x
 #define PACK_STRUCT_STRUCT __attribute__((packed))
 #define PACK_STRUCT_BEGIN
 #define PACK_STRUCT_END
