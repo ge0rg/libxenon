@@ -89,6 +89,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/lwip/core/ipv4/inet_chksum.o \
 	../../drivers/lwip/core/ipv4/inet.o \
 	../../drivers/lwip/core/mem.o \
+	../../drivers/lwip/core/dns.o \
 	../../drivers/lwip/core/memp.o \
 	../../drivers/lwip/core/netif.o \
 	../../drivers/lwip/core/pbuf.o \

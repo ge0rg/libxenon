@@ -791,7 +791,7 @@
  * transport.
  */
 #ifndef LWIP_DNS
-#define LWIP_DNS                        0
+#define LWIP_DNS                        1
 #endif
 
 /** DNS maximum number of entries to maintain locally. */
@@ -1091,7 +1091,7 @@
  * changes its up/down status (i.e., due to DHCP IP acquistion)
  */
 #ifndef LWIP_NETIF_STATUS_CALLBACK
-#define LWIP_NETIF_STATUS_CALLBACK      0
+#define LWIP_NETIF_STATUS_CALLBACK      1
 #endif
 
 /**
@@ -1099,7 +1099,7 @@
  * whenever the link changes (i.e., link down)
  */
 #ifndef LWIP_NETIF_LINK_CALLBACK
-#define LWIP_NETIF_LINK_CALLBACK        0
+#define LWIP_NETIF_LINK_CALLBACK        1
 #endif
 
 /**
