@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pci/io.h>
 #include <time/time.h>
 #include <xenon_nand/xenon_sfcx.h>
 #include <xenon_nand/xenon_config.h>
@@ -378,5 +379,43 @@ int updateXeLL(void * addr, unsigned len)
       }
     }
     printf(" ! Couldn't locate XeLL binary in NAND. Aborting!\n");
+    return -1;
+}
+
+unsigned int xenon_get_console_type()
+{
+    unsigned int pvr;
+    asm volatile("mfpvr %0" : "=r" (pvr));
+    
+    if(pvr == 0x710200 || pvr == 0x710300)
+    {
+        return REV_ZEPHYR;
+    }
+    else
+    {
+        unsigned int consoleVersion = (read32(0xd0010000) >> 16) & 0xFFFF;
+        
+        if(consoleVersion < 0x5821)
+        {
+            return REV_XENON;
+        }
+        else if(consoleVersion >= 0x5821 && consoleVersion < 0x5831)
+        {
+            return REV_FALCON;
+        }
+        else if(consoleVersion >= 0x5831 && consoleVersion < 0x5841)
+        {
+            return REV_JASPER;
+        }
+        else if(consoleVersion >= 0x5841 && consoleVersion < 0x5851)
+        {
+				return REV_TRINITY;
+        }
+        else if(consoleVersion >= 0x5851)
+        {
+          return REV_WINCHESTER;
+        }
+    }
+
     return -1;
 }

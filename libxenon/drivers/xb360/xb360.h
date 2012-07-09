@@ -83,6 +83,15 @@ static const unsigned int xelloffsets[XELL_OFFSET_COUNT] = {0x70000, // ggBoot m
 															0xE0000,
 															0xB80000};
 
+#define REV_XENON 0
+#define REV_ZEPHYR 1
+#define REV_FALCON 2
+#define REV_JASPER 3
+#define REV_TRINITY 4
+#define REV_CORONA 5
+#define REV_WINCHESTER 6
+#define REV_UNKNOWN (-1)
+
 typedef struct kventry {
   char id;
   int offset;
@@ -99,5 +108,6 @@ int kv_get_dvd_key(unsigned char *dvd_key);
 int kv_get_key(unsigned char keyid, unsigned char *keybuf, int *keybuflen, unsigned char *keyvault);
 void print_cpu_dvd_keys(void);
 int updateXeLL(void * addr, unsigned len);
+unsigned int xenon_get_console_type(void);
 
 #endif /* XB360_H_ */
