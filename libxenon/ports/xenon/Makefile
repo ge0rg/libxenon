@@ -118,7 +118,12 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/libfdt/fdt_rw.o \
 	../../drivers/libfdt/fdt_strerror.o \
 	../../drivers/libfdt/fdt_sw.o \
-	../../drivers/libfdt/fdt_wip.o
+	../../drivers/libfdt/fdt_wip.o \
+        ../../drivers/crypt/des.o \
+        ../../drivers/crypt/hmac_sha1.o \
+        ../../drivers/crypt/rc4.o \
+        ../../drivers/crypt/sha1.o \
+        ../../drivers/xb360/xb360.o
 
 # Build rules
 all: $(TARGETS)
