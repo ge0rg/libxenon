@@ -130,7 +130,7 @@ int sfcx_address_to_block(int address);
 int sfcx_block_to_rawaddress(int block);
 int sfcx_rawaddress_to_block(int address);
 int rawflash_writeImage(int len, int f);
-void try_rawflash(char *filename);
+int try_rawflash(char *filename);
 
 int sfcx_read_metadata_type(void);
 

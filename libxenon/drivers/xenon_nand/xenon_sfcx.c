@@ -429,16 +429,16 @@ int rawflash_writeImage(int len, int f)
 	return 1;
 }
 
-void try_rawflash(char *filename)
+int try_rawflash(char *filename)
 {
 	struct stat s;
 	int size;
 	int f = open(filename, O_RDONLY);
 	if (f < 0)
 	{
-		return;
+		return f;
 	}
-        printf(" * rawflash v4 started (by cOz)\n");
+	printf(" * rawflash v4 started (by cOz)\n");
         
 	fstat(f, &s);
 	size = s.st_size;
@@ -450,10 +450,10 @@ void try_rawflash(char *filename)
 	{
 		printf("error: %s - size %d is not valid image size!\n", filename, size);
 		close(f);
-		return;
+		return -1;
 	}
-        printf("\n * found '%s'. press power NOW if you don't want to flash the NAND.\n",filename);
-        delay(15);
+    printf("\n * found '%s'. press power NOW if you don't want to flash the NAND.\n",filename);
+    delay(15);
         
 	printf("%s opened OK, attempting to write 0x%x bytes to flash...\n",filename, size);
 	if(rawflash_writeImage(size, f) == 1)
@@ -465,7 +465,8 @@ void try_rawflash(char *filename)
 	if(blockbuf != NULL)
 		free(blockbuf);
         
-        for(;;); // loop
+    for(;;); // loop
+    return -1;
 }
 
 /*

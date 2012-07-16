@@ -315,7 +315,7 @@ int updateXeLL(void * addr, unsigned len)
     
     if (sfc.initialized != SFCX_INITIALIZED){
         printf(" ! sfcx is not initialized! Unable to update XeLL in NAND!\n");
-	return -1;
+		return -1;
     }
     
     printf("\n * found XeLL update. press power NOW if you don't want to update.\n");
@@ -345,42 +345,42 @@ int updateXeLL(void * addr, unsigned len)
       for (i = (startblock*sfc.pages_in_block); i< (startblock+blockcnt)*sfc.pages_in_block; i++)
       {
          sfcx_read_page(pagebuf, (i*sfc.page_sz), 1);
-	 //Split rawpage into user & spare
-	 memcpy(&user[j*sfc.page_sz],pagebuf,sfc.page_sz);
-	 memcpy(&spare[j*sfc.meta_sz],&pagebuf[sfc.page_sz],sfc.meta_sz);
-	 j++;
+		//Split rawpage into user & spare
+		memcpy(&user[j*sfc.page_sz],pagebuf,sfc.page_sz);
+		memcpy(&spare[j*sfc.meta_sz],&pagebuf[sfc.page_sz],sfc.meta_sz);
+		j++;
       }
       
         if (memcmp(&user[offsetinblock+(XELL_FOOTER_OFFSET)],XELL_FOOTER,XELL_FOOTER_LENGTH) == 0){
             printf(" * XeLL Binary in NAND found @ 0x%08X\n", (startblock*sfc.block_sz)+offsetinblock);
          
-         memcpy(&user[offsetinblock], addr,len); //Copy over updxell.bin
-         printf(" * Writing to NAND!\n");
-	 j = 0;
-         for (i = startblock*sfc.pages_in_block; i < (startblock+blockcnt)*sfc.pages_in_block; i ++)
-         {
-	     if (!(i%sfc.pages_in_block))
-		sfcx_erase_block(i*sfc.page_sz);
+        memcpy(&user[offsetinblock], addr,len); //Copy over updxell.bin
+        printf(" * Writing to NAND!\n");
+		j = 0;
+        for (i = startblock*sfc.pages_in_block; i < (startblock+blockcnt)*sfc.pages_in_block; i ++)
+        {
+			if (!(i%sfc.pages_in_block))
+			sfcx_erase_block(i*sfc.page_sz);
 
-	     /* Copy user & spare data together in a single rawpage */
-             memcpy(pagebuf,&user[j*sfc.page_sz],sfc.page_sz);
-	     memcpy(&pagebuf[sfc.page_sz],&spare[j*sfc.meta_sz],sfc.meta_sz);
-	     j++;
+			/* Copy user & spare data together in a single rawpage */
+            memcpy(pagebuf,&user[j*sfc.page_sz],sfc.page_sz);
+			memcpy(&pagebuf[sfc.page_sz],&spare[j*sfc.meta_sz],sfc.meta_sz);
+			j++;
 
-	     if (!(sfcx_is_pageerased(pagebuf))) // We dont need to write to erased pages
-	     {
-             memset(&pagebuf[sfc.page_sz+0x0C],0x0, 4); //zero only EDC bytes
-             sfcx_calcecc((unsigned int *)pagebuf); 	  //recalc EDC bytes
-             sfcx_write_page(pagebuf, i*sfc.page_sz);
-	     }
-         }
-         printf(" * XeLL flashed! Reboot the xbox to enjoy the new build\n");
-	 for(;;);
+			if (!(sfcx_is_pageerased(pagebuf))) // We dont need to write to erased pages
+			{
+				memset(&pagebuf[sfc.page_sz+0x0C],0x0, 4); //zero only EDC bytes
+				sfcx_calcecc((unsigned int *)pagebuf); 	  //recalc EDC bytes
+				sfcx_write_page(pagebuf, i*sfc.page_sz);
+			}
+        }
+        printf(" * XeLL flashed! Reboot the xbox to enjoy the new build\n");
+		for(;;);
 	
-      }
-    }
+		}
+	}
     printf(" ! Couldn't locate XeLL binary in NAND. Aborting!\n");
-    return -1;
+    return -1; // if this point is reached, updating xell failed
 }
 
 unsigned int xenon_get_console_type()
@@ -429,5 +429,5 @@ unsigned int xenon_get_console_type()
         }
     }
 
-    return -1;
+    return REV_UNKNOWN;
 }
