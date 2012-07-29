@@ -213,6 +213,42 @@ static void __attribute__ ((section (".elfldr"),noreturn,flatten,optimize("O2"))
 	for(;;);
 }
 
+char *argv_GetFilename(char *argv)
+{
+    if (argv == NULL) return NULL;
+    return (strrchr(argv, '/') + 1);
+}
+
+char *argv_GetFilepath(char *argv)
+{
+    if (argv == NULL) return argv;
+    
+    int i;
+    char *dest = malloc(255);
+    char *tmp= strrchr(argv, '/');
+    if (tmp == NULL)
+        return tmp;
+    
+    i = strlen(argv)-strlen(tmp);
+    strncpy(dest,argv,i+1);
+    
+    return dest;
+}
+
+char *argv_GetDevice(char *argv)
+{
+    if (argv == NULL) return argv;
+    
+    char *dest = malloc(255);
+    char *tmp= strstr(argv, ":/");
+    if (tmp == NULL)
+        return tmp;
+
+    strncpy(dest,argv,strlen(argv)-strlen(tmp));
+    
+    return dest;
+}
+
 void elf_setArgcArgv(int argc, char *argv[])
 {
 	int i;
