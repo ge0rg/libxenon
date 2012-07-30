@@ -54,22 +54,30 @@ __syscalls_t __syscalls = {
 
 
 // 22 nov 2005
-#define	RTC_BASE	1132614024UL//1005782400UL
+#define	RTC_BASE	1005782400UL//1132614024UL
 
 static int xenon_gettimeofday(struct _reent *ptr, struct timeval *tp, struct timezone *tz) {
 	unsigned char msg[16] = {0x04};
-	unsigned long long msec;
-	unsigned long sec;
+	union{
+		uint8_t u8[8];
+		uint64_t t;
+	} time;
+	time.t = 0;
+	uint64_t msec = 0;
 
 	xenon_smc_send_message(msg);
 	xenon_smc_receive_response(msg);
 
-	msec = msg[1] | (msg[2] << 8) | (msg[3] << 16) | (msg[4] << 24) | ((unsigned long long) msg[5] << 32);
+	time.u8[3] = msg[5];
+	time.u8[4] = msg[4];
+	time.u8[5] = msg[3];
+	time.u8[6] = msg[2];
+	time.u8[7] = msg[1];
 
-	sec = msec / 1000;
-	tp->tv_sec = sec + RTC_BASE;
-	msec -= sec * 1000;
-	tp->tv_usec = msec * 1000;
+	msec = (time.t / 1000) + RTC_BASE;	
+
+	tp->tv_sec = (time.t / 1000) + RTC_BASE;
+	tp->tv_usec = (time.t % 1000) * 1000;
 
 	return 0;
 }
