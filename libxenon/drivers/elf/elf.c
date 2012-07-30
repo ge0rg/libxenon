@@ -48,6 +48,10 @@ static char bootargs[MAX_CMDLINE_SIZE];
 static uint8_t *initrd_start = NULL;
 static size_t initrd_size = 0;
 
+static char _filename[256] = {0};
+static char _filepath[256] = {0};
+static char _device[256] = {0};
+
 static inline __attribute__((always_inline)) void elf_putch(unsigned char c)
 {
 	while (!((*(volatile uint32_t*)(0xea001000 + 0x18))&0x02000000));
@@ -213,44 +217,56 @@ static void __attribute__ ((section (".elfldr"),noreturn,flatten,optimize("O2"))
 	for(;;);
 }
 
-char *argv_GetFilename(char *argv)
+char *argv_GetFilename(const char *argv)
 {
-	
-    if (argv == NULL) return NULL;
-    char *tmp = strrchr(argv, '/');
+    char *tmp;
+ 
+    if (argv == NULL) 
+        return NULL;
+ 
+    tmp = strrchr(argv, '/');
+ 
     if (tmp == NULL)
-		return tmp;
-	return (tmp+1);
+        return NULL;
+ 
+    strcpy(_filename,tmp+1);
+    
+    return _filename;
 }
 
-char *argv_GetFilepath(char *argv)
+char *argv_GetFilepath(const char *argv)
 {
-    if (argv == NULL) return argv;
-    
-    int i;
-    char *dest = malloc(255);
-    char *tmp= strrchr(argv, '/');
+    char *tmp;
+ 
+    if (argv == NULL) 
+        return NULL;
+  
+    tmp = strrchr(argv, '/');
+ 
     if (tmp == NULL)
-        return tmp;
+        return NULL;
+ 
+ 
+    strncpy(_filepath,argv,tmp-argv);
     
-    i = strlen(argv)-strlen(tmp);
-    strncpy(dest,argv,i+1);
-    
-    return dest;
+    return _filepath;
 }
 
-char *argv_GetDevice(char *argv)
+char *argv_GetDevice(const char *argv)
 {
-    if (argv == NULL) return argv;
+    char *tmp;
+ 
+    if (argv == NULL) 
+        return NULL;
     
-    char *dest = malloc(255);
-    char *tmp= strstr(argv, ":/");
+    tmp = strrchr(argv, ':');
+ 
     if (tmp == NULL)
-        return tmp;
-
-    strncpy(dest,argv,strlen(argv)-strlen(tmp));
+        return NULL;
+ 
+    strncpy(_device,argv,tmp-argv);
     
-    return dest;
+    return _device;
 }
 
 void elf_setArgcArgv(int argc, char *argv[])
