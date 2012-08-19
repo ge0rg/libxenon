@@ -763,7 +763,9 @@ void Xe_pUnlock(struct XenosDevice *xe, struct XenosLock *lock)
 
 void Xe_pLock(struct XenosDevice *xe, struct XenosLock *lock, void *addr, u32 phys, int size, int flags)
 {
-	if (!flags)
+	size=(size+4095)&~4095;
+    
+        if (!flags)
 		Xe_Fatal(xe, "flags=0");
 	if (lock->start)
 		Xe_Fatal(xe, "locked twice");
