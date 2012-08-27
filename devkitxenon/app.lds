@@ -2,7 +2,7 @@ ENTRY(_start)
 SECTIONS
 {
 	. = 0x80000000;
-	.text : {  *(.except*); *(.pagetable); pagetable_end = .; *(.text*); *(.init*); }
+	.text : {  *(.except*); *(.pagetable); pagetable_end = .; *(.init*); *(.fini*); *(.text*); }
 	.elfldr : { elfldr_start = .;*(.elfldr); elfldr_end = .;}
 	
 	.data : { *(.data*) }
@@ -18,7 +18,7 @@ SECTIONS
 
 	bss_start = .;
 	.bss : { *(.bss*) }
-	.sbss : { *(.sbss*) }
+	.sbss : { *(.sbss .sbss.*) }
 	bss_end = .;
 
 	heap_begin = .;

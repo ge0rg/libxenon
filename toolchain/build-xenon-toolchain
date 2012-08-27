@@ -3,20 +3,19 @@
 # originally written by Uwe Hermann <uwe@hermann-uwe.de>, released as public domain.
 # changed for xenon by Felix Domke <tmbinc@elitedvb.net>, still public domain
 
-TARGET=xenon
+TARGET=powerpc-elf
 PREFIX=/usr/local/xenon # Install location of your final toolchain
-PARALLEL=""		# Or: PARALLEL="-j 2"
+PARALLEL=
 
-BINUTILS_TAR=binutils-2.22
 BINUTILS=binutils-2.22
-GCC=gcc-4.6.1
-NEWLIB=newlib-1.17.0
+GCC=gcc-4.7.1
+NEWLIB=newlib-1.20.0
 GDB=gdb-6.8
 
 ZLIB=zlib-1.2.7
-LIBPNG=libpng-1.5.7
+LIBPNG=libpng-1.5.10
 BZIP2=bzip2-1.0.6
-FREETYPE=freetype-2.4.8
+FREETYPE=freetype-2.4.9
 
 BUILD_BINUTILS=true
 BUILD_GCC=true
@@ -52,11 +51,7 @@ function libxenon_install
 		echo -e "Building libxenon..."
 		make -C ../libxenon/ports/xenon libxenon.a >> $LOGFILE 2>&1 || exit 0
 		make -C ../libxenon/ports/xenon install >> $LOGFILE 2>&1 || exit 0
-		cp  ../devkitxenon/app.lds ../devkitxenon/rules $PREFIX/
-		# startup crt fix
-		cp ../libxenon/startup/xenon/crt1.o /usr/local/xenon/xenon/lib/
-		cp ../libxenon/ports/xenon/crti.o /usr/local/xenon/xenon/lib/
-		cp ../libxenon/ports/xenon/crtn.o /usr/local/xenon/xenon/lib/
+
 		echo
 		echo -e "libxenon installed successfully"
 		echo
@@ -80,7 +75,7 @@ function toolchain_install
 	# Check if binutils sources are available, download it if needed
 	if [ ! -f "$BINUTILS.tar.bz2" ]; then
 		echo -e "Downloading $BINUTILS.tar.bz2"
-		wget -c http://ftp.gnu.org/gnu/binutils/$BINUTILS_TAR.tar.bz2 || exit 0
+		wget -c http://ftp.gnu.org/gnu/binutils/$BINUTILS.tar.bz2 || exit 0
 	fi;
 
 	# Check if gcc sources are available, download it if needed
@@ -101,10 +96,13 @@ function toolchain_install
 
 	if $BUILD_BINUTILS; then
 	echo -e "Extracting binutils..."
-	tar xfj $BINUTILS_TAR.tar.bz2 >> $LOGFILE 2>&1 && cat binutils.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
+	if [ -d "$BINUTILS" ]; then
+		rm -r "$BINUTILS"
+	fi
+	tar xfj $BINUTILS.tar.bz2 >> $LOGFILE 2>&1 || exit 0
 	cd build
 	echo -e "Configuring binutils..."
-	../$BINUTILS/configure --target=$TARGET --prefix=$PREFIX  --enable-multilib   --disable-nls --disable-werror >> $LOGFILE 2>&1 || exit 0
+	../$BINUTILS/configure --target=$TARGET --prefix=$PREFIX --disable-multilib --disable-nls --disable-werror >> $LOGFILE 2>&1 || exit 0
 	echo -e "Building binutils, this could take a while..."
 	make $PARALLEL >> $LOGFILE 2>&1 || exit 0
 	make install >> $LOGFILE 2>&1 || exit 0
@@ -115,14 +113,16 @@ function toolchain_install
 
 	if $BUILD_GCC; then
 	echo -e "Extracting gcc..."
+	if [ -d "$GCC" ]; then
+		rm -r "$GCC"
+	fi
 	tar xfj $GCC.tar.bz2 >> $LOGFILE 2>&1 && cat $GCC.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
 	cd build
 	echo -e "Configuring gcc..."
-	../$GCC/configure --target=$TARGET --prefix=$PREFIX --with-libiconv-prefix=/opt/local -enable-interwork \
-		--enable-languages="c" --without-headers --disable-shared \
-		--with-newlib --disable-libmudflap --disable-libssp --disable-nls --disable-shared --without-headers \
-		--disable-decimal-float --enable-altivec\
-		  --with-gmp=/opt/local --with-mpfr=/opt/local --with-cpu=cell >> $LOGFILE 2>&1 || exit 0 
+	../$GCC/configure --target=$TARGET --prefix=$PREFIX --with-cpu=cell --disable-decimal-float \
+	--disable-libquadmath --enable-languages=c,c++ --disable-libssp --with-newlib --enable-cxx-flags="-G0" \
+	--disable-nls --disable-shared --disable-linux-futex --enable-altivec \
+	--disable-threads --disable-libgomp --enable-interwork --without-headers >> $LOGFILE 2>&1 || exit 0 
 	echo -e "Building gcc, this could take a while..."
 	make $PARALLEL all-gcc >> $LOGFILE 2>&1 || exit 0
 	make install-gcc >> $LOGFILE 2>&1 || exit 0
@@ -133,10 +133,13 @@ function toolchain_install
 
 	if $BUILD_NEWLIB; then
 	echo -e "Extracting newlib..."
-	tar xfz $NEWLIB.tar.gz >> $LOGFILE 2>&1 && cat newlib.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
+	if [ -d "$NEWLIB" ]; then
+		rm -r "$NEWLIB"
+	fi
+	tar xfz $NEWLIB.tar.gz >> $LOGFILE 2>&1 || exit 0
 	cd build
 	echo -e "Configuring newlib..."
-	../$NEWLIB/configure --target=$TARGET --prefix=$PREFIX  --enable-multilib --disable-nls CFLAGS='-DHAVE_BLKSIZE' --enable-newlib-io-long-long --enable-newlib-io-long-double >> $LOGFILE 2>&1 || exit 0
+	../$NEWLIB/configure CFLAGS='-DHAVE_BLKSIZE' --target=$TARGET --prefix=$PREFIX --disable-multilib --disable-nls --enable-newlib-io-long-long --enable-newlib-io-long-double >> $LOGFILE 2>&1 || exit 0
 	echo -e "Building newlib, this could take a while..."
 	make $PARALLEL >> $LOGFILE 2>&1 || exit 0
 	make install >> $LOGFILE 2>&1 || exit 0
@@ -149,12 +152,10 @@ function toolchain_install
 	# Yes, you need to build gcc again!
 	cd build
 	echo -e "Configuring gcc - 2nd pass..."
-	../$GCC/configure --target=$TARGET --prefix=$PREFIX --with-libiconv-prefix=/opt/local \
-		  --with-cpu=cell \
-		   --with-gmp=/opt/local --with-mpfr=/opt/local --disable-decimal-float --disable-libquadmath \
-		 --enable-languages=c,c++ --disable-libssp --with-newlib --enable-cxx-flags="-G0" \
-		 --disable-libmudflap --disable-nls --disable-shared --disable-linux-futex --enable-altivec --disable-threads --disable-libgomp \
-		 	>> $LOGFILE 2>&1 || exit 0
+	../$GCC/configure --target=$TARGET --prefix=$PREFIX --with-cpu=cell --disable-decimal-float \
+	--disable-libquadmath --enable-languages=c,c++ --disable-libssp --with-newlib --enable-cxx-flags="-G0" \
+	--disable-nls --disable-shared --disable-linux-futex --enable-altivec \
+	--disable-threads --disable-libgomp --disable-libitm --disable-multilib >> $LOGFILE 2>&1 || exit 0
 	echo -e "Building gcc - 2nd pass, this could take a while..."
 	make $PARALLEL >> $LOGFILE 2>&1 || exit 0
 	make install >> $LOGFILE 2>&1 || exit 0
@@ -179,9 +180,9 @@ function zlib_install
 	tar xjf $ZLIB.tar.bz2 >> $LOGFILE 2>&1 || exit 0
 	cd $ZLIB
 
-	export CC=xenon-gcc
-	export CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 $DEVKITXENON/usr/lib/libxenon.a -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
-	export LDFLAGS=""
+	export CC=$TARGET-gcc
+	export CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
+	export LDFLAGS="$CFLAGS"
 	export TARGET=`gcc -v 2>&1 | sed -n '2p' | awk '{print $2}'`
 
 	echo -e "Configuring zlib..."
@@ -190,9 +191,9 @@ function zlib_install
 	sed '/cp $(SHAREDLIBV) $(DESTDIR)$(sharedlibdir)/d' Makefile > Makefile.xenon
 
 	echo -e "Building zlib..."
-	make $PARALLEL -f Makefile.xenon CROSS_COMPILE=xenon- >> $LOGFILE 2>&1 || exit 0
+	make $PARALLEL -f Makefile.xenon CROSS_COMPILE=$TARGET- libz.a >> $LOGFILE 2>&1 || exit 0
 	echo -e "Installing zlib..."
-	make -f Makefile.xenon CROSS_COMPILE=xenon- install >> $LOGFILE 2>&1 || exit 0
+	make -f Makefile.xenon CROSS_COMPILE=$TARGET- install >> $LOGFILE 2>&1 || exit 0
 	cd ..
 	rm -rf $ZLIB
 
@@ -213,12 +214,12 @@ function libpng_install
 
 	echo -e "Extracting libpng..."
 	rm -rf $LIBPNG
-	tar xJf $LIBPNG.tar.xz >> $LOGFILE 2>&1 && cat ../libxenon/ports/libpng/libpng.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
+	tar xJf $LIBPNG.tar.xz >> $LOGFILE 2>&1 || exit 0
 	cd $LIBPNG
 
-	export CC=xenon-gcc
+	export CC=$TARGET-gcc
 	export CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 $DEVKITXENON/usr/lib/libxenon.a -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
-	export LDFLAGS=""
+	export LDFLAGS="$CFLAGS"
 
 	echo -e "Configuring libpng..."
 	./configure --disable-shared --enable-static --prefix=$DEVKITXENON/usr --host=ppc-elf >> $LOGFILE 2>&1 || exit 0
@@ -267,12 +268,12 @@ function freetype_install
 	
 	echo -e "Extracting freetype..."
 	rm -rf $FREETYPE
-	tar xzf $FREETYPE.tar.gz >> $LOGFILE 2>&1 && cat ../libxenon/ports/freetype/freetype.diff | patch -p0 >> $LOGFILE 2>&1 || exit 0
+	tar xzf $FREETYPE.tar.gz >> $LOGFILE 2>&1 || exit 0
 	cd $FREETYPE
 
-	export CC=xenon-gcc
+	export CC=$TARGET-gcc
 	export CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 $DEVKITXENON/usr/lib/libxenon.a -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
-	export LDFLAGS=""
+	export LDFLAGS="$CFLAGS"
 
 	echo -e "Configuring freetype..."
 	./configure --prefix=$DEVKITXENON/usr --host=ppc-elf --disable-shared >> $LOGFILE 2>&1 || exit 0
@@ -390,11 +391,10 @@ if [ "$1" == "toolchain" ]; then
 	libxenon_install
 	all_done
 elif [ "$1" == "libs" ]; then
-        libxenon_install
-	zlib_install
 	libpng_install
-	bzip2_install
 	freetype_install
+	zlib_install
+	bzip2_install
 	bin2s_install
 elif [ "$1" == "libxenon" ]; then
 	libxenon_install

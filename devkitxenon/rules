@@ -1,6 +1,6 @@
 # parts taken from devkitppc
 
-PREFIX	:=	xenon-
+PREFIX	:=	powerpc-elf-
 
 export AS		:=	$(PREFIX)as
 export CC		:=	$(PREFIX)gcc

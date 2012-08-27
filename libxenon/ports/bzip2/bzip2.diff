@@ -10,8 +10,8 @@ diff -NurpP --minimal bzip2-1.0.6/Makefile bzip2-1.0.6-xenon/Makefile
  # To assist in cross-compiling
 -CC=gcc
 -AR=ar
-+CC=xenon-gcc
-+AR=xenon-ar
++CC=powerpc-elf-gcc
++AR=powerpc-elf-ar
  RANLIB=ranlib
 -LDFLAGS=
 +LDFLAGS=-lxenon

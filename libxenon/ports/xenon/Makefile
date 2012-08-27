@@ -1,10 +1,10 @@
-CROSS=xenon-
-CC=$(CROSS)gcc
-CXX=$(CROSS)g++
-OBJCOPY=$(CROSS)objcopy
-LD=$(CROSS)ld
-AS=$(CROSS)as
-STRIP=$(CROSS)strip
+CROSS=powerpc-elf
+CC=$(CROSS)-gcc
+CXX=$(CROSS)-g++
+OBJCOPY=$(CROSS)-objcopy
+LD=$(CROSS)-ld
+AS=$(CROSS)-as
+STRIP=$(CROSS)-strip
 
 ifeq ($(strip $(DEVKITXENON)),)
 $(error "please set DEVKITXENON")
@@ -120,7 +120,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/libfdt/fdt_wip.o
 
 # Build rules
-all: $(TARGETS)
+all: libxenon.a
 
 clean:
 	rm -rf $(OBJS) $(LIBOBJS) libxenon.a
@@ -161,7 +161,7 @@ install: libxenon.a
 	mkdir -p $(DEVKITXENON)/usr/include/sys/
 	install -m 0775 ../../../devkitxenon/rules $(DEVKITXENON)/
 	install -m 0664 ../../../devkitxenon/app.lds $(DEVKITXENON)/
-	install -m 0664 ../../startup/xenon/crt1.o $(DEVKITXENON)/xenon/lib/
-	install -m 0664 crti.o $(DEVKITXENON)/xenon/lib/
-	install -m 0664 crtn.o $(DEVKITXENON)/xenon/lib/
+	install -m 0664 ../../startup/xenon/crt1.o $(DEVKITXENON)/$(CROSS)/lib/
+	install -m 0664 crti.o $(DEVKITXENON)/$(CROSS)/lib/
+	install -m 0664 crtn.o $(DEVKITXENON)/$(CROSS)/lib/
 	find $(DEVKITXENON)/usr/include/ -type f \! -name "*.h" -delete
