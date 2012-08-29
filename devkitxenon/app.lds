@@ -5,7 +5,7 @@ SECTIONS
 	.text : {  *(.except*); *(.pagetable); pagetable_end = .; *(.init*); *(.fini*); *(.text*); }
 	.elfldr : { elfldr_start = .;*(.elfldr); elfldr_end = .;}
 	
-	.data : { *(.data*) }
+	.data : { *(.lowbuffers); *(.data*) }
 	.sdata : { *(.sdata*) }
 	.rodata : { *(.rodata*)}
 
