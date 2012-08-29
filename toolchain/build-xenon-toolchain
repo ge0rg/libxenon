@@ -180,6 +180,7 @@ function zlib_install
 	tar xjf $ZLIB.tar.bz2 >> $LOGFILE 2>&1 || exit 0
 	cd $ZLIB
 
+	export TARGET_SAVE=$TARGET
 	export CC=$TARGET-gcc
 	export CFLAGS="-mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 -L$DEVKITXENON/xenon/lib/32/ -T$DEVKITXENON/app.lds -u read -u _start -u exc_base -L$DEVKITXENON/usr/lib -I$DEVKITXENON/usr/include"
 	export LDFLAGS="$CFLAGS"
@@ -200,7 +201,7 @@ function zlib_install
 	export CC=""
 	export CFLAGS=""
 	export LDFLAGS=""
-	export TARGET=""
+	export TARGET=$TARGET_SAVE
 
 	echo -e "Done"
 }
@@ -391,10 +392,10 @@ if [ "$1" == "toolchain" ]; then
 	libxenon_install
 	all_done
 elif [ "$1" == "libs" ]; then
-	libpng_install
-	freetype_install
 	zlib_install
 	bzip2_install
+	libpng_install
+	freetype_install
 	bin2s_install
 elif [ "$1" == "libxenon" ]; then
 	libxenon_install
