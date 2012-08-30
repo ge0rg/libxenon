@@ -9,7 +9,7 @@ PARALLEL=
 
 BINUTILS=binutils-2.22
 GCC=gcc-4.7.1
-NEWLIB=newlib-1.17.0
+NEWLIB=newlib-1.20.0
 GDB=gdb-6.8
 
 ZLIB=zlib-1.2.7
@@ -139,7 +139,7 @@ function toolchain_install
 	tar xfz $NEWLIB.tar.gz >> $LOGFILE 2>&1 || exit 0
 	cd build
 	echo -e "Configuring newlib..."
-	../$NEWLIB/configure CFLAGS='-DHAVE_BLKSIZE' --target=$TARGET --prefix=$PREFIX --disable-multilib --disable-nls --enable-newlib-io-long-long --enable-newlib-io-long-double >> $LOGFILE 2>&1 || exit 0
+	../$NEWLIB/configure CFLAGS='-DHAVE_BLKSIZE' CFLAGS_FOR_TARGET='-O2 -mno-relocatable-lib -mcpu=cell -mtune=cell -fno-pic -m32 -mpowerpc64' --target=$TARGET --prefix=$PREFIX --disable-multilib --disable-nls --enable-newlib-io-long-long --enable-newlib-io-long-double >> $LOGFILE 2>&1 || exit 0
 	echo -e "Building newlib, this could take a while..."
 	make $PARALLEL >> $LOGFILE 2>&1 || exit 0
 	make install >> $LOGFILE 2>&1 || exit 0
@@ -424,5 +424,3 @@ else
 	echo
 	exit 0
 fi;
-
-
