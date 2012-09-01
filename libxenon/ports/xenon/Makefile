@@ -69,6 +69,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/utils/unicode_rb.o \
 	../../drivers/utils/debug.o \
 	../../drivers/utils/gmon.o \
+	../../drivers/utils/mf-simplecheck.o \
 	../../drivers/xenon_smc/xenon_gpio.o \
 	../../drivers/xenon_smc/xenon_smc.o \
 	../../drivers/xenon_soc/cpusleep.o \
