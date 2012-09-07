@@ -457,7 +457,8 @@ ex_dsi:
 user_page_handler:
 	mr %r15, %r3
 
-	rldicl %r4,%r15,48,50 // calc idx in userpagetable
+	rldicl %r4,%r15,48,49 // calc idx in userpagetable
+    subi %r4,%r4,0x3000
 	sldi %r4,%r4,2
 
 	addis %r4, %r4, userpagetable@ha - 0x80000000
