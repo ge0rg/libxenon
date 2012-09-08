@@ -10,6 +10,7 @@
 #include <sys/time.h>
 
 #include <assert.h>
+#include <debug.h>
 
 #include <ppc/atomic.h>
 #include <ppc/register.h>
@@ -86,6 +87,7 @@ void shutdown_drivers() {
 	// some drivers require a shutdown
 	enet_quiesce();
 	usb_shutdown();
+    data_breakpoint(NULL,0,0);
 }
 
 void try_return_to_xell(unsigned int nand_addr, unsigned int phy_loading_addr) {

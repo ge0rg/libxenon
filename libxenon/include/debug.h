@@ -20,6 +20,7 @@
        
 void buffer_dump(void * buf, int size);
 void stack_trace(int max_depth);
+void data_breakpoint(void * address, int on_read, int on_write); // checks 8 bytes at address, throws Exception vector 0x300 on breakpoint
 
 #ifdef __cplusplus
    }

@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include <debug.h>
+#include <ppc/register.h>
+#include <ppc/xenonsprs.h>
 
 void buffer_dump(void * buf, int size){
 	int i;
 	char* cbuf=(char*) buf;
 
-	printf("---- %p %d\n",buf,size);
+	printf("[Buffer dump] at %p, size=%d\n",buf,size);
 	
 	while(size>0){
 		for(i=0;i<16;++i){
@@ -49,4 +51,24 @@ void stack_trace(int max_depth)
     DO_RA(15);
     
     printf("\n");
+}
+
+void data_breakpoint(void * address, int on_read, int on_write)
+{
+    if (on_read || on_write)
+        mtspr(dabrx,6);
+    else
+        mtspr(dabrx,0);
+    
+    unsigned int db=((unsigned int)address)&~7;
+    
+    db|=4; // virtual address
+    
+    if (on_read)
+        db|=1;
+    
+    if (on_write)
+        db|=2;
+    
+    mtspr(dabr,db);
 }

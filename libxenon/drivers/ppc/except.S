@@ -256,7 +256,14 @@ ex_isi:
 
 
 ex_dsi:
-	std %r0, OFF_REG(0)(%r31)
+
+    /* dabr breakpoint */
+    mfdsisr %r4
+    rlwinm %r4,%r4,10,31,31
+    cmplwi %r4,1
+    beq dump
+
+    std %r0, OFF_REG(0)(%r31)
 	std %r5, OFF_REG(5)(%r31)
 	std %r6, OFF_REG(6)(%r31)
 	std %r7, OFF_REG(7)(%r31)

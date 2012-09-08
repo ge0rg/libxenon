@@ -66,7 +66,6 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/usb/usbmass.o \
 	../../drivers/usb/tinyehci/usb_os.o \
 	../../drivers/usb/tinyehci/tinyehci.o \
-	../../drivers/utils/unicode_rb.o \
 	../../drivers/utils/debug.o \
 	../../drivers/utils/gmon.o \
 	../../drivers/utils/mf-simplecheck.o \
