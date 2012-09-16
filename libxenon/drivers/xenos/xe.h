@@ -264,6 +264,7 @@ struct XenosDevice
 	volatile unsigned int *regs;
 
 	struct XenosSurface tex_fb;
+	struct XenosSurface default_fb;
 	
 	struct XenosSurface *rt;
 	int last_wptr;
@@ -308,6 +309,7 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 	   (reason: resolve cannot handle arbitrary shapes) */
 void Xe_Clear(struct XenosDevice *xe, int flags);
 struct XenosSurface *Xe_GetFramebufferSurface(struct XenosDevice *xe);
+void Xe_SetFrameBufferSurface(struct XenosDevice *xe, struct XenosSurface *fb);
 
 void Xe_Execute(struct XenosDevice *xe);
 void Xe_Sync(struct XenosDevice *xe);

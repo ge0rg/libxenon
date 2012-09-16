@@ -940,7 +940,6 @@ void Xe_InstantiateShader(struct XenosDevice *xe, struct XenosShader *sh, unsign
 	void *shader_code = sh->shader + data->sh_off + hdr->offset;
 	
 	sh->shader_phys_size = data->sh_size;
-	printf("allocating %d bytes\n", data->sh_size);
 	void *p = Xe_pAlloc(xe, &sh->shader_phys[index], data->sh_size, 0x100);
 	memcpy(p, shader_code, data->sh_size);
 	Xe_pSyncToDevice(xe, p, data->sh_size);
@@ -960,16 +959,18 @@ void Xe_Init(struct XenosDevice *xe)
 
 	xe->regs = (void*)0xec800000;
 
-	xe->tex_fb.ptr = r32(0x6110);
-	xe->tex_fb.wpitch = r32(0x6120) * 4;
-	xe->tex_fb.width = r32(0x6134);
-	xe->tex_fb.height = r32(0x6138);
-	xe->tex_fb.bypp = 4;
-	xe->tex_fb.base = (void*)(long)xe->tex_fb.ptr;
-	xe->tex_fb.format = XE_FMT_BGRA | XE_FMT_8888;
-	xe->tex_fb.tiled = 1;
+	xe->default_fb.ptr = r32(0x6110);
+	xe->default_fb.wpitch = r32(0x6120) * 4;
+	xe->default_fb.width = r32(0x6134);
+	xe->default_fb.height = r32(0x6138);
+	xe->default_fb.bypp = 4;
+	xe->default_fb.base = (void*)(long)xe->default_fb.ptr;
+	xe->default_fb.format = XE_FMT_BGRA | XE_FMT_8888;
+	xe->default_fb.tiled = 1;
+    
+    xe->tex_fb=xe->default_fb;
 	
-	printf("Framebuffer %d x %d @ %08x\n", xe->tex_fb.width, xe->tex_fb.height, xe->tex_fb.ptr);
+	printf("[xe] Framebuffer %d x %d @ %08x\n", xe->tex_fb.width, xe->tex_fb.height, xe->tex_fb.ptr);
 
 	u32 rb_phys=0;
 	xe->rb = Xe_pAlloc(xe,&rb_phys,WRITEBACK_ZONE_SIZE,WRITEBACK_ZONE_SIZE);
@@ -1247,6 +1248,27 @@ void Xe_Fatal(struct XenosDevice *xe, const char *fmt, ...)
 struct XenosSurface *Xe_GetFramebufferSurface(struct XenosDevice *xe)
 {
 	return &xe->tex_fb;
+}
+
+void Xe_SetFrameBufferSurface(struct XenosDevice *xe, struct XenosSurface *fb)
+{
+	if(!fb->tiled)
+        Xe_Fatal(xe, "new framebuffer surface should be tiled.\n");
+
+	if(fb->bypp!=4)
+        Xe_Fatal(xe, "new framebuffer surface format should be 32bit (BGRA8888).\n");
+    
+    w32(0x6110,fb->ptr);
+	w32(0x6120,fb->wpitch/4);
+    w32(0x6134,fb->width);
+    w32(0x6138,fb->height);
+
+    xe->tex_fb.ptr = r32(0x6110);
+	xe->tex_fb.wpitch = r32(0x6120) * 4;
+	xe->tex_fb.width = r32(0x6134);
+	xe->tex_fb.height = r32(0x6138);
+	xe->tex_fb.bypp = 4;
+	xe->tex_fb.base = (void*)(long)xe->tex_fb.ptr;
 }
 
 void Xe_Execute(struct XenosDevice *xe)
