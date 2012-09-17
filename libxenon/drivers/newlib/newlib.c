@@ -10,12 +10,11 @@
 #include <sys/errno.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/unistd.h>
 #include <diskio/disc_io.h>
 #include <xenon_soc/xenon_power.h>
 
 #include <debug.h>
-
-#define MAXPATHLEN 2048
 
 void (*stdout_hook)(const char *text, int len) = 0;
 
@@ -119,7 +118,7 @@ void _exit(int status) {
 	for(;;);
 }
 
-caddr_t sbrk(ptrdiff_t incr) {
+void * sbrk(ptrdiff_t incr) {
 	struct _reent *ptr = _REENT;
 	if (__syscalls.sbrk_r) {
 		return __syscalls.sbrk_r(ptr, incr);
@@ -165,17 +164,17 @@ int      pclose(FILE * f) {
 
 //---------------------------------------------------------------------------------
 
-int execve(const char *name, const char **argv, const char **env) {
+int execve(const char *path, char * const argv[], char * const envp[]) {
 	struct _reent *r = _REENT;
 	r->_errno = ENOSYS;
 	return -1;
 }
 
-int execv(const char *path, const char ** argv) {
+int execv(const char *path, char * const argv[]) {
     return execve(path, argv, NULL);
 }
 
-int execvp(const char *file, const char ** argv) {
+int execvp(const char *file, char * const argv[]) {
     return execve(file, argv, NULL);
 }
 
@@ -212,10 +211,27 @@ int lstat(const char * path, struct stat * buf) {
 
 //---------------------------------------------------------------------------------
 
-int access(const char *pathname, int mode) {
-    int fd=open(pathname, mode);
-    if (fd!=-1) close(fd);
-    return fd;
+int access(const char * path, int mode){
+    struct stat information;
+    int ok = stat(path, &information);
+    // printf("stat of '%s' is %d\n", path.c_str(), ok);
+    if (ok == 0){
+        if (mode == R_OK){
+            if (((information.st_mode & S_IRUSR) == S_IRUSR) ||
+                ((information.st_mode & S_IRGRP) == S_IRGRP) ||
+                ((information.st_mode & S_IROTH) == S_IROTH)){
+                return 0;
+            } else {
+            /* handle other modes if they become useful to us */
+                return -1;
+            }
+       } else {
+           return -1;
+       }
+    } else {
+        // perror("stat");
+        return -1;
+    }
 }
 
 //---------------------------------------------------------------------------------
@@ -431,7 +447,7 @@ int FindDevice(const char* name) {
 		if (devoptab_list[i]) {
 			namelen = strlen(devoptab_list[i]->name);
 			if (strncmp(devoptab_list[i]->name, name, namelen) == 0) {
-				if (name[namelen] == ':' || (isdigit(name[namelen]) && name[namelen + 1] == ':')) {
+				if (name[namelen] == ':' || (isdigit((int)name[namelen]) && name[namelen + 1] == ':')) {
 					dev = i;
 					break;
 				}
@@ -537,8 +553,7 @@ int open(const char *file, int flags, int mode) {
 
 //---------------------------------------------------------------------------------
 
-_ssize_t read(int fileDesc, char *ptr, size_t len) {
-	//---------------------------------------------------------------------------------
+int read(int fileDesc, void *ptr, size_t len) {
 	struct _reent *r = _REENT;
 	int ret = -1;
 	unsigned int dev = 0;
@@ -563,7 +578,7 @@ _ssize_t read(int fileDesc, char *ptr, size_t len) {
 	return ret;
 }
 
-_ssize_t write(int fileDesc, const char *ptr, int len) {
+int write(int fileDesc, const void *ptr, size_t len) {
 	struct _reent *r = _REENT;
 	int ret = -1;
 	unsigned int dev = 0;
@@ -985,7 +1000,7 @@ int chdir(const char *path) {
 	return 0;
 }
 
-char *getcwd(char *buf, size_t size) {
+char *getcwd(char * buf, size_t size) {
 
 	struct _reent *r = _REENT;
 
