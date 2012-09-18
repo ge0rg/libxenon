@@ -257,12 +257,6 @@ ex_isi:
 
 ex_dsi:
 
-    /* dabr breakpoint */
-    mfdsisr %r4
-    rlwinm %r4,%r4,10,31,31
-    cmplwi %r4,1
-    beq dump
-
     std %r0, OFF_REG(0)(%r31)
 	std %r5, OFF_REG(5)(%r31)
 	std %r6, OFF_REG(6)(%r31)
@@ -300,6 +294,12 @@ ex_dsi:
 	std %r4, OFF_REG(REG_CTR)(%r31)
 	mfxer %r4
 	std %r4, OFF_REG(REG_XER)(%r31)
+
+    /* dabr breakpoint */
+    mfdsisr %r4
+    rlwinm %r4,%r4,10,31,31
+    cmplwi %r4,1
+    beq dump_from_pagefault
 
 #if DEBUG
 	mflr %r2
