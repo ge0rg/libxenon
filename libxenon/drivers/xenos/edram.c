@@ -221,7 +221,7 @@ int edram_p2(int r3, int r4, int r5, int r6, int r7, int r8, int r9, int r10)
 		// bb584
 	xenos_write32(0x3c54, xenos_read32(0x3c54) | 0x20);
 	xenos_write32(0x3c54, xenos_read32(0x3c54) &~0x20);
-	int i, j, k;
+	int i;
 	
 	int res_cur[9], temp[9], res_base[9];
 	int valid[36]                 = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};

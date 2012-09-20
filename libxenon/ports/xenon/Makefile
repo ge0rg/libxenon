@@ -89,6 +89,7 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/lwip/core/ipv4/inet_chksum.o \
 	../../drivers/lwip/core/ipv4/inet.o \
 	../../drivers/lwip/core/mem.o \
+	../../drivers/lwip/core/dns.o \
 	../../drivers/lwip/core/memp.o \
 	../../drivers/lwip/core/netif.o \
 	../../drivers/lwip/core/pbuf.o \
@@ -117,7 +118,12 @@ LIBOBJS = crti.o crtn.o \
 	../../drivers/libfdt/fdt_rw.o \
 	../../drivers/libfdt/fdt_strerror.o \
 	../../drivers/libfdt/fdt_sw.o \
-	../../drivers/libfdt/fdt_wip.o
+	../../drivers/libfdt/fdt_wip.o \
+        ../../drivers/crypt/des.o \
+        ../../drivers/crypt/hmac_sha1.o \
+        ../../drivers/crypt/rc4.o \
+        ../../drivers/crypt/sha1.o \
+        ../../drivers/xb360/xb360.o
 
 # Build rules
 all: $(TARGETS)
