@@ -805,7 +805,7 @@ void Xe_ShaderApplyVFetchPatches(struct XenosDevice *xe, struct XenosShader *sh,
 	struct XenosShaderData *data = sh->shader + hdr->off_shader;
 	
 	void *shader_code = sh->shader_instance[index];
-	u32 *c = (u32*)(data + 1);
+	u32 *c = &data->unk1[2];
 	int skip = *c++;
 	int num_vfetch = *c;
 	++c;

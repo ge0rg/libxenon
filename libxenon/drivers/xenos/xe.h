@@ -96,6 +96,8 @@ struct XenosLock
 
 #define XE_SHADER_MAX_INSTANCES 16
 
+#pragma pack(push,1)
+
 struct XenosShader
 {
 	void *shader;
@@ -111,22 +113,27 @@ struct XenosShaderHeader
 	u32 magic;
 	u32 offset;
 	
-	u32 _[3];
+	u32 unk1[3];
 
 	u32 off_constants, off_shader;
+
+	u32 unk2[2];
 };
 
 struct XenosShaderData
 {
 	u32 sh_off, sh_size;
 	u32 program_control, context_misc;
-	u32 _[2];
+	
+	u32 unk1[4];
 };
 
 struct XenosShaderVertex
 {
 	u32 cnt0, cnt_vfetch, cnt2;
 };
+
+#pragma pack(pop)
 
 #define SWIZZLE_XYZW 0x688
 #define SWIZZLE_XYZ1 0xA88 // 101 010 001 000
