@@ -990,6 +990,9 @@ void Xe_Init(struct XenosDevice *xe)
 	Xe_pGInit(xe);
 
 	Xe_pInvalidateGpuCache(xe, 0, 0x20000000); // whole DRAM
+	
+	xe->clear_color=0; // color clear: black
+	xe->clear_stencil_z=0xffffff00; // zbuffer / stencil clear: z to -1, stencil to 0
 }
 
 void Xe_SetRenderTarget(struct XenosDevice *xe, struct XenosSurface *rt)
@@ -1032,23 +1035,57 @@ void Xe_pSetEDRAMLayout(struct XenosDevice *xe)
 		rput32(xe->edram_depthbase | (0<<16) ); // depth info, float Z
 }
 
+void Xe_pSetClearValues(struct XenosDevice *xe)
+{
+	Xe_pWriteReg(xe, 0x8c74, xe->clear_stencil_z);
+	
+	unsigned int clearv[2];
+	
+	switch (xe->edram_colorformat)
+	{
+		case 0:
+		case 1:
+			clearv[0] = clearv[1] = xe->clear_color;
+			break;
+		case 4:
+		case 5:
+			clearv[0]  = (xe->clear_color & 0xFF000000);
+			clearv[0] |= (xe->clear_color & 0x00FF0000)>>8;
+			clearv[0] >>= 1;
+			clearv[0] |= (clearv[0] >> 8) & 0x00FF00FF;
+			clearv[1]  = (xe->clear_color & 0x0000FF00)<<16;
+			clearv[1] |= (xe->clear_color & 0x000000FF)<<8;
+			clearv[1] >>= 1;
+			clearv[1] |= (clearv[1] >> 8) & 0x00FF00FF;
+			break;
+		default:
+			clearv[0] = clearv[1] = 0;
+	}
+	
+	Xe_pWriteReg(xe, 0x8c78, clearv[0]);
+	Xe_pWriteReg(xe, 0x8c7c, clearv[1]);
+}
+
 void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int source, int clear)
 {
 	Xe_pSetSurfaceClip(xe, 0, 0, 0, 0, surface->width, surface->height);
 	
 	Xe_VBBegin(xe, 2);
 	float vbdata[] = 
-		{-.5, -.5, /* never ever dare to mess with these values. NO, you can not resolve arbitrary areas or even shapes. */
+	{
+		-.5, -.5, /* never ever dare to mess with these values. NO, you can not resolve arbitrary areas or even shapes. */
 		 surface->width - .5,
 		 0,
 		 surface->width - .5,
 		 surface->height - .5
-		};
+	};
+	
 	Xe_VBPut(xe, vbdata, sizeof(vbdata) / 4);
 	struct XenosVertexBuffer *vb = Xe_VBEnd(xe);
 	Xe_VBPoolAdd(xe, vb);
 
 	Xe_pSetEDRAMLayout(xe);
+
 	rput32(0x00002104); 
 		rput32(0x0000000f); // colormask 
 	rput32(0x0005210f); 
@@ -1060,9 +1097,9 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 	int pitch;
 	switch (surface->format & XE_FMT_MASK)
 	{
-	case XE_FMT_8888: pitch = surface->wpitch / 4; break;
-	case XE_FMT_16161616: pitch = surface->wpitch / 8; break;
-	default: Xe_Fatal(xe, "unsupported resolve target format");
+		case XE_FMT_8888: pitch = surface->wpitch / 4; break;
+		case XE_FMT_16161616: pitch = surface->wpitch / 8; break;
+		default: Xe_Fatal(xe, "unsupported resolve target format");
 	}
 	rput32(0x00032318); 
 		rput32(0x00100000 | (msaavals[xe->msaa_samples]<<4) | (clear << 8) | source ); // 300 = color,depth clear enabled!
@@ -1070,36 +1107,21 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 		rput32(xy32(pitch, surface->height));
 		rput32(0x01000000 | ((surface->format&XE_FMT_MASK)<<7) | ((surface->format&~XE_FMT_MASK)>>6));
 
-	Xe_pWriteReg(xe, 0x8c74, 0xffffff00); // zbuffer / stencil clear: z to -1, stencil to 0
+	Xe_pSetClearValues(xe);
+		
+	// edram copy
 	
-	unsigned int clearv[2];
+	rput32(0x00002208); rput32(0x00000006);
+	rput32(0x00002208); rput32((clear&XE_CLEAR_COLOR || surface->base)?6:5);
+	rput32(0x00002200); rput32(0x8777);
+	rput32(0x000005c8); rput32(0x00020000);
 	
-	switch (xe->edram_colorformat)
-	{
-	case 0:
-	case 1:
-		clearv[0] = clearv[1] = xe->clearcolor;
-		break;
-	case 4:
-	case 5:
-		clearv[0]  = (xe->clearcolor & 0xFF000000);
-		clearv[0] |= (xe->clearcolor & 0x00FF0000)>>8;
-		clearv[0] >>= 1;
-		clearv[0] |= (clearv[0] >> 8) & 0x00FF00FF;
-		clearv[1]  = (xe->clearcolor & 0x0000FF00)<<16;
-		clearv[1] |= (xe->clearcolor & 0x000000FF)<<8;
-		clearv[1] >>= 1;
-		clearv[1] |= (clearv[1] >> 8) & 0x00FF00FF;
-		break;
-	default:
-		clearv[0] = clearv[1] = 0;
-	}
+	// invalidate state
 	
-	Xe_pWriteReg(xe, 0x8c78, clearv[0]);
-	Xe_pWriteReg(xe, 0x8c7c, clearv[1]);
-
 	rput32(0xc0003b00); rput32(0x00000100);
 
+	// load a shader
+	
 	rput32(0xc0102b00); rput32(0x00000000);
 		rput32(0x0000000f); 
 
@@ -1110,17 +1132,9 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 		rput32(0x00000000); rput32(0x00000000); rput32(0x00000000);
 
 	rput32(0x00012180); rput32(0x00010002); rput32(0x00000000); 
-	if (surface->ptr)
-	{
-		rput32(0x00002208); rput32(0x00000006);
-	} else
-	{
-		rput32(0x00002208); rput32(0x00000005);
-	}
 
-	rput32(0x00002200); rput32(0x8777);
-
-	rput32(0x000005c8); rput32(0x00020000);
+	// prepare draw edram FB to real dram FB
+	
 	rput32(0x00002203); rput32(0x00000000);
 	rput32(0x00022100); rput32(0x0000ffff); rput32(0x00000000); rput32(0x00000000); 
 	rput32(0x00022204); rput32(0x00010000); rput32(0x00010000); rput32(0x00000300); 
@@ -1130,47 +1144,37 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 	rput32(0x00054800); rput32((vb->phys_base) | 3); rput32(0x1000001a); rput32(0x00000000); rput32(0x00000000); rput32(0x00000000); rput32(0x00000000);
 
 	rput32(0x00025000); rput32(0x00000000); rput32(0x00000000); rput32(0x00000000);
- 
-	rput32(0xc0003600); rput32(0x00030088); 
 
+	// draw command
+	
+	rput32(0xc0003600); rput32(0x00030088); 
 	rput32(0xc0004600); rput32(0x00000006); 
 	rput32(0x00002007); rput32(0x00000000); 
+	
+	// flush dram FB
+	
 	Xe_pInvalidateGpuCacheAll(xe, surface->ptr, surface->wpitch * surface->height);
 
+	// cleanup
+	
 	rput32(0x0000057e); rput32(0x00010001); 
 	rput32(0x00002318); rput32(0x00000000);
 	rput32(0x0000231b); rput32(0x00000000);
 
-#if 0
-	rput32(0x00001844); rput32(surface->ptr); 
-	rput32(0xc0022100); rput32(0x00001841); rput32(0xfffff8ff); rput32(0x00000000);
-	rput32(0x00001930); rput32(0x00000000);
-	rput32(0xc0003b00); rput32(0x00007fff);
-#endif
-
-#if 0
-	rput32(0xc0025800); rput32(0x00000003); // event zeugs
-		rput32(0x1fc4e006); rput32(0xbfb75313);
-	rput32(0xc0025800); rput32(0x00000003);
-		rput32(0x1fc4e002); rput32(0x000286d1);
-#endif
-
-	xe->dirty |= DIRTY_MISC;
+	xe->dirty = ~0;
 }
 
 void Xe_Clear(struct XenosDevice *xe, int flags)
 {
 	struct XenosSurface surface = *xe->rt;
-	surface.ptr = 0;
+	surface.base = NULL;
 	
 	Xe_ResolveInto(xe, &surface, 0, flags);
 }
 
 void Xe_Resolve(struct XenosDevice *xe)
 {
-	struct XenosSurface *surface = xe->rt;
-	
-	Xe_ResolveInto(xe, surface, XE_SOURCE_COLOR, XE_CLEAR_COLOR|XE_CLEAR_DS);
+	Xe_ResolveInto(xe, xe->rt, XE_SOURCE_COLOR, XE_CLEAR_COLOR|XE_CLEAR_DS);
 }
 
 
@@ -1753,7 +1757,7 @@ void Xe_SetTexture(struct XenosDevice *xe, int index, struct XenosSurface *tex)
 
 void Xe_SetClearColor(struct XenosDevice *xe, u32 clearcolor)
 {
-	xe->clearcolor = clearcolor;
+	xe->clear_color = clearcolor;
 }
 
 struct XenosVertexBuffer *Xe_CreateVertexBuffer(struct XenosDevice *xe, int size)

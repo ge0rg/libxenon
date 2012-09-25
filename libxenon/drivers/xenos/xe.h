@@ -279,7 +279,8 @@ struct XenosDevice
 	int vp_xres, vp_yres;
 	int frameidx;
 	
-	u32 clearcolor;
+	u32 clear_color;
+	u32 clear_stencil_z;
 	int msaa_samples;
 
 	struct XenosVertexBuffer *vb_current, *vb_head;
