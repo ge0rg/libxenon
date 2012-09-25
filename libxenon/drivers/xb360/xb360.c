@@ -383,7 +383,7 @@ int updateXeLL(void * addr, unsigned len)
     return -1; // if this point is reached, updating xell failed
 }
 
-unsigned int xenon_get_console_type()
+int xenon_get_console_type()
 {
     unsigned int PVR, PCIBridgeRevisionID, consoleVersion, tmp;
     uint32_t DVEversion;
