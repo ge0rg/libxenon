@@ -503,14 +503,14 @@ int sfcx_read_metadata_type(void)
 
 unsigned int sfcx_init(void)
 {
-	unsigned int config = sfcx_readreg(SFCX_CONFIG);
-
-	if (sfc.initialized) return config;
-
 	if ((xenon_get_PCIBridgeRevisionID() >= 0x70) && (sfcx_readreg(SFCX_PHISON) != 0)) {
 		printf(" ! SFCX: Unsupported Type - PHISON eMMC\n");
 		return 3;
 	}
+	
+	unsigned int config = sfcx_readreg(SFCX_CONFIG);
+
+	if (sfc.initialized) return config;
 
 	sfc.initialized = 0;
 	sfc.meta_type = 0;
