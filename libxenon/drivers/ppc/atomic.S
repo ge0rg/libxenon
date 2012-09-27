@@ -29,27 +29,32 @@ atomic_clearset:
 	bne-   1b
 	blr
 
-	// thanks cOz for the following :)
+// thanks cOz for the following :)
 .globl lock
 lock:
+        li      %r8, 0
+1:
+        mfmsr   %r7
+		mtmsrd  %r8, 1
         lwarx   %r4, 0, %r3
-        cmplwi  %r4, 0
-        bc	6, eq, spinner
-        stwcx.  %r3, 0, %r3
-        bc      6, eq, spinner
+        cmplwi  cr7, %r4, 0
+        bne     cr7, 2f
+		mr      %r4, %r3
+2:
+        stwcx.  %r4, 0, %r3
+        mtmsrd  %r7, 1
+        bne     cr7, 2f
+        bne     2f
         lwsync
         blr
-spinner:
+2:
         db16cyc
-        lwz     %r4, 0(%r3)
-        cmplwi  %r4, 0
-        bc      15, eq, lock
-        b       spinner
+        b 1b
  
 .globl unlock
 unlock:
         li      %r4, 0
-        lwsync
+        sync    1  // lwsync
         stw     %r4, 0(%r3)
         li      %r4, -1
         mtspr   hdec, %r4 // reset the hypervisor decrementer to fix a lock issue
