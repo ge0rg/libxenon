@@ -9,8 +9,8 @@ extern int xenos_is_hdmi;
 static int snd_base = 0xea001600, wptr, buffer_len;
 
 // those 2 must be in the first 32MB of physical memory it seems...
-static uint8_t buffer[65536] __attribute__ ((section(".lowbuffers"),aligned (256)));
-static uint32_t descr[0x20*2] __attribute__ ((section(".lowbuffers"),aligned (256)));
+static uint8_t buffer[65536] __attribute__ ((section(".bss.beginning.lower"),aligned (256)));
+static uint32_t descr[0x20*2] __attribute__ ((section(".bss.beginning.lower"),aligned (256)));
 
 void xenon_sound_init(void)
 {
