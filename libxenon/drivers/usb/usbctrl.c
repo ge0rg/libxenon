@@ -72,6 +72,8 @@ static int usbctrl_detach(usbdev_t *dev);
 
 static int controller_mask = 0;
 
+usbdev_t *RFdev;
+
 typedef struct usbctrl_softc_s {
 	int uhid_ipipe;
 	int uhid_ipipe_tx;
@@ -110,6 +112,13 @@ static int usbctrl_set_led_callback(usbreq_t *ur) {
     //printf("Got callback for set leds\n");
     usb_free_request(ur);
     return 0;
+}
+
+int usbctrl_set_rol(uint controllerMask)
+{
+	if(!RFdev)
+		return -1;
+	return usb_simple_request(RFdev, 0x40, 0x02, controllerMask, 0x00);
 }
 
 int usbctrl_set_leds(usbctrl_softc_t * softc, uint8_t clear) {
@@ -324,15 +333,18 @@ static int usbctrl_ireq_callback(usbreq_t *ur)
 			controller_mask |= 1<<i;
 			
 			usbctrl_set_leds(uhid, 0);
+			usbctrl_set_rol(controller_mask);
 			
 		}
 
 		if (b[0] == 0x8 && b[1] == 0x0)
 		{
 			//printf("Wireless controller %i has disconnected\n", uhid->wireless_index);
-			printf("detatched controller %d\n", uhid->index);
+			printf("detached controller %d\n", uhid->index);
 			setcontroller(NULL, uhid->index);
 			controller_mask &= ~(1<<uhid->index);
+
+			usbctrl_set_rol(controller_mask);
 
 			uhid->index = -1;
 			goto ignore;
@@ -465,7 +477,7 @@ static int usbctrl_attach(usbdev_t *dev,usb_driver_t *drv)
 	{
 
 		dev->ud_private = NULL;
-
+		RFdev = dev;
 
 		int i;
 		for(i = 0; i < 4; i++)
@@ -535,6 +547,8 @@ static int usbctrl_attach(usbdev_t *dev,usb_driver_t *drv)
 
 		}
 
+		//Make sure we set the lights for any previously detected wired controllers
+		usbctrl_set_rol(controller_mask);
 
 	}
 	else
@@ -571,6 +585,8 @@ static int usbctrl_attach(usbdev_t *dev,usb_driver_t *drv)
 	softc->index = i;
 	setcontroller(softc, i);
 	controller_mask |= 1<<i;
+
+	usbctrl_set_rol(controller_mask);
 
 	/*
 	 * Allocate a DMA buffer
@@ -636,6 +652,9 @@ static int usbctrl_detach(usbdev_t *dev)
 	printf("detached controller %d\n", uhid->index);
 	setcontroller(NULL, uhid->index);
 	controller_mask &= ~(1<<uhid->index);
+
+	usbctrl_set_rol(controller_mask);
+
 	return 0;
 
 	}
