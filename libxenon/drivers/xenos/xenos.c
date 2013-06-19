@@ -20,8 +20,7 @@
 #define FB_BASE 0x1e000000
 
 u32 xenos_id = 0; // 5841=slim, 5831=jasper, 5821=zephyr/falcon?, 5811=xenon?
-int xenos_is_hdmi = 0;
-
+int xenos_is_hdmi = 0, xenos_is_corona;
 static struct edid * xenos_edid = NULL;
 
 
@@ -43,6 +42,29 @@ static void xenos_ana_write(int addr, uint32_t reg)
 	xenos_write32(0x7954, reg);
 	while (xenos_read32(0x7950) == addr) printf(".");
 }
+
+static int isCorona()
+{
+	unsigned int PVR = xenon_get_CPU_PVR();
+	printf("PVR: 0x%X\n", PVR);
+	if (PVR == 0x710800)
+	{
+		printf("XenosID: 0x%X\n", xenos_id);
+		if (xenos_id >= 5841 && xenos_id < 0x5851)
+		{
+			unsigned int DVE = xenon_get_DVE();
+			printf("DVE: 0x%X\n", DVE);
+			if (DVE >= 0x20)
+			{
+				//Todo: Maybe add additional checks?
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+#pragma region Video Modes
 
 struct mode_s
 {
@@ -229,6 +251,189 @@ struct mode_s
 	},
 };
 
+#pragma endregion
+
+struct mode_s xenos_modes_corona[] = {
+	{
+		.ana = ana_vga_640x480_corona,
+		.total_width = 800,
+		.total_height = 525,
+		.hsync_offset = 0x56,
+		.real_active_width = 640,
+		.active_height = 480,
+		.vsync_offset = 0x23,
+		.is_progressive = 1,
+		.width = 640,
+		.height = 480,
+		.rgb = 1,
+	}, 
+	{
+		.ana = ana_vga_1024x768_corona,
+        .total_width = 1344,
+		.hsync_offset = 235,
+		.real_active_width = 1024,
+		.total_height = 806,
+		.vsync_offset = 35,
+		.active_height = 768,
+		.width = 1024,
+		.height = 768,
+		.is_progressive = 1,
+		.rgb = 1,
+	},
+	{
+		.ana = ana_pal60_corona,
+		.total_width = 780,
+		.hsync_offset = 80,
+		.real_active_width = 640,
+		.total_height = 525,
+		.vsync_offset = 38,
+		.active_height = 480/2,
+		.is_progressive = 0,
+		.width = 640,
+		.height = 480/2,
+		.composite_sync = 1,
+		.overscan = 1,
+	},
+	{
+		.ana = ana_yuv_480p_corona,
+		.total_width = 780,
+		.hsync_offset = 82,
+		.real_active_width = 640,
+		.total_height = 525,
+		.vsync_offset = 38,
+		.active_height = 480,
+		.width = 640,
+		.height = 480,
+		.is_progressive = 1,
+		.composite_sync = 1,
+		.overscan = 1,
+	},
+	{
+		.ana = ana_pal50_corona,
+		.total_width = 784,
+		.hsync_offset = 91,
+		.real_active_width = 640,
+		.total_height = 625,
+		.vsync_offset = 44,
+		.active_height = 576/2,
+		.is_progressive = 0,
+		.width = 640,
+		.height = 576/2,
+		.is_progressive = 0,
+		.composite_sync = 1,
+		.overscan = 1,
+	},
+	{	
+        .ana = ana_vga_1280x768_corona,
+		.total_width = 1664,
+		.hsync_offset = 259,
+		.real_active_width = 1280,
+		.total_height = 798,
+		.vsync_offset = 27,
+		.active_height = 768,
+		.width = 1280,
+		.height = 768,
+		.is_progressive = 1,
+		.rgb = 1,
+	}, 
+	{
+		.ana = ana_vga_1360x768_corona,
+		.total_width = 1792,
+		.hsync_offset = 301,
+		.real_active_width = 1360,
+		.total_height = 795,
+		.vsync_offset = 24,
+		.active_height = 768,
+		.width = 1376,
+		.height = 768,
+		.is_progressive = 1,
+		.rgb = 1,
+	},
+	{	
+        .ana = ana_vga_1280x720_corona,
+		.total_width = 1650,
+		.hsync_offset = 199,
+		.real_active_width = 1280,
+		.total_height = 750,
+		.vsync_offset = 25,
+		.active_height = 720,
+		.width = 1280,
+		.height = 720,
+		.is_progressive = 1,
+		.rgb = 1,
+	}, 
+	{	
+        .ana = ana_vga_1440x900_corona,
+		.total_width = 1904,
+		.hsync_offset = 317,
+		.real_active_width = 1440,
+		.total_height = 934,
+		.vsync_offset = 31,
+		.active_height = 900,
+		.width = 1440,
+		.height = 896, //FIXME: EDRAM isn't big enough to render 1440*900
+		.is_progressive = 1,
+		.rgb = 1,
+	}, 
+	{	
+        .ana = ana_vga_1280x1024_corona,
+		.total_width = 1688,
+		.hsync_offset = 293,
+		.real_active_width = 1280,
+		.total_height = 1066,
+		.vsync_offset = 41,
+		.active_height = 1024,
+		.width = 1280,
+		.height = 1024,
+		.is_progressive = 1,
+		.rgb = 1,
+	}, 
+	{	
+        .ana = ana_hdmi_720p_corona,
+		.total_width = 1650,
+		.hsync_offset = 259,
+		.real_active_width = 1280,
+		.total_height = 750,
+		.vsync_offset = 25,
+		.active_height = 720,
+		.width = 1280,
+		.height = 720,
+		.is_progressive = 1,
+		.rgb = 1,
+        .hdmi = 1,
+		.overscan = 1,
+	}, 
+	{
+        .ana = ana_yuv_720p_corona,
+		.total_width = 1650,
+		.hsync_offset = 245,
+		.real_active_width = 1280,
+		.total_height = 750,
+		.vsync_offset = 25,
+		.active_height = 720,
+		.width = 1280,
+		.height = 720,
+		.is_progressive = 1,
+		.composite_sync = 1,
+		.overscan = 1,
+	},
+	{
+		.ana = ana_ntsc_corona,
+		.total_width = 780,
+		.hsync_offset = 80,
+		.real_active_width = 640,
+		.total_height = 525,
+		.vsync_offset = 38,
+		.active_height = 480/2,
+		.is_progressive = 0,
+		.width = 640,
+		.height = 480/2,
+		.composite_sync = 1,
+		.overscan = 1,
+	},
+};
+
+
 static struct mode_s * xenos_current_mode = NULL;
 
 void xenos_init_ana_new(uint32_t *mode_ana, int hdmi)
@@ -242,9 +447,73 @@ void xenos_init_ana_new(uint32_t *mode_ana, int hdmi)
     tmp &= ~(1<<18);
 	require(!xenon_smc_ana_write(0xD9, tmp), ana_error);
 
-	int addr_0[] = {0xD5, 0xD0, 0xD1, 0xD6, 0xD8, 0xD, 0xC};
+	xenon_smc_ana_write(0, 0);
 
-    xenon_smc_ana_write(0, 0);
+	if (xenos_is_corona)
+	{
+		// pll stuff
+		// all reads from the video_mode are 4 byte ints
+		xenon_smc_ana_write(0xCD, 0x62);
+ 
+		xenon_smc_ana_write(0xD0, mode_ana[0xD0]&~0x04000000);
+ 
+		xenon_smc_ana_write(0xD1, mode_ana[0xD1]);
+
+		u32 rd;
+		uint32_t r9, r11, r4, r30;
+
+		xenon_smc_ana_read(0xD2,&rd);
+		r9 = rd & 0xFFFF0000;
+		r11 = mode_ana[0xD2]& 0x0000FFFF;
+		r4 = r11 | r9;
+		xenon_smc_ana_write(0xD2, r4);
+ 
+		xenon_smc_ana_write(0xCF, 0x854ACC0);
+		udelay(1000);
+		xenon_smc_ana_read(0xCD,&rd);
+		xenon_smc_ana_write(0xCD, rd | 0x10);
+		udelay(1000);
+		xenon_smc_ana_read(0xCD,&rd);
+		xenon_smc_ana_write(0xCD, rd & ~0x40);
+		udelay(1000);
+		xenon_smc_ana_write(0xD3, 0x1B0A659D);
+		udelay(1000);
+		xenon_smc_ana_write(0xD3, 0x1B02659D);
+ 
+		xenon_smc_ana_read(0xCF,&rd);
+ 
+		r30 = rd | 0x40000000;
+		xenon_smc_ana_write(0xCF, r30);
+		udelay(1000);
+		xenon_smc_ana_write(0xCF, r30 & 0xBFFFFFFF);
+		xenon_smc_ana_write(0xCF, r30 & 0xF7FFFFFF);
+ 
+		if(mode_ana[0xD0]&0x04000000)
+		{
+			xenon_smc_ana_read(0xD0,&rd);
+			xenon_smc_ana_write(0xD0, rd | 0x04000000);
+		}
+
+		// dac stuff
+		xenon_smc_ana_write(0, 0);
+		xenon_smc_ana_write(0xD7, 0xFF);
+		xenon_smc_ana_write(0xF0, 0x291028E);
+		xenon_smc_ana_write(0xF1, 0x28E0285);
+		xenon_smc_ana_read(0xF0,&rd);
+		xenon_smc_ana_write(0xF0, rd | 0x80000000);
+		xenon_smc_ana_read(0xF0,&rd);
+		xenon_smc_ana_write(0xF0, rd & 0x7FFFFFFF);
+		xenon_smc_ana_read(0xD8,&rd);
+		xenon_smc_ana_write(0xD8, rd | 0x60);
+		xenon_smc_ana_read(0xD7,&rd);
+		xenon_smc_ana_write(0xD7, rd | 0x80);
+		udelay(1000);
+		xenon_smc_ana_read(0xD8,&rd);
+		xenon_smc_ana_write(0xD8, rd | 0x80);
+		xenon_smc_ana_write(0xD8, 0x1F);
+	}
+
+	int addr_0[] = {0xD5, 0xD0, 0xD1, 0xD6, 0xD8, 0xD, 0xC};
 
     for (i = 1; i < 7; ++i)
 	{
@@ -682,14 +951,20 @@ void xenos_autoset_mode(void)
 			mode = VIDEO_MODE_VGA_1024x768;
 		}
 	}
-	
-	xenos_set_mode(&xenos_modes[mode]);
+	if (xenos_is_corona)
+		xenos_set_mode(&xenos_modes_corona[mode]);
+	else
+		xenos_set_mode(&xenos_modes[mode]);
 }
 
 void xenos_init(int videoMode)
 {
-    xenos_id=xenon_get_XenosID();
+    xenos_id = xenon_get_XenosID();
     printf("Xenos GPU ID=%04x\n", (unsigned int)xenos_id);
+
+	xenos_is_corona = isCorona();
+	if (xenos_is_corona)
+		printf("Detected Corona motherboard!\n");
 
     xenos_init_phase0();
 	xenos_init_phase1();
@@ -701,6 +976,8 @@ void xenos_init(int videoMode)
 		xenon_config_init();
 		xenos_autoset_mode();
 	}
+	else if (xenos_is_corona)
+		xenos_set_mode(&xenos_modes_corona[videoMode]);
 	else
 		xenos_set_mode(&xenos_modes[videoMode]);
 
