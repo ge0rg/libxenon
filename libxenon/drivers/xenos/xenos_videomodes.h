@@ -1,5 +1,5 @@
-#ifndef __xenos_anadumps_h
-#define __xenos_anadumps_h
+#ifndef __xenos_videomodes_h
+#define __xenos_videomodes_h
 
 uint32_t ana_vga_640x480 [] = {
 0x0000004f, 0x00000003, 0x00000000, 0x00000000, 0x00000000, 0xffffffff, 0x00000000, 0x00000000,  // 00
@@ -917,6 +917,7 @@ struct mode_s
 	uint32_t *ana;
 	int total_width, total_height, hsync_offset, real_active_width, active_height,
 		vsync_offset, is_progressive, width, height, composite_sync, rgb, hdmi, overscan;
+	char* name;
 } xenos_modes[] = {
 	{
 		.ana = ana_vga_640x480,
@@ -930,10 +931,11 @@ struct mode_s
 		.width = 640,
 		.height = 480,
 		.rgb = 1,
+		.name = "VGA 640x480",
 	}, 
 	{
 		.ana = ana_vga_1024x768,
-        .total_width = 1344,
+		.total_width = 1344,
 		.hsync_offset = 235,
 		.real_active_width = 1024,
 		.total_height = 806,
@@ -943,6 +945,7 @@ struct mode_s
 		.height = 768,
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1024x768",
 	},
 	{
 		.ana = ana_pal60,
@@ -957,6 +960,7 @@ struct mode_s
 		.height = 480/2,
 		.composite_sync = 1,
 		.overscan = 1,
+		.name = "PAL60",
 	},
 	{
 		.ana = ana_yuv_480p,
@@ -971,6 +975,7 @@ struct mode_s
 		.is_progressive = 1,
 		.composite_sync = 1,
 		.overscan = 1,
+		.name = "yuv 480p",
 	},
 	{
 		.ana = ana_pal50,
@@ -986,9 +991,10 @@ struct mode_s
 		.is_progressive = 0,
 		.composite_sync = 1,
 		.overscan = 1,
+		.name = "PAL50",
 	},
 	{	
-        .ana = ana_vga_1280x768,
+		.ana = ana_vga_1280x768,
 		.total_width = 1664,
 		.hsync_offset = 259,
 		.real_active_width = 1280,
@@ -999,6 +1005,7 @@ struct mode_s
 		.height = 768,
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1280x768",
 	}, 
 	{
 		.ana = ana_vga_1360x768,
@@ -1012,9 +1019,10 @@ struct mode_s
 		.height = 768,
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1360x768",
 	},
 	{	
-        .ana = ana_vga_1280x720,
+		.ana = ana_vga_1280x720,
 		.total_width = 1650,
 		.hsync_offset = 199,
 		.real_active_width = 1280,
@@ -1025,9 +1033,10 @@ struct mode_s
 		.height = 720,
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1280x720",
 	}, 
 	{	
-        .ana = ana_vga_1440x900,
+		.ana = ana_vga_1440x900,
 		.total_width = 1904,
 		.hsync_offset = 317,
 		.real_active_width = 1440,
@@ -1038,9 +1047,10 @@ struct mode_s
 		.height = 896, //FIXME: EDRAM isn't big enough to render 1440*900
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1440x900",
 	}, 
 	{	
-        .ana = ana_vga_1280x1024,
+		.ana = ana_vga_1280x1024,
 		.total_width = 1688,
 		.hsync_offset = 293,
 		.real_active_width = 1280,
@@ -1051,9 +1061,10 @@ struct mode_s
 		.height = 1024,
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1280x1024",
 	}, 
 	{	
-        .ana = ana_hdmi_720p,
+		.ana = ana_hdmi_720p,
 		.total_width = 1650,
 		.hsync_offset = 259,
 		.real_active_width = 1280,
@@ -1064,11 +1075,12 @@ struct mode_s
 		.height = 720,
 		.is_progressive = 1,
 		.rgb = 1,
-        .hdmi = 1,
+		.hdmi = 1,
 		.overscan = 1,
+		.name = "HDMI 720p",
 	}, 
 	{
-        .ana = ana_yuv_720p,
+		.ana = ana_yuv_720p,
 		.total_width = 1650,
 		.hsync_offset = 245,
 		.real_active_width = 1280,
@@ -1080,6 +1092,7 @@ struct mode_s
 		.is_progressive = 1,
 		.composite_sync = 1,
 		.overscan = 1,
+		.name = "yuv 720p",
 	},
 	{
 		.ana = ana_ntsc,
@@ -1094,6 +1107,7 @@ struct mode_s
 		.height = 480/2,
 		.composite_sync = 1,
 		.overscan = 1,
+		.name = "NTSC",
 	},
 };
 
@@ -1110,10 +1124,11 @@ struct mode_s xenos_modes_corona[] = {
 		.width = 640,
 		.height = 480,
 		.rgb = 1,
+		.name = "VGA 640x480 Corona",
 	}, 
 	{
 		.ana = ana_vga_1024x768_corona,
-        .total_width = 1344,
+		.total_width = 1344,
 		.hsync_offset = 235,
 		.real_active_width = 1024,
 		.total_height = 806,
@@ -1123,6 +1138,7 @@ struct mode_s xenos_modes_corona[] = {
 		.height = 768,
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1024x768 Corona",
 	},
 	{
 		.ana = ana_pal60_corona,
@@ -1137,6 +1153,7 @@ struct mode_s xenos_modes_corona[] = {
 		.height = 480/2,
 		.composite_sync = 1,
 		.overscan = 1,
+		.name = "PAL60 Corona",
 	},
 	{
 		.ana = ana_yuv_480p_corona,
@@ -1151,6 +1168,7 @@ struct mode_s xenos_modes_corona[] = {
 		.is_progressive = 1,
 		.composite_sync = 1,
 		.overscan = 1,
+		.name = "yuv 480p Corona",
 	},
 	{
 		.ana = ana_pal50_corona,
@@ -1166,9 +1184,10 @@ struct mode_s xenos_modes_corona[] = {
 		.is_progressive = 0,
 		.composite_sync = 1,
 		.overscan = 1,
+		.name = "PAL50 Corona",
 	},
 	{	
-        .ana = ana_vga_1280x768_corona,
+		.ana = ana_vga_1280x768_corona,
 		.total_width = 1664,
 		.hsync_offset = 259,
 		.real_active_width = 1280,
@@ -1179,6 +1198,7 @@ struct mode_s xenos_modes_corona[] = {
 		.height = 768,
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1280x768 Corona",
 	}, 
 	{
 		.ana = ana_vga_1360x768_corona,
@@ -1192,9 +1212,10 @@ struct mode_s xenos_modes_corona[] = {
 		.height = 768,
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1360x768 Corona",
 	},
 	{	
-        .ana = ana_vga_1280x720_corona,
+		.ana = ana_vga_1280x720_corona,
 		.total_width = 1650,
 		.hsync_offset = 199,
 		.real_active_width = 1280,
@@ -1205,9 +1226,10 @@ struct mode_s xenos_modes_corona[] = {
 		.height = 720,
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1280x720 Corona",
 	}, 
 	{	
-        .ana = ana_vga_1440x900_corona,
+		.ana = ana_vga_1440x900_corona,
 		.total_width = 1904,
 		.hsync_offset = 317,
 		.real_active_width = 1440,
@@ -1218,9 +1240,10 @@ struct mode_s xenos_modes_corona[] = {
 		.height = 896, //FIXME: EDRAM isn't big enough to render 1440*900
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1440x900 Corona",
 	}, 
 	{	
-        .ana = ana_vga_1280x1024_corona,
+		.ana = ana_vga_1280x1024_corona,
 		.total_width = 1688,
 		.hsync_offset = 293,
 		.real_active_width = 1280,
@@ -1231,9 +1254,10 @@ struct mode_s xenos_modes_corona[] = {
 		.height = 1024,
 		.is_progressive = 1,
 		.rgb = 1,
+		.name = "VGA 1280x1024 Corona",
 	}, 
 	{	
-        .ana = ana_hdmi_720p_corona,
+		.ana = ana_hdmi_720p_corona,
 		.total_width = 1650,
 		.hsync_offset = 259,
 		.real_active_width = 1280,
@@ -1244,11 +1268,12 @@ struct mode_s xenos_modes_corona[] = {
 		.height = 720,
 		.is_progressive = 1,
 		.rgb = 1,
-        .hdmi = 1,
+		.hdmi = 1,
 		.overscan = 1,
+		.name = "HDMI 720p Corona",
 	}, 
 	{
-        .ana = ana_yuv_720p_corona,
+		.ana = ana_yuv_720p_corona,
 		.total_width = 1650,
 		.hsync_offset = 245,
 		.real_active_width = 1280,
@@ -1260,6 +1285,7 @@ struct mode_s xenos_modes_corona[] = {
 		.is_progressive = 1,
 		.composite_sync = 1,
 		.overscan = 1,
+		.name = "yuv 720p Corona",
 	},
 	{
 		.ana = ana_ntsc_corona,
@@ -1274,6 +1300,7 @@ struct mode_s xenos_modes_corona[] = {
 		.height = 480/2,
 		.composite_sync = 1,
 		.overscan = 1,
+		.name = "NTSC Corona",
 	},
 };
 

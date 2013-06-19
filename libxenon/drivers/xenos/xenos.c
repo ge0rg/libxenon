@@ -13,7 +13,7 @@
 #include <assert.h>
 #include <xetypes.h>
 
-#include <xenos/anadumps.h>
+#include <xenos/xenos_videomodes.h>
 
 #define require(x, label) if (!(x)) { printf("%s:%d [%s]\n", __FILE__, __LINE__, #x); goto label; }
 
@@ -62,6 +62,7 @@ static int isCorona()
 			printf("DVE: 0x%X\n", DVE);
 			if (DVE >= 0x20)
 			{
+				printf("PCIBridgeRevisionID: 0x%X\n", xenon_get_PCIBridgeRevisionID()); //Maybe we can identify INF with this?
 				//Todo: Maybe add additional checks?
 				return 1;
 			}
@@ -80,7 +81,7 @@ void xenos_init_ana_new(uint32_t *mode_ana, int hdmi)
 	require(!xenon_smc_ana_read(0xfe, &tmp), ana_error);
 	
 	require(!xenon_smc_ana_read(0xD9, &tmp), ana_error);
-    tmp &= ~(1<<18);
+	tmp &= ~(1<<18);
 	require(!xenon_smc_ana_write(0xD9, tmp), ana_error);
 
 	xenon_smc_ana_write(0, 0);
@@ -151,18 +152,18 @@ void xenos_init_ana_new(uint32_t *mode_ana, int hdmi)
 
 	int addr_0[] = {0xD5, 0xD0, 0xD1, 0xD6, 0xD8, 0xD, 0xC};
 
-    for (i = 1; i < 7; ++i)
+	for (i = 1; i < 7; ++i)
 	{
 		require(!xenon_smc_ana_write(addr_0[i], mode_ana[addr_0[i]]), ana_error);
 		if (addr_0[i] == 0xd6){
 			udelay(1000);
 
-            if (hdmi){
-                xenon_smc_ana_write(0x000,0x00000181);
-                udelay(5000);
-                xenon_smc_ana_write(0x000,0x00000081);
-            }
-        }
+			if (hdmi){
+				xenon_smc_ana_write(0x000,0x00000181);
+				udelay(5000);
+				xenon_smc_ana_write(0x000,0x00000081);
+			}
+		}
 	}
 	
 	require(!xenon_smc_ana_write(0, 0x60), ana_error);
@@ -172,15 +173,15 @@ void xenos_init_ana_new(uint32_t *mode_ana, int hdmi)
 	xenos_write32(0x7910, 1);
 	xenos_write32(0x7900, 1);
 
-    // fixed stuff
+	// fixed stuff
 
 	int fixed_addr[] = {2, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x6d, 0x6e, 0x6f, 0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76};
-    int fixed_val[] = {0, 0x2540F38, 0xE600002, 0x2540409,2, 0x2540000, 0x3310002,0,0,0,0,0,0,0,0,0,0};
+	int fixed_val[] = {0, 0x2540F38, 0xE600002, 0x2540409,2, 0x2540000, 0x3310002,0,0,0,0,0,0,0,0,0,0};
 	
 	for (i = 0; i < 0x11; ++i)
 		xenos_ana_write(fixed_addr[i], fixed_val[i]);
 
-    // levels stuff
+	// levels stuff
 
 	for (i = 0x26; i <= 0x34; ++i)
 		xenos_ana_write(i, mode_ana[i]);
@@ -197,7 +198,7 @@ void xenos_init_ana_new(uint32_t *mode_ana, int hdmi)
 	for (i = 0x55; i <= 0x57; ++i)
 		xenos_ana_write(i, mode_ana[i]);
 
-    // digital video stuff
+	// digital video stuff
 
 	int addr_1[] = {3, 6, 7, 8, 0xc, 0xd, 0xe, 0xf, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17};
 
@@ -208,7 +209,7 @@ void xenos_init_ana_new(uint32_t *mode_ana, int hdmi)
 
 	xenon_smc_ana_write(0, mode_ana[0]);
 
-    return;
+	return;
 	
 ana_error:
 	printf("error reading/writing ana\n");
@@ -234,68 +235,68 @@ void xenos_init_phase0(void)
 
 void xenos_init_phase1(void)
 {
-    if (xenos_id>=0x5841){
-        uint32_t v,v2;
-        
-        v = xenos_read32(0x0218) & 0xFE7FFFFF;
-        xenos_write32(0x0218,v);
-        xenos_read32(0x0218);
+	if (xenos_id>=0x5841){
+		uint32_t v,v2;
+		
+		v = xenos_read32(0x0218) & 0xFE7FFFFF;
+		xenos_write32(0x0218,v);
+		xenos_read32(0x0218);
 
-        v2 = 0xa058a34;
+		v2 = 0xa058a34;
 
-        xenos_write32(0x244,v2);
+		xenos_write32(0x244,v2);
 
-        v &= 0xFFFFF803;
-        v |= 0x388;
-        xenos_write32(0x0218,v);
-        xenos_read32(0x0218);
-        udelay(1000);
+		v &= 0xFFFFF803;
+		v |= 0x388;
+		xenos_write32(0x0218,v);
+		xenos_read32(0x0218);
+		udelay(1000);
 
-        v2 |= 1;
-        xenos_write32(0x244,v2);
-        xenos_read32(0x244);
-        udelay(1000);
+		v2 |= 1;
+		xenos_write32(0x244,v2);
+		xenos_read32(0x244);
+		udelay(1000);
 
-        v |= 0x1000000;
-        xenos_write32(0x0218,v);
-        xenos_read32(0x0218);
+		v |= 0x1000000;
+		xenos_write32(0x0218,v);
+		xenos_read32(0x0218);
 
-        xenos_write32(0x0218,xenos_read32(0x0218) & 0xFFFFFFFE);
-    }else{
-        uint32_t v;
-        xenos_write32(0x0244, 0x20000000); //
-        v = 0x200c0011;
-        xenos_write32(0x0244, v);
-        udelay(1000);
-        v &=~ 0x20000000;
-        xenos_write32(0x0244, v);
-        udelay(1000);
+		xenos_write32(0x0218,xenos_read32(0x0218) & 0xFFFFFFFE);
+	}else{
+		uint32_t v;
+		xenos_write32(0x0244, 0x20000000); //
+		v = 0x200c0011;
+		xenos_write32(0x0244, v);
+		udelay(1000);
+		v &=~ 0x20000000;
+		xenos_write32(0x0244, v);
+		udelay(1000);
 
-        assert(xenos_read32(0x0244) == 0xc0011);
+		assert(xenos_read32(0x0244) == 0xc0011);
 
-        xenos_write32(0x0218, 0);
-    }
+		xenos_write32(0x0218, 0);
+	}
 
 	xenos_write32(0x3c04, 0xe);
 	xenos_write32(0x00f4, 4);
 	
-    if (xenos_id>=0x5841){
-    	xenos_write32(0x0204, 0x947FF386);
-        xenos_write32(0x0208, 0x3FC7C2);
-    }else{
-        int gpu_clock = xenos_read32(0x0210);
-        int mem_clock = xenos_read32(0x284);
-        int edram_clock = xenos_read32(0x244);
-        int fsb_clock = xenos_read32(0x248);
-        assert(gpu_clock == 9);
-        printf("GPU Clock at %d MHz\n", 50 * ((gpu_clock & 0xfff)+1) / (((gpu_clock >> 12) & 0x3f)+1));
-        printf("MEM Clock at %d MHz\n", 50 * ((mem_clock & 0xfff)+1) / (((mem_clock >> 12) & 0x3f)+1));
-        printf("EDRAM Clock at %d MHz\n", 100 * ((edram_clock & 0xfff)+1) / (((edram_clock >> 12) & 0x3f)+1));
-        printf("FSB Clock at %d MHz\n", 100 * ((fsb_clock & 0xfff)+1) / (((fsb_clock >> 12) & 0x3f)+1));
+	if (xenos_id>=0x5841){
+		xenos_write32(0x0204, 0x947FF386);
+		xenos_write32(0x0208, 0x3FC7C2);
+	}else{
+		int gpu_clock = xenos_read32(0x0210);
+		int mem_clock = xenos_read32(0x284);
+		int edram_clock = xenos_read32(0x244);
+		int fsb_clock = xenos_read32(0x248);
+		assert(gpu_clock == 9);
+		printf("GPU Clock at %d MHz\n", 50 * ((gpu_clock & 0xfff)+1) / (((gpu_clock >> 12) & 0x3f)+1));
+		printf("MEM Clock at %d MHz\n", 50 * ((mem_clock & 0xfff)+1) / (((mem_clock >> 12) & 0x3f)+1));
+		printf("EDRAM Clock at %d MHz\n", 100 * ((edram_clock & 0xfff)+1) / (((edram_clock >> 12) & 0x3f)+1));
+		printf("FSB Clock at %d MHz\n", 100 * ((fsb_clock & 0xfff)+1) / (((fsb_clock >> 12) & 0x3f)+1));
 
-        xenos_write32(0x0204, (xenos_id<0x5821)?0x4000300:0x4400380);
-        xenos_write32(0x0208, 0x180002);
-    }
+		xenos_write32(0x0204, (xenos_id<0x5821)?0x4000300:0x4400380);
+		xenos_write32(0x0208, 0x180002);
+	}
 	
 	xenos_write32(0x01a8, 0);
 	xenos_write32(0x0e6c, 0x0c0f0000);
@@ -343,7 +344,7 @@ void xenos_ana_preinit(void)
 	xenos_write32(0x7900, 0);
 	xenon_smc_ana_read(0xd9, &v);
 	xenon_smc_ana_write(0xd9, v | 0x40000);
-    xenon_smc_i2c_write(0x108,0x36);
+	xenon_smc_i2c_write(0x108,0x36);
 }
 
 void xenos_set_mode_f1(struct mode_s *mode)
@@ -447,7 +448,7 @@ void xenos_set_mode(struct mode_s *mode)
 	xenos_ana_preinit();
 	xenos_write32(0x04a0, 0x100);
 	printf(" . ana enable\n");
-    xenos_init_ana_new(mode->ana,mode->hdmi);
+	xenos_init_ana_new(mode->ana,mode->hdmi);
 	xenos_write32(0x7900, 1);
 
 	printf(" . f1\n");
@@ -521,13 +522,28 @@ void xenos_set_mode(struct mode_s *mode)
 	xenos_current_mode = mode;
 }
 
+int xenos_hdmi_vga_mode_fix(int mode)
+{
+	struct edid * monitor_edid = xenos_get_edid();
+		// fix some non standart mode (vga + yuv or hdmi/dvi + yuv )
+		if(monitor_edid) {
+			// HDMI or DVI
+			if(monitor_edid->input&DRM_EDID_INPUT_DIGITAL)
+				return VIDEO_MODE_HDMI_720P;
+			// VGA
+			else
+				return VIDEO_MODE_VGA_1024x768;
+		}
+		return mode;
+}
+
 void xenos_autoset_mode(void)
 {
 	int mode;
-	int region = xenon_config_get_avregion();
 	int avpack = xenon_smc_read_avpack();
+	//mode = VIDEO_MODE_VGA_1024x768;
 
-	switch (region)
+	switch (xenon_config_get_avregion())
 	{
 	case AVREGION_NTSCJ:
 	case AVREGION_NTSCM:
@@ -574,19 +590,21 @@ void xenos_autoset_mode(void)
 		break;
 	}
 		
-	struct edid * monitor_edid = xenos_get_edid();
-
-	// fix some non standart mode (vga + yuv or hdmi/dvi + yuv )
-	if(monitor_edid){
-		// HDMI or DVI
-		if(monitor_edid->input&DRM_EDID_INPUT_DIGITAL){
-			mode = VIDEO_MODE_HDMI_720P;
-		}
-		// VGA
-		else{
-			mode = VIDEO_MODE_VGA_1024x768;
-		}
+	switch (avpack)
+	{
+	case 0x43: // COMPOSITE - TV MODE
+	case 0x47: // SCART
+	case 0x54: // COMPOSITE + S-VIDEO
+	case 0x57: // NORMAL COMPOSITE
+	case 0x0C: // COMPONENT
+	case 0x0F: // COMPONENT
+	case 0x4F: // COMPOSITE - HD MODE
+		break;
+	default:
+		mode = xenos_hdmi_vga_mode_fix(mode);
+		break;
 	}
+
 	if (xenos_is_corona)
 		xenos_set_mode(&xenos_modes_corona[mode]);
 	else
@@ -595,20 +613,20 @@ void xenos_autoset_mode(void)
 
 void xenos_init(int videoMode)
 {
-    xenos_id = xenon_get_XenosID();
-    printf("Xenos GPU ID=%04x\n", (unsigned int)xenos_id);
+	xenos_id = xenon_get_XenosID();
+	printf("Xenos GPU ID=%04x\n", (unsigned int)xenos_id);
 
 	xenos_is_corona = isCorona();
 	if (xenos_is_corona)
 		printf("Detected Corona motherboard!\n");
 
-    xenos_init_phase0();
+	xenos_init_phase0();
 	xenos_init_phase1();
 	
 	xenon_gpio_set(0, 0x2300);
 	xenon_gpio_set_oe(0, 0x2300);
 
-    if (videoMode<0){
+	if (videoMode<0){
 		xenon_config_init();
 		xenos_autoset_mode();
 	}
@@ -625,6 +643,8 @@ void xenos_init(int videoMode)
 		xenos_is_hdmi=xenos_detect_hdmi_monitor(xenos_edid);
 		if(xenos_is_hdmi) printf("Detected HDMI monitor!\n");
 	}
+
+	printf("Video Mode: %s\n", xenos_current_mode->name);
 }
 
 int xenos_is_overscan()
@@ -639,5 +659,5 @@ int xenos_is_overscan()
 
 int xenos_is_initialized()
 {
-	return xenos_current_mode!=NULL;
+	return xenos_current_mode != NULL;
 }

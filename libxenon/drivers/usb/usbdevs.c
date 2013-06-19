@@ -98,6 +98,7 @@ usb_drvlist_t usb_drivers[] = {
     {CLASS_ANY,	0x045e,0x2a9,	&usbctrl_driver}, // wireless controller
     {CLASS_ANY, 0x045e,0x2b0,   &dummy_driver}, // Kinect, not handled so we load a dummy drive
     {CLASS_ANY,	0x1bad,0xf900,	&usbctrl_driver}, // PDP Afterglow controller
+    {CLASS_ANY,	0x045e,0x28f,	&dummy_driver}, // play and charge kit, not a controller - let's ignore it
 
     /*
      * Mass storage devices
@@ -106,7 +107,7 @@ usb_drvlist_t usb_drivers[] = {
 #ifdef USB11_MASS_STORAGE
     {USB_DEVICE_CLASS_STORAGE,	VENDOR_ANY,	PRODUCT_ANY,	&usbmass_driver},
 #endif
-	
+    
 #if 0
     /*
      * Serial ports
@@ -165,39 +166,39 @@ usb_driver_t *usb_find_driver(usbdev_t *dev)
 
     dclass = devdescr->bDeviceClass;
     if (dclass == 0) {
-	ifdescr = usb_find_cfg_descr(dev,USB_INTERFACE_DESCRIPTOR_TYPE,0);
-	if (ifdescr) dclass = ifdescr->bInterfaceClass;
-	}
+    ifdescr = usb_find_cfg_descr(dev,USB_INTERFACE_DESCRIPTOR_TYPE,0);
+    if (ifdescr) dclass = ifdescr->bInterfaceClass;
+    }
 
     vendor = (int) GETUSBFIELD(devdescr,idVendor);
     product = (int) GETUSBFIELD(devdescr,idProduct);
 
     printf("USB bus %d device %d: vendor %04X product %04X class %02X: ",
-	   dev->ud_bus->ub_num, dev->ud_address, vendor, product, dclass);
+       dev->ud_bus->ub_num, dev->ud_address, vendor, product, dclass);
 
     list = usb_drivers;
     while (list->udl_disp) {
-	if (((list->udl_class == dclass) || (list->udl_class == CLASS_ANY)) &&
-	    ((list->udl_vendor == vendor) || (list->udl_vendor == VENDOR_ANY)) &&
-	    ((list->udl_product == product) || (list->udl_product == PRODUCT_ANY))) {
-	    printf("%s\n",list->udl_disp->udrv_name);
-	    return list->udl_disp;
-	    }
-	list++;
-	}
-	
-	// try to detected wired controller
-	int i;
-	for (i = 0; i < devdescr->bNumConfigurations; i++) {
-		usb_interface_descr_t * cfgdescr = usb_find_cfg_descr(dev, USB_INTERFACE_DESCRIPTOR_TYPE, i);
-		if (cfgdescr) {
-			if(cfgdescr && cfgdescr->bInterfaceSubClass == 93){
-				printf("Wired controller ?\n");
-				return &usbctrl_driver;	
-			}
+    if (((list->udl_class == dclass) || (list->udl_class == CLASS_ANY)) &&
+        ((list->udl_vendor == vendor) || (list->udl_vendor == VENDOR_ANY)) &&
+        ((list->udl_product == product) || (list->udl_product == PRODUCT_ANY))) {
+        printf("%s\n",list->udl_disp->udrv_name);
+        return list->udl_disp;
+        }
+    list++;
+    }
+    
+    // try to detected wired controller
+    int i;
+    for (i = 0; i < devdescr->bNumConfigurations; i++) {
+        usb_interface_descr_t * cfgdescr = usb_find_cfg_descr(dev, USB_INTERFACE_DESCRIPTOR_TYPE, i);
+        if (cfgdescr) {
+            if(cfgdescr && cfgdescr->bInterfaceSubClass == 93){
+                printf("Wired controller ?\n");
+                return &usbctrl_driver;	
+            }
 
-		}
-	}
+        }
+    }
 
     printf("Not found.\n");
 
