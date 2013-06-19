@@ -20,7 +20,7 @@
 #define FB_BASE 0x1e000000
 
 u32 xenos_id = 0; // 5841=slim, 5831=jasper, 5821=zephyr/falcon?, 5811=xenon?
-int xenos_is_hdmi = 0, xenos_is_corona;
+int xenos_is_hdmi = 0, xenos_is_corona = 0;
 static struct edid * xenos_edid = NULL;
 
 
@@ -40,7 +40,13 @@ static void xenos_ana_write(int addr, uint32_t reg)
 	xenos_write32(0x7950, addr);
 	xenos_read32(0x7950);
 	xenos_write32(0x7954, reg);
-	while (xenos_read32(0x7950) == addr) printf(".");
+	uint32_t cycle = 0;
+	while (xenos_read32(0x7950) == addr && cycle < 1000) {
+		if (!(cycle % 250)) printf(".");
+		cycle++;
+	}
+	if (cycle == 1000)
+		printf("\nxenos_ana_write - addr: 0x%X reg: 0x%X - FAILED!\n");
 }
 
 static int isCorona()
