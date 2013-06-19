@@ -51,7 +51,7 @@ struct mode_s
 		vsync_offset, is_progressive, width, height, composite_sync, rgb, hdmi, overscan;
 } xenos_modes[] = {
 	{
-		.ana = ana_640x480p,
+		.ana = ana_vga_640x480,
 		.total_width = 800,
 		.total_height = 525,
 		.hsync_offset = 0x56,
@@ -64,7 +64,7 @@ struct mode_s
 		.rgb = 1,
 	}, 
 	{
-		.ana = ana_1024x768,
+		.ana = ana_vga_1024x768,
         .total_width = 1344,
 		.hsync_offset = 235,
 		.real_active_width = 1024,
@@ -77,7 +77,7 @@ struct mode_s
 		.rgb = 1,
 	},
 	{
-		.ana = ana_640_480_composite,
+		.ana = ana_pal60,
 		.total_width = 780,
 		.hsync_offset = 80,
 		.real_active_width = 640,
@@ -105,7 +105,7 @@ struct mode_s
 		.overscan = 1,
 	},
 	{
-		.ana = ana_pal,
+		.ana = ana_pal50,
 		.total_width = 784,
 		.hsync_offset = 91,
 		.real_active_width = 640,
@@ -120,7 +120,7 @@ struct mode_s
 		.overscan = 1,
 	},
 	{	
-        .ana = ana_1280x768,
+        .ana = ana_vga_1280x768,
 		.total_width = 1664,
 		.hsync_offset = 259,
 		.real_active_width = 1280,
@@ -133,7 +133,7 @@ struct mode_s
 		.rgb = 1,
 	}, 
 	{
-		.ana = ana_1360x768,
+		.ana = ana_vga_1360x768,
 		.total_width = 1792,
 		.hsync_offset = 301,
 		.real_active_width = 1360,
@@ -146,7 +146,7 @@ struct mode_s
 		.rgb = 1,
 	},
 	{	
-        .ana = ana_1280x720,
+        .ana = ana_vga_1280x720,
 		.total_width = 1650,
 		.hsync_offset = 199,
 		.real_active_width = 1280,
@@ -159,7 +159,7 @@ struct mode_s
 		.rgb = 1,
 	}, 
 	{	
-        .ana = ana_1440x900,
+        .ana = ana_vga_1440x900,
 		.total_width = 1904,
 		.hsync_offset = 317,
 		.real_active_width = 1440,
@@ -172,7 +172,7 @@ struct mode_s
 		.rgb = 1,
 	}, 
 	{	
-        .ana = ana_1280x1024,
+        .ana = ana_vga_1280x1024,
 		.total_width = 1688,
 		.hsync_offset = 293,
 		.real_active_width = 1280,
@@ -214,7 +214,7 @@ struct mode_s
 		.overscan = 1,
 	},
 	{
-	.ana = ana_ntsc_480i,
+		.ana = ana_ntsc,
 		.total_width = 780,
 		.hsync_offset = 80,
 		.real_active_width = 640,
@@ -697,7 +697,7 @@ void xenos_init(int videoMode)
 	xenon_gpio_set(0, 0x2300);
 	xenon_gpio_set_oe(0, 0x2300);
 
-    if (videoMode < 0){
+    if (videoMode<0){
 		xenon_config_init();
 		xenos_autoset_mode();
 	}
@@ -708,8 +708,8 @@ void xenos_init(int videoMode)
 	xenos_write32(AVIVO_D1MODE_DESKTOP_HEIGHT, 0x00000300);
 	
 	if (xenos_current_mode->hdmi){
-		xenos_edid = xenos_get_edid();
-		xenos_is_hdmi = xenos_detect_hdmi_monitor(xenos_edid);
+		xenos_edid=xenos_get_edid();
+		xenos_is_hdmi=xenos_detect_hdmi_monitor(xenos_edid);
 		if(xenos_is_hdmi) printf("Detected HDMI monitor!\n");
 	}
 }
