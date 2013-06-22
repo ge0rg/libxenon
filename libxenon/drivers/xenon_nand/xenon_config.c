@@ -9,6 +9,7 @@
 #include <string.h>
 #include "xenon_config.h"
 #include "xenon_sfcx.h"
+#include "xb360/xb360.h"
 
 #define BLOCK_OFFSET 3 //We want the 3rd block of the 4 config blocks)
 
@@ -20,29 +21,24 @@ unsigned char pagebuf[MAX_PAGE_SZ];   //Max known hardware physical page size
 
 void xenon_config_init(void)
 {
-	if (xenon_config_initialized) return;
+	if (xenon_config_initialized) 
+		return;
+
+	uint32_t addr = 0;
 
 	sfcx_init();
-
-	// depends on sfcx already being initialized
+	
 	if (sfc.initialized != SFCX_INITIALIZED)
 	{
-		//TODO: wassup with this...
-		printf(" ! config: sfcx not initialized\n");
+		if (xenon_get_console_type() == REV_CORONA_PHISON)
+			addr = PHISON_STATIC_CONFIG_ADDR;
+		else
+			printf(" ! config: sfcx not initialized\n"); //Incompatible model found?!
 	}
 	else
-	{
-		//calc our address (specific for our one structure)
-		int addr = sfc.addr_config + (BLOCK_OFFSET * sfc.block_sz) + sfc.page_sz;
-		int status = sfcx_read_page(pagebuf, addr, 0);
-
-		//read from nand
-		if (SFCX_SUCCESS(status)){
-			//TODO: check if we got erased or zeroed nand data
-			memcpy(&secured_settings, &pagebuf[0x0], sizeof secured_settings);
-			xenon_config_initialized=1;
-		}
-	}
+		addr = sfc.addr_config * sfc.block_sz; //Get Adress based on SFC type
+	xenon_get_logical_nand_data(&secured_settings, addr, sizeof secured_settings);
+	xenon_config_initialized=1;
 }
 
 int xenon_config_get_avregion(void)
