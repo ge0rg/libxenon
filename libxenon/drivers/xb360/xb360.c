@@ -417,37 +417,29 @@ int xenon_get_console_type()
     consoleVersion = xenon_get_XenosID();
     DVEversion = xenon_get_DVE();
     PVR = xenon_get_CPU_PVR();
-    
-    if(PVR == 0x710200 || PVR == 0x710300)
-    {
-        return REV_ZEPHYR;
-    }
-    else
-    {
-        if(consoleVersion < 0x5821)
-        {
+	if(PVR == 0x710200 || PVR == 0x710300) //TODO: Add XenosID check also!
+		return REV_ZEPHYR;
+    if(consoleVersion < 0x5821)
 		return REV_XENON;
-        }
-        else if(consoleVersion >= 0x5821 && consoleVersion < 0x5831)
-        {
+	else if(consoleVersion >= 0x5821 && consoleVersion < 0x5831)
+	{
 		return REV_FALCON;
-        }
-        else if(consoleVersion >= 0x5831 && consoleVersion < 0x5841)
-        {
+	}
+	else if(consoleVersion >= 0x5831 && consoleVersion < 0x5841)
 		return REV_JASPER;
-        }
-        else if(consoleVersion >= 0x5841 && consoleVersion < 0x5851)
-        {
-			if (DVEversion >= 0x20)
-				return REV_CORONA;
-			else
-				return REV_TRINITY;
-        }
-        else if(consoleVersion >= 0x5851)
-        {
+	else if(consoleVersion >= 0x5841 && consoleVersion < 0x5851)
+	{
+		//TODO: If PVR is always the same for trinity, move it to the if statement above...
+		if (DVEversion >= 0x20 && PVR == 0x710800)
+		{
+			if (PCIBridgeRevisionID >= 0x70 && sfcx_readreg(SFCX_PHISON) != 0)
+				return REV_CORONA_PHISON;
+			return REV_CORONA;
+		}
+		else
+			return REV_TRINITY;
+	}
+	else if(consoleVersion >= 0x5851)
 		return REV_WINCHESTER;
-        }
-    }
-
     return REV_UNKNOWN;
 }

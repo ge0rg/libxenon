@@ -66,6 +66,7 @@
 #define XEKEY_CARDEA_CERTIFICATE					0x38
 
 #define KV_FLASH_SIZE             0x4000
+#define KV_FLASH_OFFSET			  0x4000
 #define KV_FLASH_PAGES            KV_FLASH_SIZE / 0x200
 #define KV_FLASH_PTR              0x6C
 #define VFUSES_SIZE               0x60
@@ -89,7 +90,8 @@ static const unsigned int xelloffsets[XELL_OFFSET_COUNT] = {0x70000, // ggBoot m
 #define REV_JASPER 3
 #define REV_TRINITY 4
 #define REV_CORONA 5
-#define REV_WINCHESTER 6
+#define REV_CORONA_PHISON 6
+#define REV_WINCHESTER 7
 #define REV_UNKNOWN (-1)
 
 typedef struct kventry {
