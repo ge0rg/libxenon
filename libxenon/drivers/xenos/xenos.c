@@ -13,8 +13,6 @@
 #include <assert.h>
 #include <xetypes.h>
 
-#include <xenos/xenos_videomodes.h>
-
 #define require(x, label) if (!(x)) { printf("%s:%d [%s]\n", __FILE__, __LINE__, #x); goto label; }
 
 #define FB_BASE 0x1e000000
