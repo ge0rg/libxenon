@@ -116,4 +116,6 @@ unsigned int xenon_get_CPU_PVR();
 unsigned int xenon_get_XenosID();
 int xenon_get_console_type(void);
 
+void xenon_get_logical_nand_data(void* buf, unsigned int offset, unsigned int len);
+
 #endif /* XB360_H_ */

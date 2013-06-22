@@ -443,3 +443,8 @@ int xenon_get_console_type()
 		return REV_WINCHESTER;
     return REV_UNKNOWN;
 }
+
+void xenon_get_logical_nand_data(void* buf, unsigned int offset, unsigned int len)
+{
+	memcpy(&buf, (const void*)(0x80000200C8000000ULL + offset), len);
+}
