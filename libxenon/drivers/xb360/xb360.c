@@ -158,7 +158,7 @@ int kv_get_key(unsigned char keyid, unsigned char *keybuf, int *keybuflen, unsig
 
 int kv_read(unsigned char *data, int virtualcpukey)
 {
-	xenon_get_logical_nand_data(&data, KV_FLASH_OFFSET, KV_FLASH_SIZE);
+	xenon_get_logical_nand_data(data, KV_FLASH_OFFSET, KV_FLASH_SIZE);
 
 	unsigned char cpu_key[0x10];
         if (virtualcpukey)
@@ -415,5 +415,5 @@ int xenon_get_console_type()
 
 void xenon_get_logical_nand_data(void* buf, unsigned int offset, unsigned int len)
 {
-	memcpy(&buf, (const void*)(0x80000200C8000000ULL + offset), len);
+	memcpy(buf, (const void*)(0x80000200C8000000ULL + offset), len);
 }
