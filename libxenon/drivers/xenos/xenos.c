@@ -49,23 +49,9 @@ static void xenos_ana_write(int addr, uint32_t reg)
 
 static int isCorona()
 {
-	unsigned int PVR = xenon_get_CPU_PVR();
-	printf("PVR: 0x%X\n", PVR);
-	if (PVR == 0x710800)
-	{
-		printf("XenosID: 0x%X\n", xenos_id);
-		if (xenos_id >= 5841 && xenos_id < 0x5851)
-		{
-			unsigned int DVE = xenon_get_DVE();
-			printf("DVE: 0x%X\n", DVE);
-			if (DVE >= 0x20)
-			{
-				printf("PCIBridgeRevisionID: 0x%X\n", xenon_get_PCIBridgeRevisionID()); //Maybe we can identify INF with this?
-				//Todo: Maybe add additional checks?
-				return 1;
-			}
-		}
-	}
+	int type = xenon_get_console_type();
+	if (type == REV_CORONA || type == REV_CORONA_PHISON)
+		return 1;
 	return 0;
 }
 
