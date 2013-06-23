@@ -94,8 +94,8 @@ void print_key(char *name, unsigned char *data)
 
 int cpu_get_key(unsigned char *data)
 {
-	*(unsigned long long*)&data[0] = xenon_secotp_read_line(3);
-	*(unsigned long long*)&data[8] = xenon_secotp_read_line(5);
+	*(unsigned long long*)&data[0] = xenon_secotp_read_line(3) | xenon_secotp_read_line(4);
+	*(unsigned long long*)&data[8] = xenon_secotp_read_line(5) | xenon_secotp_read_line(6);
 	return 0;
 }
 
