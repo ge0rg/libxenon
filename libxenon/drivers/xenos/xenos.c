@@ -12,6 +12,7 @@
 #include <string.h>
 #include <assert.h>
 #include <xetypes.h>
+#include "xenos_videomodesdata.h"
 
 #define require(x, label) if (!(x)) { printf("%s:%d [%s]\n", __FILE__, __LINE__, #x); goto label; }
 
