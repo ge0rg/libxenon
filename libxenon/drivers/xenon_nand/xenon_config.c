@@ -33,7 +33,10 @@ void xenon_config_init(void)
 		if (xenon_get_console_type() == REV_CORONA_PHISON)
 			addr = PHISON_STATIC_CONFIG_ADDR;
 		else
+		{
 			printf(" ! config: sfcx not initialized\n"); //Incompatible model found?!
+			return;
+		}
 	}
 	else
 		addr = sfc.addr_config * sfc.block_sz; //Get Adress based on SFC type
