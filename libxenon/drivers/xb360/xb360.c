@@ -158,38 +158,7 @@ int kv_get_key(unsigned char keyid, unsigned char *keybuf, int *keybuflen, unsig
 
 int kv_read(unsigned char *data, int virtualcpukey)
 {
-	int page=0;
-	int pages=0;
-	int togo=0;
-	int kv_offset = 0;
-	int cntr = 0;
-
-	if (sfc.initialized != SFCX_INITIALIZED)
-		return 1;
-
-	unsigned char buffer[MAX_PAGE_SZ];
-	memset(buffer, '\0', sizeof(buffer));
-
-	sfcx_read_page(buffer, 0, 0);
-
-	kv_offset =  buffer[KV_FLASH_PTR+0]; kv_offset <<= 8;
-	kv_offset |= buffer[KV_FLASH_PTR+1]; kv_offset <<= 8;
-	kv_offset |= buffer[KV_FLASH_PTR+2]; kv_offset <<= 8;
-	kv_offset |= buffer[KV_FLASH_PTR+3];
-
-	//printf("kv_read: kv_offset: %d\n", kv_offset);
-
-	page = (kv_offset / sfc.page_sz);
-	pages = KV_FLASH_PAGES;
-	togo = pages;
-
-	while(togo)
-	{
-		sfcx_read_page((unsigned char*) &data[cntr * sfc.page_sz], page * sfc.page_sz, 0);
-		page++;
-		cntr++;
-		togo--;
-	}
+	xenon_get_logical_nand_data(&data, KV_FLASH_OFFSET, KV_FLASH_SIZE);
 
 	unsigned char cpu_key[0x10];
         if (virtualcpukey)
