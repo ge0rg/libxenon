@@ -39,7 +39,7 @@ void xenon_config_init(void)
 		}
 	}
 	else
-		addr = sfc.addr_config * sfc.block_sz; //Get Adress based on SFC type
+		addr = sfc.addr_config + (BLOCK_OFFSET * sfc.block_sz) + sfc.page_sz; //Get Adress based on SFC type
 	xenon_get_logical_nand_data(&secured_settings, addr, sizeof secured_settings);
 	xenon_config_initialized=1;
 }

@@ -50,7 +50,7 @@ struct XCONFIG_SECURED_SETTINGS // 0x200
 #define AVREGION_PAL60   4
 #define AVREGION_INVALID 0
 
-#define PHISON_STATIC_CONFIG_ADDR 0x2FFC000
+#define PHISON_STATIC_CONFIG_ADDR 0x2FFC200
 
 void xenon_config_init(void);
 int xenon_config_get_avregion(void);
