@@ -38,6 +38,7 @@ void console_set_colors(unsigned int background, unsigned int foreground); // ca
 void console_get_dimensions(unsigned int * width,unsigned int * height);
 void console_putch(const char c);
 void console_clrscr();
+void console_clrline();
 void console_init(void);
 void console_close(void);
 

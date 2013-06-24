@@ -91,6 +91,13 @@ void console_clrscr() {
 	cursor_y=0;
 }
 
+void console_clrline() {
+	char sp[max_x];
+	memset(sp,' ', max_x);
+	sp[max_x-1]='\0';
+	printf("\r%s\r",sp);
+}
+
 static void console_scroll32(const unsigned int lines) {
 	int l, bs;
 	bs = console_width*32*4;
