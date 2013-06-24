@@ -99,36 +99,15 @@ int cpu_get_key(unsigned char *data)
 	return 0;
 }
 
-int virtualfuses_read(unsigned char *data)
-{
-  int vfuses_offset = 0x95000; //Page (0x4A8 * 0x200)
-  if (sfc.initialized != SFCX_INITIALIZED)
-    return 1;
-
-  int status = sfcx_read_page(data, vfuses_offset, 0);
-
-  //read from nand
-  if (!SFCX_SUCCESS(status))
-    return 2; //failure
-  else
-    return 0; //success
-}
-
-
 int get_virtual_cpukey(unsigned char *data)
 {
   int result = 0;
   unsigned char buffer[MAX_PAGE_SZ];
-  result = virtualfuses_read(buffer);
 
-  if (result!=0)
-  {
-     printf(" ! SFCX error while reading virtualfuses\n");
-     return result;
-  }
+  xenon_get_logical_nand_data(data, VFUSES_OFFSET, VFUSES_SIZE);
 
-    //if we got here then it was at least able to read from nand
-    //now we need to verify the data somehow
+  //if we got here then it was at least able to read from nand
+  //now we need to verify the data somehow
   if (buffer[0]==0xC0 && buffer[1]==0xFF && buffer[2]==0xFF && buffer[3]==0xFF)
   {
 	memcpy(data,&buffer[0x20],0x10);

@@ -70,6 +70,7 @@
 #define KV_FLASH_PAGES            KV_FLASH_SIZE / 0x200
 #define KV_FLASH_PTR              0x6C
 #define VFUSES_SIZE               0x60
+#define VFUSES_OFFSET			  0x95000
 
 #define XELL_SIZE (256*1024)
 #define XELL_FOOTER_OFFSET (256*1024-16)
@@ -103,7 +104,6 @@ typedef struct kventry {
 
 void print_key(char *name, unsigned char *data);
 int cpu_get_key(unsigned char *data);
-int virtualfuses_read(unsigned char *data);
 int get_virtual_cpukey(unsigned char *data);
 int kv_read(unsigned char *data, int virtualcpukey);
 int kv_get_dvd_key(unsigned char *dvd_key);
