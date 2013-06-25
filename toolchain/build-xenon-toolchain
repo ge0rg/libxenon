@@ -12,7 +12,7 @@ GCC=gcc-4.7.1
 NEWLIB=newlib-1.20.0
 GDB=gdb-6.8
 
-ZLIB=zlib-1.2.7
+ZLIB=zlib-1.2.8
 LIBPNG=libpng-1.5.10
 BZIP2=bzip2-1.0.6
 FREETYPE=freetype-2.4.9
@@ -150,14 +150,14 @@ function toolchain_install
 
 function zlib_install
 {
-	if [ ! -f "$ZLIB.tar.bz2" ]; then
-		echo -e "Downloading $ZLIB.tar.bz2"
-		wget -c http://zlib.net/$ZLIB.tar.bz2 || exit 0
+	if [ ! -f "$ZLIB.tar.gz" ]; then
+		echo -e "Downloading $ZLIB.tar.gz"
+		wget -c http://zlib.net/$ZLIB.tar.gz || exit 0
 	fi;
 
 	echo -e "Extracting zlib..."
 	rm -rf $ZLIB
-	tar xjf $ZLIB.tar.bz2 >> $LOGFILE 2>&1 || exit 0
+	tar xzf $ZLIB.tar.gz >> $LOGFILE 2>&1 || exit 0
 	cd $ZLIB
 
 	export TARGET_SAVE=$TARGET
@@ -275,28 +275,33 @@ function freetype_install
 
 function filesystems_install
 {
-	echo -e "Cloning filesystems repositories from LibxenonProject github..."
+	echo -e "Building Filesystems..."
 
-	git clone https://github.com/LibXenonProject/fat-xenon.git || exit 0
-	git clone https://github.com/LibXenonProject/ntfs-xenon.git ||exit 0
-	git clone https://github.com/LibXenonProject/ext2fs-xenon.git || exit 0
-	git clone https://github.com/LibXenonProject/xtaflib.git || exit 0
+	filesystems="fat-xenon ntfs-xenon ext2fs-xenon xtaflib"
 
-	echo -e "Building filesystems..."
-
-	make -C fat-xenon >> $LOGFILE 2>&1 || exit 0
-	make -C ntfs-xenon >> $LOGFILE 2>&1 || exit 0
-	make -C ext2fs-xenon >> $LOGFILE 2>&1 || exit 0
-	make -C xtaflib >> $LOGFILE 2>&1 || exit 0
-
-	echo -e "Installing filesystems..."
-
-	make -C fat-xenon install >> $LOGFILE 2>&1 || exit 0
-	make -C ntfs-xenon install >> $LOGFILE 2>&1 || exit 0
-	make -C ext2fs-xenon install >> $LOGFILE 2>&1 || exit 0
-	make -C xtaflib install >> $LOGFILE 2>&1 || exit 0
-
-	echo -e "Done"
+	for i in $filesystems
+	do
+		echo -e -n "$i: "
+		if [ ! -d $i ]; then
+			echo -e -n "Cloning... "
+			git clone https://github.com/LibXenonProject/$i.git  >> $LOGFILE 2>&1 || exit 0
+		else
+			cd $i
+			git remote update >> $LOGFILE 2>&1
+			git status -uno | grep -q behind
+			if [ 0 -eq $? ]; then
+				echo -e -n "Updating... "
+				git pull >> $LOGFILE 2>&1
+				make clean >> $LOGFILE 2>&1
+			fi
+			cd ..
+		fi
+		echo -e -n "Building... "
+		make -C $i >> $LOGFILE 2>&1 || exit 0
+		echo -e -n "Installing... "
+		make -C $i install >> $LOGFILE 2>&1 || exit 0
+		echo -e "Done"
+	done
 }
 
 function bin2s_install
