@@ -102,9 +102,9 @@ int cpu_get_key(unsigned char *data)
 int get_virtual_cpukey(unsigned char *data)
 {
   int result = 0;
-  unsigned char buffer[MAX_PAGE_SZ];
+  unsigned char buffer[VFUSES_SIZE];
 
-  xenon_get_logical_nand_data(data, VFUSES_OFFSET, VFUSES_SIZE);
+  xenon_get_logical_nand_data(&buffer, VFUSES_OFFSET, VFUSES_SIZE);
 
   //if we got here then it was at least able to read from nand
   //now we need to verify the data somehow
