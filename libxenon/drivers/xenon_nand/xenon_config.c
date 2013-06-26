@@ -43,6 +43,8 @@ void xenon_config_init(void)
 
 int xenon_config_get_avregion(void)
 {
+	xenon_config_init(); //Make sure it's initalized!
+
 	unsigned char buf[0x4] = {0x00,0x00,0x00,0x00};
 
 	//read from nand
@@ -69,6 +71,8 @@ int xenon_config_get_avregion(void)
 
 void xenon_config_get_mac_addr(unsigned char *hwaddr)
 {
+	xenon_config_init(); //Make sure it's initalized!
+
 	unsigned char dmac[0x6] = {0x00,0x22,0x48,0xFF,0xFF,0xFF};
 
 	//read from nand
@@ -88,6 +92,8 @@ void xenon_config_get_mac_addr(unsigned char *hwaddr)
 
 int xenon_config_get_vid_delta()
 {
+	xenon_config_init(); //Make sure it's initalized!
+
 	u8 delta=secured_settings.PowerMode.VIDDelta;
 	
 	//check if we got erased or zeroed nand data
