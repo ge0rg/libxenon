@@ -11,6 +11,8 @@
 #include "xenon_sfcx.h"
 #include "xb360/xb360.h"
 
+#define BLOCK_OFFSET 3
+
 extern struct sfc sfc;
 struct XCONFIG_SECURED_SETTINGS secured_settings = {0};
 
