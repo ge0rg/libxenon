@@ -17,6 +17,7 @@
 #include <debug.h>
 
 void (*stdout_hook)(const char *text, int len) = 0;
+void (*stdlog_hook)(const char *text, int len) = 0;
 
 /**
  * Fake vfs
@@ -24,6 +25,8 @@ void (*stdout_hook)(const char *text, int len) = 0;
 ssize_t vfs_console_write(struct _reent *r, int fd, const char *src, size_t len) {
 	if (stdout_hook)
 		stdout_hook(src, len);
+	if (stdlog_hook)
+		stdlog_hook(src, len);
 	size_t i;
 	for (i = 0; i < len; ++i)
 		putch(((const char*) src)[i]);
