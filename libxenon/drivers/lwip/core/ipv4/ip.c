@@ -246,7 +246,7 @@ ip_input(struct pbuf *p, struct netif *inp)
   u16_t iphdr_hlen;
   u16_t iphdr_len;
 #if IP_ACCEPT_LINK_LAYER_ADDRESSING
-  int check_ip_src=1;
+  //int check_ip_src=1;
 #endif /* IP_ACCEPT_LINK_LAYER_ADDRESSING */
 
   IP_STATS_INC(ip.recv);
@@ -391,7 +391,7 @@ ip_input(struct pbuf *p, struct netif *inp)
       if (IP_ACCEPT_LINK_LAYER_ADDRESSED_PORT(udphdr->dest)) {
         LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_TRACE, ("ip_input: DHCP packet accepted.\n"));
         netif = inp;
-        check_ip_src = 0;
+        //check_ip_src = 0;
       }
     }
   }
@@ -400,7 +400,8 @@ ip_input(struct pbuf *p, struct netif *inp)
   /* broadcast or multicast packet source address? Compliant with RFC 1122: 3.2.1.3 */
 #if IP_ACCEPT_LINK_LAYER_ADDRESSING
   /* DHCP servers need 0.0.0.0 to be allowed as source address (RFC 1.1.2.2: 3.2.1.3/a) */
-  if (check_ip_src && !ip_addr_isany(&current_iphdr_src))
+  //if (check_ip_src && !ip_addr_isany(&current_iphdr_src))
+	if (!ip_addr_isany(&current_iphdr_src))
 #endif /* IP_ACCEPT_LINK_LAYER_ADDRESSING */
   {  if ((ip_addr_isbroadcast(&current_iphdr_src, inp)) ||
          (ip_addr_ismulticast(&current_iphdr_src))) {

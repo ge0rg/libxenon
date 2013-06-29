@@ -78,7 +78,7 @@ static void tx_data(struct enet_context *context, unsigned char *data, int len)
 
 //	printf("data at %08x\n", virt_to_phys(data));
 
-	memdcbst(descr, 0x10);
+	memdcbst((void*)descr, 0x10);
 
 //	printf("before %08x %08x %08x %08x\n", descr[0], descr[1], descr[2], descr[3]);
 
@@ -113,7 +113,7 @@ static void tx_init(struct enet_context *context, void *base)
 			context->tx_descriptor_base[i * 4 + 3] = __builtin_bswap32(0x80000000);
 	}
 
-	memdcbst(context->tx_descriptor_base, TX_DESCRIPTOR_NUM * 0x10);
+	memdcbst((void*)context->tx_descriptor_base, TX_DESCRIPTOR_NUM * 0x10);
 
 	context->tx_buffer_base = base + TX_DESCRIPTOR_NUM * 0x10;
 
@@ -141,7 +141,7 @@ static void rx_init(struct enet_context *context, void *base)
 		context->rx_descriptor_base[i * 4 + 2] = __builtin_bswap32(virt_to_phys(context->rx_receive_base + i * MTU));
 		context->rx_descriptor_base[i * 4 + 3] = __builtin_bswap32(MTU | ((i == RX_DESCRIPTOR_NUM - 1) ? 0x80000000 : 0));
 	}
-	memdcbst(context->rx_descriptor_base, RX_DESCRIPTOR_NUM * 0x10);
+	memdcbst((void*)context->rx_descriptor_base, RX_DESCRIPTOR_NUM * 0x10);
 
 	write32n(0xea001414, __builtin_bswap32(virt_to_phys(context->rx_descriptor_base))); // RX queue start
 	write32n(0xea001440, 0x1100004);
@@ -149,12 +149,11 @@ static void rx_init(struct enet_context *context, void *base)
 }
 
 
-static void
-arp_timer(void *arg)
-{
-	etharp_tmr();
-	//sys_timeout(ARP_TMR_INTERVAL, arp_timer, NULL);
-}
+//static void arp_timer(void *arg)
+//{
+//	etharp_tmr();
+//	//sys_timeout(ARP_TMR_INTERVAL, arp_timer, NULL);
+//}
 
 err_t enet_init(struct netif *netif)
 {
@@ -233,7 +232,7 @@ static int enet_open(struct netif *netif)
 
 	write32n(0xea001440, 0x01190004);
 
-	void *base = memalign(0x10000,0x10000);
+	void *base = (void*)memalign(0x10000,0x10000);
 
 	//printf("init tx\n");
 	tx_init(context, (void*)MEM(base));
@@ -292,7 +291,7 @@ static int enet_open(struct netif *netif)
 static struct pbuf *enet_linkinput(struct enet_context *context)
 {
 	volatile uint32_t *d = context->rx_descriptor_base + context->rx_descriptor_rptr * 4;
-	memdcbf(d, 0x10);
+	memdcbf((void*)d, 0x10);
 	if (__builtin_bswap32(d[1]) & 0x80000000) /* check ownership */
 	{
 //		printf("no data!\n");
@@ -340,7 +339,7 @@ static struct pbuf *enet_linkinput(struct enet_context *context)
 	d[3] = __builtin_bswap32(MTU | ((context->rx_descriptor_rptr == RX_DESCRIPTOR_NUM - 1) ? 0x80000000 : 0));
 	d[0] = __builtin_bswap32(0);
 	d[1] = __builtin_bswap32(0xc0000000);
-	memdcbst(d, 0x10);
+	memdcbst((void*)d, 0x10);
 
 	context->rx_descriptor_rptr++;
 	context->rx_descriptor_rptr %= RX_DESCRIPTOR_NUM;
@@ -363,7 +362,7 @@ static err_t enet_linkoutput(struct netif *netif, struct pbuf *p)
 		offset += q->len;
 	}
 
-	memdcbst(dstptr, p->tot_len);
+	memdcbst((void*)dstptr, p->tot_len);
 	tx_data(context, dstptr, p->tot_len);
 
 //	printf("ok, data transmitted!\n");

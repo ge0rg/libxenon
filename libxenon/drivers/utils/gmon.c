@@ -166,7 +166,6 @@ _mcleanup()
 	struct gmonparam *p = &_gmonparam;
 	struct gmonhdr gmonhdr, *hdr;
 	struct clockinfo clockinfo;
-	size_t size;
 #ifdef DEBUG
 	int log, len;
 	char buf[200];
@@ -175,7 +174,7 @@ _mcleanup()
 	if (p->state == GMON_PROF_ERROR)
 		ERR("_mcleanup: tos overflow\n");
 
-	size = sizeof(clockinfo);
+	size_t size = sizeof(clockinfo);
 	
 #if 0	
 	mib[0] = CTL_KERN;
