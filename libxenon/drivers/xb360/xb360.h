@@ -65,8 +65,8 @@
 #define XEKEY_XEIKA_CERTIFICATE						0x37
 #define XEKEY_CARDEA_CERTIFICATE					0x38
 
-uint32_t xenon_get_kv_size();
-uint32_t xenon_get_kv_offset();
+unsigned int xenon_get_kv_size();
+unsigned int xenon_get_kv_offset();
 
 #define KV_FLASH_SIZE             xenon_get_kv_size()
 #define KV_FLASH_OFFSET			  xenon_get_kv_offset()

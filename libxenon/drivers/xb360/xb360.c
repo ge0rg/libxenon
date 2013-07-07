@@ -402,18 +402,18 @@ int xenon_get_logical_nand_data(void* buf, unsigned int offset, unsigned int len
 	return 0;
 }
 
-uint32_t xenon_get_kv_size()
+unsigned int xenon_get_kv_size()
 {
-	uint32_t ret;
-	if (xenon_get_locigal_nand_data(&ret, 0x60, sizeof(uint32_t)) == 0)
+	unsigned int ret;
+	if (xenon_get_logical_nand_data(&ret, 0x60, 4) == 0)
 		return ret;
 	return 0;
 }
 
-uint32_t xenon_get_kv_offset()
+unsigned int xenon_get_kv_offset()
 {
-	uint32_t ret;
-	if (xenon_get_locigal_nand_data(&ret, 0x6C, sizeof(uint32_t)) == 0)
+	unsigned int ret;
+	if (xenon_get_logical_nand_data(&ret, 0x6C, 4) == 0)
 		return ret;
 	return 0;
 }
