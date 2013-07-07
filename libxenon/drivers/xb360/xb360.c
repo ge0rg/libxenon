@@ -104,8 +104,8 @@ int get_virtual_cpukey(unsigned char *data)
   int result = 0;
   unsigned char buffer[VFUSES_SIZE];
 
-  if (xenon_get_logical_nand_data(&buffer, VFUSES_OFFSET, VFUSES_SIZE == -1)
-	  return -1; //Unable to read NAND data...
+  if (xenon_get_logical_nand_data(&buffer, VFUSES_OFFSET, VFUSES_SIZE == -1))
+	  return 2; //Unable to read NAND data...
 
   //if we got here then it was at least able to read from nand
   //now we need to verify the data somehow
@@ -206,6 +206,8 @@ int kv_read(unsigned char *data, int virtualcpukey)
 
 int kv_get_dvd_key(unsigned char *dvd_key)
 {
+	if (KV_FLASH_SIZE == 0)
+		return -1; //It's bad data!
 	unsigned char buffer[KV_FLASH_SIZE], tmp[0x10];
 	int result = 0;
 	int keylen = 0x10;
@@ -246,15 +248,18 @@ void print_cpu_dvd_keys(void)
 	memset(key, '\0', sizeof(key));
 	if (cpu_get_key(key)==0)
 		print_key(" * your cpu key", key);
-		
-	memset(key, '\0',sizeof(key));
-	if (get_virtual_cpukey(key)==0)
-		print_key(" * your virtual cpu key", key);
+	if (xenon_logical_nand_data_ok() == 0)
+	{
+		memset(key, '\0',sizeof(key));
+		if (get_virtual_cpukey(key)==0)
+			print_key(" * your virtual cpu key", key);
 
-	memset(key, '\0', sizeof(key));
-	if (kv_get_dvd_key(key)==0)
-		print_key(" * your dvd key", key);
-
+		memset(key, '\0', sizeof(key));
+		if (kv_get_dvd_key(key)==0)
+			print_key(" * your dvd key", key);
+	}
+	else
+		printf(" ! Cannot read NAND Data...");
 	printf("\n");
 }
 
@@ -394,14 +399,21 @@ int xenon_get_console_type()
     return REV_UNKNOWN;
 }
 
-int xenon_get_logical_nand_data(void* buf, unsigned int offset, unsigned int len)
+int xenon_logical_nand_data_ok()
 {
 	uint16_t tmp;
 	memcpy(&tmp, (const void*)(0x80000200C8000000ULL), 2);
 	if (tmp != 0xFF4F)
 		return -1;
-	memcpy(buf, (const void*)(0x80000200C8000000ULL + offset), len);
 	return 0;
+}
+
+int xenon_get_logical_nand_data(void* buf, unsigned int offset, unsigned int len)
+{
+	if (xenon_logical_nand_data_ok() == 0)
+		memcpy(buf, (const void*)(0x80000200C8000000ULL + offset), len);
+	else
+		return -1;
 }
 
 unsigned int xenon_get_kv_size()
