@@ -65,8 +65,11 @@
 #define XEKEY_XEIKA_CERTIFICATE						0x37
 #define XEKEY_CARDEA_CERTIFICATE					0x38
 
-#define KV_FLASH_SIZE             0x4000
-#define KV_FLASH_OFFSET			  0x4000
+uint32_t xenon_get_kv_size();
+uint32_t xenon_get_kv_offset();
+
+#define KV_FLASH_SIZE             xenon_get_kv_size()
+#define KV_FLASH_OFFSET			  xenon_get_kv_offset()
 #define KV_FLASH_PAGES            KV_FLASH_SIZE / 0x200
 #define KV_FLASH_PTR              0x6C
 #define VFUSES_SIZE               0x60
