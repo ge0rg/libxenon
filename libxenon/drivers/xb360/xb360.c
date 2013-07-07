@@ -259,7 +259,7 @@ void print_cpu_dvd_keys(void)
 			print_key(" * your dvd key", key);
 	}
 	else
-		printf(" ! Cannot read NAND Data...");
+		printf(" ! Unable to read Keyvault data from NAND\n");
 	printf("\n");
 }
 
