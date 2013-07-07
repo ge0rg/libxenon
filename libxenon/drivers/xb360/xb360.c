@@ -104,7 +104,8 @@ int get_virtual_cpukey(unsigned char *data)
   int result = 0;
   unsigned char buffer[VFUSES_SIZE];
 
-  xenon_get_logical_nand_data(&buffer, VFUSES_OFFSET, VFUSES_SIZE);
+  if (xenon_get_logical_nand_data(&buffer, VFUSES_OFFSET, VFUSES_SIZE == -1)
+	  return -1; //Unable to read NAND data...
 
   //if we got here then it was at least able to read from nand
   //now we need to verify the data somehow
@@ -137,7 +138,8 @@ int kv_get_key(unsigned char keyid, unsigned char *keybuf, int *keybuflen, unsig
 
 int kv_read(unsigned char *data, int virtualcpukey)
 {
-	xenon_get_logical_nand_data(data, KV_FLASH_OFFSET, KV_FLASH_SIZE);
+	if (xenon_get_logical_nand_data(data, KV_FLASH_OFFSET, KV_FLASH_SIZE) == -1)
+		return -1;
 
 	unsigned char cpu_key[0x10];
         if (virtualcpukey)
