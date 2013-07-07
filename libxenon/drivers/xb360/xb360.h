@@ -116,7 +116,7 @@ unsigned int xenon_get_CPU_PVR();
 unsigned int xenon_get_XenosID();
 int xenon_get_console_type(void);
 
-void xenon_get_logical_nand_data(void* buf, unsigned int offset, unsigned int len);
+int xenon_get_logical_nand_data(void* buf, unsigned int offset, unsigned int len);
 #define MMC_FLASH_SIZE 0x3000000
 
 #endif /* XB360_H_ */

@@ -392,7 +392,12 @@ int xenon_get_console_type()
     return REV_UNKNOWN;
 }
 
-void xenon_get_logical_nand_data(void* buf, unsigned int offset, unsigned int len)
+int xenon_get_logical_nand_data(void* buf, unsigned int offset, unsigned int len)
 {
+	uint16_t tmp;
+	memcpy(&tmp, (const void*)(0x80000200C8000000ULL), 2);
+	if (tmp != 0xFF4F)
+		return -1;
 	memcpy(buf, (const void*)(0x80000200C8000000ULL + offset), len);
+	return 0;
 }
