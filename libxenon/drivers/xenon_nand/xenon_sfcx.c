@@ -184,11 +184,8 @@ int sfcx_erase_block(int address)
 	return status;
 }
 
-void sfcx_calcecc(unsigned int *data)
-{
+void sfcx_calcecc_ex(unsigned int *data, unsigned char* edc) {
 	unsigned int i=0, val=0;
-	unsigned char *edc = ((unsigned char*)data) + sfc.page_sz;
-
 	unsigned int v=0;
 
 	for (i = 0; i < 0x1066; i++)
@@ -205,10 +202,16 @@ void sfcx_calcecc(unsigned int *data)
 	val = ~val;
 
 	// 26 bit ecc data
-	edc[0xC] = ((val << 6) | (edc[0xC] & 0x3F)) & 0xFF;
-	edc[0xD] = (val >> 2) & 0xFF;
-	edc[0xE] = (val >> 10) & 0xFF;
-	edc[0xF] = (val >> 18) & 0xFF;
+	edc[0] = ((val << 6) | (data[0x20C] & 0x3F)) & 0xFF;
+	edc[1] = (val >> 2) & 0xFF;
+	edc[2] = (val >> 10) & 0xFF;
+	edc[3] = (val >> 18) & 0xFF;
+}
+
+void sfcx_calcecc(unsigned int *data)
+{	
+	unsigned char *edc = ((unsigned char*)data) + sfc.page_sz;
+	sfcx_calcecc_ex(data, &edc[0xC]);
 }
 
 int sfcx_get_blocknumber(unsigned char *data)
@@ -386,6 +389,118 @@ int sfcx_rawaddress_to_block(int address)
         return address / sfc.block_sz_phys;
 }
 
+int rawflash_checkImage_meta(int len) {
+	int id = 0;
+	if (len >= 0x4410)
+	{
+		// Xenon, Falcon, Zephyr, JasperSB
+		id = ((blockbuf[sfc.page_sz  + 1] << 8) | blockbuf[sfc.page_sz]);
+		if ((id == 0) && (blockbuf[sfc.page_sz + 5] == 0xFF))
+		{
+			//FIXME! I cannot handle badblock on block 1 yet...
+			id = ((blockbuf[0x4401] << 8) | blockbuf[0x4400]);
+			if ((id == 1) && (blockbuf[0x4405] == 0xFF))
+			{
+				if (sfc.meta_type == META_TYPE_0)
+					return 0;
+			}
+			else if ((blockbuf[0x4405] != 0xFF))
+			{
+				printf(" ! Badblock on block 1 detected! Unable to check for META Type 0/1!\n");
+				return -3;
+			}
+		}
+		// Jasper, Trinity, Corona
+		id = ((blockbuf[sfc.page_sz + 2] << 8) | blockbuf[sfc.page_sz + 1]);
+		if ((id == 0) && (blockbuf[sfc.page_sz + 5] == 0xFF))
+		{
+			//FIXME! I cannot handle badblock on block 1 yet...
+			id = ((blockbuf[0x4402] << 8) | blockbuf[0x4401]);
+			if ((id == 1) && (blockbuf[0x4405] == 0xFF))
+			{
+				if (sfc.meta_type == META_TYPE_1)
+					return 0;
+			}
+		}
+	}
+	else
+	{
+		printf(" ! Bad incompatible size");
+		return -2;
+	}
+	if (len >= 0x4410)
+	{
+		// BigBlock Jasper (256 or 512)
+		id = ((blockbuf[0x4402] << 8) | blockbuf[0x4401]);
+		if ((id == 0) && (blockbuf[0x4400] == 0xFF))
+		{
+			if (sfc.meta_type == META_TYPE_2)
+			return 0;
+		}
+	}
+	else
+	{
+		printf(" ! Incompatible size\n");
+		return -2;
+	}
+	printf(" ! Bad meta data for this console type\n");
+	return -1;
+}
+
+int rawflash_checkImage_ecd_page(unsigned char* page) {
+	unsigned char ecd[4];
+	sfcx_calcecc_ex((unsigned int*)page, ecd);
+	if ((ecd[0] == page[0x20C]) && (ecd[1] == page[0x20D]) && (ecd[2] == page[0x20E]) && (ecd[3] == page[0x20F]))
+		return 0;
+	//printf("ecd[0] = 0x%x\necd[1] = 0x%x\necd[2] = 0x%x\necd[3] = 0x%x\n", ecd[0], ecd[1], ecd[2], ecd[3]);
+	//printf("page[0x20C] = 0x%x\npage[0x20D] = 0x%x\npage[0x20E] = 0x%x\npage[0x20F] = 0x%x\n", page[0x20C], page[0x20D], page[0x20E], page[0x20F]);
+	return -1;
+}
+
+int rawflash_checkImage_ecd(int len) {
+	int offset = 0;
+	int result = 0;
+	while (offset < len / 0x210)
+	{
+		if (rawflash_checkImage_ecd_page(&blockbuf[offset]) != 0)
+		{
+			printf(" ! Bad ECD detected on page %i\n", offset / 0x210);
+			result = -1; // Bad ECD, probably because there's no spare data?!
+		}
+		offset += 0x210;
+	}
+	return result;
+}
+
+int rawflash_checkImage(int f)
+{
+	sfcx_init(); // Make sure sfcx is initalized!
+	int len = 0;
+	//if(sfc.meta_type == META_TYPE_2)
+		//len = 0x21210; //  257 pages
+	//else
+		len = 0x4410; //  33 pages	
+	blockbuf = malloc(len);
+	if(blockbuf == NULL)
+	{
+		printf(" ! ERROR: unable to allocate 0x%x bytes for a buffer!\n", len);
+		return -1;
+	}
+	if (read(f, blockbuf, len) != len)
+	{
+		printf(" ! ERROR: Can't read enough data...");
+		free(blockbuf);
+		return -2;
+	}
+	if ((rawflash_checkImage_meta(len) != 0) || (rawflash_checkImage_ecd(len) != 0))
+	{
+		free(blockbuf);
+		return -1;
+	}
+	free(blockbuf);
+	return 0;
+}
+
 int rawflash_writeImage(int len, int f)
 {
 	int i=0;
@@ -435,26 +550,39 @@ int try_rawflash(char *filename)
 	struct stat s;
 	int size;
 	int f = open(filename, O_RDONLY);
-	if (f < 0)
-	{
-		return f;
-	}
-	printf(" * rawflash v4 started (by cOz)\n");
+	if (f < 0)	
+		return f; //Can't open file!
+
+	printf(" * rawflash v5 started (by cOz, modified By Swizzy)\n");
+
         
 	fstat(f, &s);
 	size = s.st_size;
 	if((size == (RAW_NAND_64*4)) || (size == (RAW_NAND_64*8))) // 256 or 512M NAND image, only flash 64M
-	{
 		size = RAW_NAND_64;
-	}
 	else if((size != 0x1080000)&& (size != RAW_NAND_64)) // 16 M size
 	{
 		printf("error: %s - size %d is not valid image size!\n", filename, size);
 		close(f);
 		return -1;
 	}
+
     printf("\n * found '%s'. press power NOW if you don't want to flash the NAND.\n",filename);
     delay(15);
+
+	printf(" * Checking NAND File to be of matching type...\n");
+
+	if (rawflash_checkImage(f) != 0) {
+		printf(" ! Bad Image for this console... Please replace the file and try again...\n");
+		return -1;
+	}
+	else	
+		printf(" * Image matches expected data...\n");	
+
+	close(f); // to re-align it to the start again
+	f = open(filename, O_RDONLY);
+	if (f < 0)	
+		return f; //Can't open file!
         
 	printf("%s opened OK, attempting to write 0x%x bytes to flash...\n",filename, size);
 	if(rawflash_writeImage(size, f) == 1)
