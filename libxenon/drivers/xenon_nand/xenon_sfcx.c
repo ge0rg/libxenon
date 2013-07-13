@@ -530,7 +530,15 @@ int rawflash_writeImage(int len, int f)
 			printf("ERROR: failed to read %d bytes from file\n\n",readsz);
 			return 0;
 		}
-		if((status & (STATUS_BB_ER|STATUS_ECC_ER)) == 0)
+		addr = i*sfc.block_sz_phys;
+		addrphy = i*sfc.block_sz;
+		if((status & (STATUS_BB_ER|STATUS_ECC_ER)) != 0)
+		{
+			printf("block 0x%x seems bad, status 0x%08x\n", i, status);
+			sfcx_erase_block(addrphy);
+			status = sfcx_erase_block(addrphy);
+		}
+		if((status & (STATUS_BB_ER|STATUS_ECC_ER|STATUS_WR_ER)) == 0)
 		{
 			addr = i*sfc.block_sz_phys;
 			addrphy = i*sfc.block_sz;
@@ -538,7 +546,7 @@ int rawflash_writeImage(int len, int f)
 			sfcx_write_block(blockbuf, addrphy);
 		}
 		else
-			printf("block 0x%x seems bad, status 0x%08x\n", i, status);
+			printf("Block cannot be recovered (A.K.A it's really bad)\n");
 		i++;
 	}
 	printf("\n\n");
