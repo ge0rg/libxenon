@@ -556,16 +556,18 @@ int rawflash_writeImage(int len, int f)
 int try_rawflash(char *filename)
 {
 	struct stat s;
-	int size;
+
+	stat(filename, &s);
+	long size = s.st_size;
+	if (size <= 0)	
+		return -1; //Invalid Filesize
+
 	int f = open(filename, O_RDONLY);
 	if (f < 0)	
 		return f; //Can't open file!
 
 	printf(" * rawflash v5 started (by cOz, modified By Swizzy)\n");
 
-        
-	fstat(f, &s);
-	size = s.st_size;
 	if((size == (RAW_NAND_64*4)) || (size == (RAW_NAND_64*8))) // 256 or 512M NAND image, only flash 64M
 		size = RAW_NAND_64;
 	else if((size != 0x1080000)&& (size != RAW_NAND_64)) // 16 M size
