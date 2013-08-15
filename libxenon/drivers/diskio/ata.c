@@ -738,12 +738,14 @@ static bool ata_shutdown(void){
 
 static s32 ata_sectors(void)
 {
-	return ata->size;
+	struct xenon_ata_device *dev = &ata;
+	return dev->size;
 }
 
 static s32 atapi_sectors(void)
 {
-	return atapi->size;
+	struct xenon_ata_device *dev = &atapi;
+	return dev->size;
 }
 
 DISC_INTERFACE xenon_ata_ops = {

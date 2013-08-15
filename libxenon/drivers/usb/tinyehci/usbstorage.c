@@ -1289,17 +1289,17 @@ retry:
 
 	return try_status;
 }
-#if 0
-s32 USBStorage_Get_Capacity(u32*sector_size) {
-	if (__mounted == 1) {
-		if (sector_size) {
-			*sector_size = __usbfd.sector_size[__lun];
-		}
-		return __usbfd.n_sector[__lun];
-	}
-	return 0;
-}
-#endif
+//#if 0
+//s32 USBStorage_Get_Capacity(u32*sector_size) {
+//	if (__mounted == 1) {
+//		if (sector_size) {
+//			*sector_size = __usbfd.sector_size[__lun];
+//		}
+//		return __usbfd.n_sector[__lun];
+//	}
+//	return 0;
+//}
+//#endif
 
 s32 USBStorage_Get_Capacity(int device, u32* sector_size) {
 	if (_ehci_data[device].__mounted == 1) {
