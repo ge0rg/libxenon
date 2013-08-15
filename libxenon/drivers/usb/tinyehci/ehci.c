@@ -1050,7 +1050,7 @@ int ehci_get_device_list(struct ehci_hcd * ehci, u8 maxdev, u8 b0, u8*num, u16*b
 	for (i = 0; i < ehci->num_port && j < maxdev; i++) {
 		struct ehci_device *dev = &ehci->devices[i];
 		if (dev->id != 0) {
-			//ehci_dbg ( "device %d: %X %X...\n", dev->id,le16_to_cpu(dev->desc.idVendor),le16_to_cpu(dev->desc.idProduct));
+			ehci_dbg ( "device %d: %X %X...\n", dev->id,le16_to_cpu(dev->desc.idVendor),le16_to_cpu(dev->desc.idProduct));
 			buf[j * 4] = 0;
 			buf[j * 4 + 1] = 0;
 			buf[j * 4 + 2] = le16_to_cpu(dev->desc.idVendor);
@@ -1058,9 +1058,10 @@ int ehci_get_device_list(struct ehci_hcd * ehci, u8 maxdev, u8 b0, u8*num, u16*b
 			j++;
 		}
 	}
-	//ehci_dbg("found %d devices\n",j);
+	ehci_dbg("found %d devices\n",j);
 	*num = j;
 	return 0;
 }
+
 #include "usb2.c"
 #include "usbstorage.c"
