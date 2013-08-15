@@ -1300,6 +1300,17 @@ s32 USBStorage_Get_Capacity(u32*sector_size) {
 	return 0;
 }
 #endif
+
+s32 USBStorage_Get_Capacity(int device, u32* sector_size) {
+	if (_ehci_data[device].__mounted == 1) {
+		if (sector_size) {
+			*sector_size = _ehci_data[device].__usbfd.sector_size[_ehci_data[device].__lun];
+		}
+		return _ehci_data[device].__usbfd.n_sector[_ehci_data[device].__lun];
+	}
+	return 0;
+}
+
 int unplug_procedure(int device) {
 	int retval = 1;
 	if (unplug_device != 0) {
@@ -1424,7 +1435,24 @@ s32 USBStorage_Inserted_1(){
 s32 USBStorage_Inserted_2(){
 	return _ehci_data[2].__ready;
 }
+
+s32 USBStorage_devsectors_0(void) {
+	u32 tmp;
+	return USBStorage_Get_Capacity(0, &tmp);
+}
+
+s32 USBStorage_devsectors_1(void) {
+	u32 tmp;
+	return USBStorage_Get_Capacity(1, &tmp);
+}
+
+s32 USBStorage_devsectors_2(void) {
+	u32 tmp;
+	return USBStorage_Get_Capacity(2, &tmp);
+}
+
 DISC_INTERFACE usb2mass_ops_0 = {
+	.sectors = (FN_MEDIUM_DEVSECTORS) & USBStorage_devsectors_0,
 	.readSectors = (FN_MEDIUM_READSECTORS) & USBStorage_Read_Sectors_0,
 	.writeSectors = (FN_MEDIUM_WRITESECTORS) & USBStorage_Write_Sectors_0,
 	.clearStatus = (FN_MEDIUM_CLEARSTATUS) & USBStorage_True,
@@ -1436,6 +1464,7 @@ DISC_INTERFACE usb2mass_ops_0 = {
 };
 
 DISC_INTERFACE usb2mass_ops_1 = {
+	.sectors = (FN_MEDIUM_DEVSECTORS) & USBStorage_devsectors_1,
 	.readSectors = (FN_MEDIUM_READSECTORS) & USBStorage_Read_Sectors_1,
 	.writeSectors = (FN_MEDIUM_WRITESECTORS) & USBStorage_Write_Sectors_1,
 	.clearStatus = (FN_MEDIUM_CLEARSTATUS) & USBStorage_True,
@@ -1447,6 +1476,7 @@ DISC_INTERFACE usb2mass_ops_1 = {
 };
 
 DISC_INTERFACE usb2mass_ops_2 = {
+	.sectors = (FN_MEDIUM_DEVSECTORS) & USBStorage_devsectors_2,
 	.readSectors = (FN_MEDIUM_READSECTORS) & USBStorage_Read_Sectors_2,
 	.writeSectors = (FN_MEDIUM_WRITESECTORS) & USBStorage_Write_Sectors_2,
 	.clearStatus = (FN_MEDIUM_CLEARSTATUS) & USBStorage_True,

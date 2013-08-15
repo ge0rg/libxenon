@@ -736,7 +736,18 @@ static bool ata_shutdown(void){
 	return true;
 }
 
+static s32 ata_sectors(void)
+{
+	return ata->size;
+}
+
+static s32 atapi_sectors(void)
+{
+	return atapi->size;
+}
+
 DISC_INTERFACE xenon_ata_ops = {
+	.sectors = (FN_MEDIUM_DEVSECTORS) & ata_sectors,
 	.readSectors = (FN_MEDIUM_READSECTORS) & ata_readsectors,
 	.writeSectors = (FN_MEDIUM_WRITESECTORS) & ata_writesectors,
 	.clearStatus = (FN_MEDIUM_CLEARSTATUS) & ata_clearstatus,
@@ -748,6 +759,7 @@ DISC_INTERFACE xenon_ata_ops = {
 };
 
 DISC_INTERFACE xenon_atapi_ops = {
+	.sectors = (FN_MEDIUM_DEVSECTORS) & atapi_sectors,
 	.readSectors = (FN_MEDIUM_READSECTORS) & atapi_readsectors,
 	.clearStatus = (FN_MEDIUM_CLEARSTATUS) & ata_clearstatus,
 	.shutdown = (FN_MEDIUM_SHUTDOWN) & ata_shutdown,

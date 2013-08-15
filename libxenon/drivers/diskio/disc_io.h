@@ -50,6 +50,7 @@ typedef bool (* FN_MEDIUM_READSECTORS)(sec_t sector, sec_t numSectors, void* buf
 typedef bool (* FN_MEDIUM_WRITESECTORS)(sec_t sector, sec_t numSectors, const void* buffer) ;
 typedef bool (* FN_MEDIUM_CLEARSTATUS)(void) ;
 typedef bool (* FN_MEDIUM_SHUTDOWN)(void) ;
+typedef s32 (* FN_MEDIUM_DEVSECTORS)(void) ;
 
 struct DISC_INTERFACE_STRUCT {
 	unsigned long			ioType ;
@@ -60,6 +61,7 @@ struct DISC_INTERFACE_STRUCT {
 	FN_MEDIUM_WRITESECTORS	writeSectors ;
 	FN_MEDIUM_CLEARSTATUS	clearStatus ;
 	FN_MEDIUM_SHUTDOWN		shutdown ;
+	FN_MEDIUM_DEVSECTORS	sectors;
 } ;
 
 typedef struct DISC_INTERFACE_STRUCT DISC_INTERFACE ;
