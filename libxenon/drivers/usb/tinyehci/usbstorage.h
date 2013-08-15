@@ -1,6 +1,4 @@
-
-<!-- saved from url=(0101)http://git.libxenon.org/libxenon/Ced2911/blob?path=libxenon%2Fdrivers%2Fusb%2Ftinyehci%2Fusbstorage.h -->
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><style type="text/css"></style></head><body><pre style="word-wrap: break-word; white-space: pre-wrap;">#ifndef __USBSTORAGE_H__
+#ifndef __USBSTORAGE_H__
 #define __USBSTORAGE_H__
 
 
@@ -64,7 +62,7 @@ s32 USBStorage_Read(struct ehci_hcd * ehci,usbstorage_handle *dev, u8 lun, u32 s
 s32 USBStorage_Write(struct ehci_hcd * ehci,usbstorage_handle *dev, u8 lun, u32 sector, u16 n_sectors, const u8 *buffer);
 s32 USBStorage_Inquiry(struct ehci_hcd * ehci,usbstorage_handle *dev, u8 lun);
 
-#define DEVICE_TYPE_WII_USB (('W'&lt;&lt;24)|('U'&lt;&lt;16)|('S'&lt;&lt;8)|'B')
+#define DEVICE_TYPE_WII_USB (('W'<<24)|('U'<<16)|('S'<<8)|'B')
 
 //s32 USBStorage_Try_Device(struct ehci_hcd * ehci,struct ehci_device *fd);
 void USBStorage_Umount(void);
@@ -75,4 +73,3 @@ void USBStorage_Umount(void);
 
 
 #endif /* __USBSTORAGE_H__ */
-</pre></body></html>
