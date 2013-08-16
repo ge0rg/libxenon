@@ -1,4 +1,5 @@
 #include "xenon_smc.h"
+#include "../xenon_uart/xenon_uart.h"
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -8,11 +9,11 @@
 
 void xenon_smc_send_message(const unsigned char *msg)
 {
-/*	printf("SEND: ");
+/*	uart_puts("SEND: ");
 	int i;
 	for (i = 0; i < 16; ++i)
-		printf("%02x ", msg[i]);
-	printf("\n");
+		uart_puts("%02x ", msg[i]);
+	uart_puts("\n");
 */
 	while (!(read32(SMC_BASE + 0x84) & 4));
 	write32(SMC_BASE + 0x84, 4);
@@ -53,17 +54,17 @@ void xenon_smc_handle_bulk(unsigned char *msg)
 	{
 	case 0x11:
 	case 0x20:
-		printf("SMC power message\n");
+		uart_puts("SMC power message\n");
 		break;
 	case 0x23:
-		//printf("IR RX [%02x %02x]\n", msg[2], msg[3]);
+		//uart_puts("IR RX [%02x %02x]\n", msg[2], msg[3]);
 		xenon_smc_last_ir = msg[3];
 		break;
 	case 0x60 ... 0x65:
-		printf("DVD cover state: %02x\n", msg[1]);
+		uart_puts("DVD cover state: %02x\n", msg[1]);
 		break;
 	default:
-		printf("unknown SMC bulk msg\n");
+		uart_puts("unknown SMC bulk msg: %02x\n", msg[1]);
 		break;
 	}
 }
@@ -90,11 +91,11 @@ int xenon_smc_receive_response(unsigned char *msg)
 		if (xenon_smc_receive_message(msg))
 			continue;
 
-/*		printf("REC: ");
+/*		uart_puts("REC: ");
 		int i;
 		for (i = 0; i < 16; ++i)
-			printf("%02x ", msg[i]);
-		printf("\n");
+			uart_puts("%02x ", msg[i]);
+		uart_puts("\n");
 */
 		if (msg[0] == 0x83)
 		{
@@ -127,7 +128,7 @@ int xenon_smc_ana_write(uint8_t addr, uint32_t val)
 	xenon_smc_receive_response(buf);
 	if (buf[1] != 0)
 	{
-		printf("xenon_smc_ana_write failed, addr=%02x, err=%d\n", addr, buf[1]);
+		uart_puts("xenon_smc_ana_write failed, addr=%02x, err=%d\n", addr, buf[1]);
 		return -1;
 	}
 	
@@ -150,7 +151,7 @@ int xenon_smc_ana_read(uint8_t addr, uint32_t *val)
 	xenon_smc_receive_response(buf);
 	if (buf[1] != 0)
 	{
-		printf("xenon_smc_ana_read failed, addr=%02x, err=%d\n", addr, buf[1]);
+		uart_puts("xenon_smc_ana_read failed, addr=%02x, err=%d\n", addr, buf[1]);
 		return -1;
 	}
 	*val = buf[4] | (buf[5] << 8) | (buf[6] << 16) | (buf[7] << 24);
@@ -170,7 +171,7 @@ int xenon_smc_i2c_ddc_lock(int lock)
 	xenon_smc_receive_response(buf);
 	if (buf[1] != 0)
 	{
-		printf("xenon_smc_i2c_ddc_lock failed, err=%d\n", buf[1]);
+		uart_puts("xenon_smc_i2c_ddc_lock failed, err=%d\n", buf[1]);
 		return -1;
 	}
 	
@@ -197,7 +198,7 @@ int xenon_smc_i2c_write(uint16_t addr, uint8_t val)
 	xenon_smc_receive_response(buf);
 	if (buf[1] != 0)
 	{
-		printf("xenon_smc_i2c_write failed, addr=%04x, err=%d\n", addr, buf[1]);
+		uart_puts("xenon_smc_i2c_write failed, addr=%04x, err=%d\n", addr, buf[1]);
 		return -1;
 	}
 	
@@ -222,7 +223,7 @@ int xenon_smc_i2c_read(uint16_t addr, uint8_t *val)
 	xenon_smc_receive_response(buf);
 	if (buf[1] != 0)
 	{
-		printf("xenon_smc_i2c_read failed, addr=%04x, err=%d\n", addr, buf[1]);
+		uart_puts("xenon_smc_i2c_read failed, addr=%04x, err=%d\n", addr, buf[1]);
 		return -1;
 	}
 	*val = buf[3];
