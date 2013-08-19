@@ -22,6 +22,8 @@ BUILD_GCC=true
 BUILD_NEWLIB=true
 BUILD_GCC_SECOND=true
 
+FSBRANCH=Swizzy
+
 # path to the logfile
 LOGFILE="`pwd`/build.log"
 
@@ -285,8 +287,16 @@ function filesystems_install
 		if [ ! -d $i ]; then
 			echo -e -n "Cloning... "
 			git clone https://github.com/LibXenonProject/$i.git  >> $LOGFILE 2>&1 || exit 0
+			if [ "" != "$FSBRANCH" ]; then
+				cd $i
+				git checkout $FSBRANCH
+				cd..
+			fi			
 		else
 			cd $i
+			if [ "" != "$FSBRANCH" ]; then
+				git checkout $FSBRANCH
+			fi	
 			git remote update >> $LOGFILE 2>&1
 			git status -uno | grep -q behind
 			if [ 0 -eq $? ]; then
