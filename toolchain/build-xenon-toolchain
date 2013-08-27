@@ -290,7 +290,7 @@ function filesystems_install
 			if [ "" != "$FSBRANCH" ]; then
 				cd $i
 				git checkout $FSBRANCH
-				cd..
+				cd ..
 			fi			
 		else
 			cd $i
