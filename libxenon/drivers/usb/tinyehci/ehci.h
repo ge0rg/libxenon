@@ -52,6 +52,7 @@ struct ehci_device {
 	int port;
 	int fd;
 	u32 toggles;
+	int busy;
 };
 #define ep_bit(ep) (((ep)&0xf)+(((ep)>>7)?16:0))
 #define get_toggle(dev,ep) (((dev)->toggles>>ep_bit(ep))&1)

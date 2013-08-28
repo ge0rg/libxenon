@@ -32,6 +32,8 @@ distribution.
 #include "diskio/disc_io.h"
 #include "usb.h"
 
+void (*mount_usb_device)(int device) = 0; // Mount callback for new devices
+
 #define s_printf printf
 
 #define ROUNDDOWN32(v)				(((u32)(v)-0x1f)&~0x1f)
@@ -1213,12 +1215,11 @@ struct bdev_ops usb2mass_ops =
 s32 USBStorage_Init(void) {
 	int i, j, retries = 1;
 	//	debug_printf("usbstorage init %d\n", ums_init_done);
-	if (ums_init_done)
-		return 0;
-
-	_ehci_device_count = 0;
-	init_ehci_device_struct();
-	
+	if (!ums_init_done)
+	{
+		_ehci_device_count = 0;
+		init_ehci_device_struct();
+	}
 	struct ehci_hcd *ehci = &ehci_hcds[0];
 
 	try_status = -1;
@@ -1230,20 +1231,18 @@ s32 USBStorage_Init(void) {
 
 retry:
 			dev->port = i;
-
-			if (dev->id != 0) {
+			if (dev->id != 0 && dev->busy == 0) {
 				handshake_mode = 1;
 				if (ehci_reset_port(ehci, i) >= 0) {
 
 					//ehci_device_data * device_data = find_ehci_data(ehci);
 					
 					ehci_device_data * device_data = &_ehci_data[_ehci_device_count];
+					dev->busy = 1;
 					device_data->__ehci = ehci;
-					device_data->__dev = dev;
-					
+					device_data->__dev = dev;					
+
 					if (USBStorage_Try_Device(device_data) == 0) {
-						_ehci_device_count++;
-						
 						printf("EHCI bus %d device %d: vendor %04X product %04X : Mass-Storage Device\n", j, dev->id, device_data->__vid, device_data->__pid);
 
 						first_access = TRUE;
@@ -1253,6 +1252,9 @@ retry:
 						//__bdev=register_bdev(NULL, &usb2mass_ops, "uda");
 						//register_disc_interface(&usb2mass_ops);
 						device_data->__ready = 1;
+						if (mount_usb_device)						
+							mount_usb_device(_ehci_device_count);						
+						_ehci_device_count++;
 #ifdef MEM_PRINT
 						s_printf("USBStorage_Init() Ok\n");
 
@@ -1261,7 +1263,7 @@ retry:
 						//return 0;
 					}
 				}
-			} else {
+			} else if (dev->busy == 0) {
 				u32 status;
 				handshake_mode = 1;
 				status = ehci_readl(&ehci->regs->port_status[i]);
