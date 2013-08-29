@@ -611,7 +611,7 @@ void xenos_init(int videoMode)
 	xenon_gpio_set(0, 0x2300);
 	xenon_gpio_set_oe(0, 0x2300);
 
-	if (videoMode<0){
+	if (videoMode <= VIDEO_MODE_AUTO || videoMode >= VIDEO_MODE_COUNT){
 		xenon_config_init();
 		xenos_autoset_mode();
 	}
