@@ -1212,6 +1212,9 @@ struct dirent* readdir(DIR *dirp) {
 	strncpy(dirp->fileData.d_name, filename, sizeof (dirp->fileData.d_name));
 	dirp->fileData.d_ino = st.st_ino;
 	dirp->fileData.d_type = S_ISDIR(st.st_mode) ? DT_DIR : DT_REG;
+	dirp->fileData.d_atime = st.st_atime;
+	dirp->fileData.d_mtime = st.st_mtime;
+	dirp->fileData.d_ctime = st.st_ctime;
 	return &(dirp->fileData);
 }
 
@@ -1251,6 +1254,10 @@ long int telldir(DIR *dirp) {
 	}
 
 	return dirp->position;
+}
+
+int fcntl(int filedes, int cmd, ...) {
+  return -1;
 }
 
 int mkdir(const char *path, mode_t mode) {
