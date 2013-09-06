@@ -844,10 +844,12 @@ static struct pvd_s* read_volume_descriptor(MOUNT_DESCR *mdescr, u8 descriptor)
 
 	for (sector = 16; sector < 32; sector++)
 	{
-		if (!disc->readSectors(sector, 1, mdescr->read_buffer))
-			return NULL;
+		int ret = disc->readSectors(sector, 1, mdescr->read_buffer);
+		if (ret == DISKIO_ERROR_NO_MEDIA || !ret)
+				return NULL;
 		if (!memcmp(mdescr->read_buffer + 1, "CD001\1", 6))
 		{
+			mdelay(500);
 			if (*mdescr->read_buffer == descriptor)
 				return (struct pvd_s*) mdescr->read_buffer;
 			else if (*mdescr->read_buffer == 0xff)
@@ -991,6 +993,7 @@ bool ISO9660_Mount(const char* name, const DISC_INTERFACE *disc_interface)
 		free(devops);
 		return false;
 	}
+	printf("ISO9660 Mount: %s\r\n", devops->name);
 	return true;
 }
 
