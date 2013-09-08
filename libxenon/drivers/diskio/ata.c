@@ -334,11 +334,13 @@ xenon_ata_read_sectors(sec_t start_sector, sec_t sector_size, void *buf) {
 	xenon_ata_wait_ready(dev);
 	for (sect = 0; sect < sector_size; sect++) {
 		if (xenon_ata_pio_read(dev, buf, XENON_DISK_SECTOR_SIZE)) {
+			asm volatile ("sync");
 			printf("ATA read error\n");
 			return -1;
 		}
 		buf += XENON_DISK_SECTOR_SIZE;
 	}
+	asm volatile ("sync");
 	return sect;
 #else
 	xenon_ata_regset(dev, XENON_ATA_REG_CMD, XENON_ATA_CMD_READ_DMA_EXT);
@@ -346,8 +348,10 @@ xenon_ata_read_sectors(sec_t start_sector, sec_t sector_size, void *buf) {
 
 	if (xenon_ata_dma_read(dev, buf, sector_size * XENON_DISK_SECTOR_SIZE)) {
 		printf("ATA DMA read error\n");
+		asm volatile ("sync");
 		return -1;
 	}
+	asm volatile ("sync");
 	return sector_size;
 #endif
 }
