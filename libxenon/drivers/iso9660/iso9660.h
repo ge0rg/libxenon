@@ -12,7 +12,7 @@
 #include <sys/iosupport.h>
 #include <diskio/disc_io.h>
 
-#define ISO_MAXPATHLEN		128
+#define MAX_ISO_FILES 8
 
 #ifdef __cplusplus
 extern "C" {
