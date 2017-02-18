@@ -28,7 +28,7 @@ INCLUDES	:=
 CFLAGS	= -g -O2 -Wall $(MACHDEP) $(INCLUDE)
 CXXFLAGS	=	$(CFLAGS)
 
-LDFLAGS	=	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
+LDFLAGS	=	-g $(MACHDEP) -Wl,--gc-sections -Wl,-Map,$(notdir $@).map
 
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
@@ -124,6 +124,7 @@ endif
 #source/ffs_content.c: genffs.py data/ps.psu data/vs.vsu
 #	python genffs.py > source/ffs_content.c
 
-run: $(OUTPUT).elf32
+run: $(BUILD) $(OUTPUT).elf32
 	cp $(OUTPUT).elf32 /tftpboot/xenon
+	$(PREFIX)strip /tftpboot/xenon
 #	/home/dev360/run

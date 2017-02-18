@@ -20,3 +20,10 @@ void set_controller_data(int port, const struct controller_data_s *d)
 	ctrl[port] = *d;
 	valid[port] = 1;
 }
+
+extern int usbctrl_set_rumble(int port, uint8_t l, uint8_t r);
+
+void set_controller_rumble(int port, uint8_t l, uint8_t r)
+{
+	usbctrl_set_rumble(port, l, r);
+}

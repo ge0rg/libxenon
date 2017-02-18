@@ -1,3 +1,4 @@
+#include "xetypes.h"
 
 void call_ctors(void)
 {
@@ -13,3 +14,15 @@ void call_ctors(void)
 	}
 }
 
+void c_register_frame(void){
+	extern char __eh_frame_start [];
+	extern void __register_frame( void * );
+	__register_frame(&__eh_frame_start);
+}
+
+extern void __check_argv();
+
+void __crtmain() {
+	__check_argv();
+	exit(main(__system_argv->argc, __system_argv->argv));
+}

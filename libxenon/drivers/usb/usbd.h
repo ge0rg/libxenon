@@ -47,10 +47,6 @@
 #ifndef _USBD_H_
 #define _USBD_H_
 
-#ifndef _PHYSADDR_T_DEFINED_
-#include "lib_physio.h"
-#endif
-
 #include "usbchap9.h"
 
 

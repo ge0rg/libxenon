@@ -1,6 +1,4 @@
-#define hid1 1009
-#define ctrlb 152
-#define pir 1023
+#include <ppc/xenonsprs.h>
 
 	/* bring a core to sleep. */
 .globl cpusleep
@@ -24,5 +22,5 @@ cpusleep:
 
 1:
 	li %r0, 0
-	mtspr ctrlb, %r0
+	mtspr ctrlwr, %r0
 	b 1b

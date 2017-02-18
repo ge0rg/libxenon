@@ -18,6 +18,8 @@ static inline uint64_t ld(volatile void *addr)
 static inline void  std(volatile void *addr, uint64_t v)
 {
 	asm volatile ("std %1, 0(%0)" : : "b" (addr), "r" (v));
+	asm volatile ("eieio");
+	asm volatile ("isync");
 }
 
 #ifdef __cplusplus

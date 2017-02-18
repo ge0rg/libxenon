@@ -53,10 +53,12 @@
 #include <stdlib.h>
 #endif
 
+#include <stdio.h>
+#include <stdlib.h>
 #include "lib_types.h"
-#include "lib_printf.h"
 #include "lib_malloc.h"
 
+#define memnode_data(t,m) (t) (((memnode_t *) (m))+1)
 
 /*  *********************************************************************
     *  Constants
@@ -64,29 +66,6 @@
 
 #define MEMNODE_SEAL 0xFAAFA123		/* just some random constant */
 #define MINBLKSIZE 64
-
-/*  *********************************************************************
-    *  Types
-    ********************************************************************* */
-
-typedef enum { memnode_free = 0, memnode_alloc } memnode_status_t;
-
-typedef struct memnode_s {
-    unsigned int seal;
-    struct memnode_s *next;		/* pointer to next node */
-    unsigned int length;		/* length of the entire data section */
-    memnode_status_t status;		/* alloc/free status */
-    unsigned char *data;		/* points to actual user data */
-    void *memnodeptr;			/* memnode back pointer (see comments) */
-} memnode_t;
-
-struct mempool_s {
-    memnode_t *root;			/* pointer to root node */
-    unsigned char *base;		/* base of memory region */
-    unsigned int length;		/* size of memory region */
-};
-
-#define memnode_data(t,m) (t) (((memnode_t *) (m))+1)
 
 /*  *********************************************************************
     *  Globals
@@ -206,6 +185,7 @@ static void kmemcompact(mempool_t *pool)
 
 	    /* Keep going till we make a pass without doing anything. */
 	    }
+
 	} while (compacted > 0);
 }
 
@@ -622,9 +602,16 @@ void main(int argc,char *argv[])
 
 
 static unsigned char heap[1*1024*1024];
+static int kmem_init_done=0;
 
 void kmem_init(void)
 {
-	mempool_t *pool = &kmempool;
+    if(kmem_init_done){
+        printf("Calling kmem_init() before usb_init() is deprecated.\n");
+        return;
+    }
+    kmem_init_done=1;
+
+    mempool_t *pool = &kmempool;
 	kmeminit(pool, heap, sizeof(heap));
 }

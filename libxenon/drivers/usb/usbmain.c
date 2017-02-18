@@ -1,60 +1,62 @@
 /*  *********************************************************************
     *  Broadcom Common Firmware Environment (CFE)
-    *  
+    *
     *  Main Module				File: usbmain.c
-    *  
+    *
     *  Main module that invokes the top of the USB stack from CFE.
-    *  
+    *
     *  Author:  Mitch Lichtenberg
-    *  
-    *********************************************************************  
+    *
+    *********************************************************************
     *
     *  Copyright 2000,2001,2002,2003
     *  Broadcom Corporation. All rights reserved.
-    *  
-    *  This software is furnished under license and may be used and 
-    *  copied only in accordance with the following terms and 
-    *  conditions.  Subject to these conditions, you may download, 
-    *  copy, install, use, modify and distribute modified or unmodified 
-    *  copies of this software in source and/or binary form.  No title 
+    *
+    *  This software is furnished under license and may be used and
+    *  copied only in accordance with the following terms and
+    *  conditions.  Subject to these conditions, you may download,
+    *  copy, install, use, modify and distribute modified or unmodified
+    *  copies of this software in source and/or binary form.  No title
     *  or ownership is transferred hereby.
-    *  
-    *  1) Any source code used, modified or distributed must reproduce 
-    *     and retain this copyright notice and list of conditions 
+    *
+    *  1) Any source code used, modified or distributed must reproduce
+    *     and retain this copyright notice and list of conditions
     *     as they appear in the source file.
-    *  
-    *  2) No right is granted to use any trade name, trademark, or 
-    *     logo of Broadcom Corporation.  The "Broadcom Corporation" 
-    *     name may not be used to endorse or promote products derived 
-    *     from this software without the prior written permission of 
+    *
+    *  2) No right is granted to use any trade name, trademark, or
+    *     logo of Broadcom Corporation.  The "Broadcom Corporation"
+    *     name may not be used to endorse or promote products derived
+    *     from this software without the prior written permission of
     *     Broadcom Corporation.
-    *  
+    *
     *  3) THIS SOFTWARE IS PROVIDED "AS-IS" AND ANY EXPRESS OR
     *     IMPLIED WARRANTIES, INCLUDING BUT NOT LIMITED TO, ANY IMPLIED
-    *     WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
-    *     PURPOSE, OR NON-INFRINGEMENT ARE DISCLAIMED. IN NO EVENT 
-    *     SHALL BROADCOM BE LIABLE FOR ANY DAMAGES WHATSOEVER, AND IN 
+    *     WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+    *     PURPOSE, OR NON-INFRINGEMENT ARE DISCLAIMED. IN NO EVENT
+    *     SHALL BROADCOM BE LIABLE FOR ANY DAMAGES WHATSOEVER, AND IN
     *     PARTICULAR, BROADCOM SHALL NOT BE LIABLE FOR DIRECT, INDIRECT,
-    *     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+    *     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
     *     (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
     *     GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-    *     BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY 
-    *     OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
-    *     TORT (INCLUDING NEGLIGENCE OR OTHERWISE), EVEN IF ADVISED OF 
+    *     BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+    *     OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+    *     TORT (INCLUDING NEGLIGENCE OR OTHERWISE), EVEN IF ADVISED OF
     *     THE POSSIBILITY OF SUCH DAMAGE.
     ********************************************************************* */
 
 
-#include "cfe.h"
-#include "lib_physio.h"
+#include <nocfe/cfe.h>
 
 #if CFG_PCI
 #include "pcireg.h"
 #include "pcivar.h"
 #endif
 
+#include "usbmain.h"
 #include "usbchap9.h"
 #include "usbd.h"
+#include "pci/io.h"
+#include <usb/tinyehci/tinyehci.h>
 
 
 /*  *********************************************************************
@@ -67,6 +69,7 @@ extern int ohcidebug;				/* OHCI debug control */
 extern int usb_noisy;				/* USBD debug control */
 
 int ui_init_usbcmds(void);			/* forward */
+void kmem_init(void);
 
 /*  *********************************************************************
     *  Globals
@@ -85,16 +88,16 @@ usbbus_t *usb_buses[USB_MAX_BUS];
 
 /*  *********************************************************************
     *  usb_cfe_timer(arg)
-    *  
+    *
     *  This routine is called periodically by CFE's timer routines
     *  to give the USB subsystem some time.  Basically we scan
     *  for work to do to manage configuration updates, and handle
     *  interrupts from the USB controllers.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   arg - value we passed when the timer was initialized
     *  	          (not used)
-    *  	   
+    *
     *  Return value:
     *  	   nothing
     ********************************************************************* */
@@ -136,12 +139,12 @@ static void usb_cfe_timer(void *arg)
 
 /*  *********************************************************************
     *  usb_init_one_ohci(addr)
-    *  
+    *
     *  Initialize one USB controller.
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   addr - physical address of OHCI registers
-    *  	   
+    *
     *  Return value:
     *  	   0 if ok
     *  	   else error
@@ -178,12 +181,12 @@ static int usb_init_one_ohci(uint32_t addr)
 #if CFG_PCI
 /*  *********************************************************************
     *  usb_init_pci_ohci()
-    *  
+    *
     *  Initialize all PCI-based OHCI controllers
-    *  
-    *  Input parameters: 
+    *
+    *  Input parameters:
     *  	   nothing
-    *  	   
+    *
     *  Return value:
     *  	   0 if ok
     *  	   else error
@@ -200,9 +203,9 @@ static int usb_init_pci_ohci(void)
 
     while (pci_find_class(PCI_CLASS_SERIALBUS,idx,&tag) == 0) {
 	pciclass = pci_conf_read(tag,PCI_CLASS_REG);
-	if ((PCI_SUBCLASS(pciclass) == PCI_SUBCLASS_SERIALBUS_USB) && 
+	if ((PCI_SUBCLASS(pciclass) == PCI_SUBCLASS_SERIALBUS_USB) &&
 	    (PCI_INTERFACE(pciclass) == 0x10)) {
-	    /* On the BCM1250, this sets the address to "match bits" mode, 
+	    /* On the BCM1250, this sets the address to "match bits" mode,
 	       which eliminates the need for byte swaps of data to/from the registers. */
 	    if (pci_map_mem(tag,PCI_MAPREG_START,PCI_MATCH_BITS,&bar) == 0) {
 		pci_tagprintf(tag,"OHCI USB controller found at %08X\n",(uint32_t) bar);
@@ -229,13 +232,32 @@ int usb_init(void)
     static int initdone = 0;
 
     if (initdone) {
-	printf("USB has already been initialized.\n");
-	return -1;
+		printf("USB has already been initialized.\n");
+		return -1;
 	}
 
 	initdone = 1;
 
+	usb_shutdown();
+
+	// preinit (start from scratch)
+		// OHCI
+	write32(0xD0120044,0xed44);
+	write32(0xD0128044,0xed44);
+		// EHCI
+	write32(0xD0121040,0x0C004020);
+	write32(0xD0129040,0x0C004020);
+	write32(0xD0121044,0x3C);
+	write32(0xD0129044,0x3C);
+
+	printf(" * Initialising USB EHCI...\n");
+	EHCI_Init();
+
+	printf(" * Initialising USB OHCI...\n");
+
 	usb_buscnt = 0;
+
+    kmem_init();
 
 #if CFG_PCI
 	usb_init_pci_ohci();
@@ -255,9 +277,33 @@ int usb_init(void)
 	return 0;
 }
 
+void usb_shutdown(void)
+{
+	// EHCI
+		// disable interrupts
+	write32(0xEA003028,0);
+	write32(0xEA005028,0);
+		// halt
+	write32(0xEA003020,0);
+	write32(0xEA005020,0);
+
+	// OHCI
+		// disable interrupts
+	write32(0xEA002014,1 << 31);
+	write32(0xEA004014,1 << 31);
+		// halt
+	write32(0xEA002004,0);
+	read32(0xEA002004);
+	write32(0xEA004004,0);
+	read32(0xEA004004);
+}
+
 void usb_do_poll(void)
 {
 	if (!usb_initialized)
 		return;
+
 	usb_cfe_timer(0);
+
+	USBStorage_Init();
 }

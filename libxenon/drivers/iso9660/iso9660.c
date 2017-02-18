@@ -32,11 +32,9 @@ ISO9660 systems, as these were used as references as well.
 #include <iso9660/iso9660.h>
 #include <xetypes.h>
 #include <ppc/atomic.h>
-#include <diskio/diskio.h>
-#include <newlib/vfs.h>
-#include <newlib/dirent.h>
+#include <diskio/disc_io.h>
 #include <fcntl.h>
-
+#include <sys/dirent.h>
 #include <debug.h>
 
 #include <stdio.h>
@@ -50,7 +48,10 @@ ISO9660 systems, as these were used as references as well.
 
 #define dbglog(sev,prm...) printf(sev prm);
 
-static struct bdev * iso9660_dev;
+#define O_DIR 0x100000
+#define MAX_ISO_FILES 8
+
+static DISC_INTERFACE * iso9660_dev = NULL;
 
 int iso_reset();
 static int init_percd();
@@ -157,6 +158,11 @@ typedef struct {
 	char	name[1];
 } iso_dirent_t;
 
+typedef struct filestruct_s
+{
+	int fd;
+} FILE_STRUCT;
+
 /* Util function to reverse the byte order of a u32 */
 static u32 ntohl_32(const void *data) {
 	const u8 *d = (const u8*)data;
@@ -253,12 +259,15 @@ static int bread_cache(cache_block_t **cache, u32 sector) {
 	if (i >= NUM_CACHE_BLOCKS) { i = 0; }
 	
 	/* Load the requested block */
-	j = iso9660_dev->ops->read(iso9660_dev, cache[i]->data, sector, 1);
+	j = iso9660_dev->readSectors(sector, 1, cache[i]->data);
 	if (j < 0) {
-		dbglog(DBG_ERROR, "fs_iso9660: can't read_sectors for %d: %d\n", sector, j);
-//gli		if (j == ERR_DISC_CHG || j == ERR_NO_DISC) {
-			init_percd();
-//gli		}
+		
+		if (j==DISKIO_ERROR_NO_MEDIA) {
+			unlock(cache_mutex);
+			iso_reset();
+		} else
+			dbglog(DBG_ERROR, "fs_iso9660: can't read_sectors for %d: %d\n", (unsigned int)sector, j);
+		
 		rv = -1;
 		goto bread_exit;
 	}
@@ -308,7 +317,7 @@ static iso_dirent_t root_dirent;
 static int init_percd() {
 	int		i, blk;
 
-	dbglog(DBG_NOTICE, "fs_iso9660: disc change detected\n");
+	//dbglog(DBG_NOTICE, "fs_iso9660: disc change detected\n");
 	
 	/* Start off with no cached blocks and no open files*/
 	iso_reset();
@@ -349,6 +358,7 @@ static int init_percd() {
    takes into account the trailing period that some CD burning software
    adds. */
 static int fncompare(const char *isofn, int isosize, const char *normalfn) {
+	//printf("Comparing %s against %s\n", isofn, normalfn);
 	int i;
 
 	/* Compare ISO name */
@@ -384,8 +394,7 @@ static int fncompare(const char *isofn, int isosize, const char *normalfn) {
    It will return a pointer to a transient dirent buffer (i.e., don't
    expect this buffer to stay around much longer than the call itself).
  */
-static iso_dirent_t *find_object(const char *fn, int dir,
-		u32 dir_extent, u32 dir_size) {
+static iso_dirent_t *find_object(const char *fn, int dir, u32 dir_extent, u32 dir_size) {
 	int		i, c;
 	iso_dirent_t	*de;
 
@@ -497,7 +506,8 @@ static iso_dirent_t *find_object_path(const char *fn, int dir, iso_dirent_t *sta
 			/* Note: trailing path parts don't matter since find_object
 			   only compares based on the FN length on the disc. */
 			start = find_object(fn, 1, iso_733(start->extent), iso_733(start->size));
-			if (start == NULL) return NULL;
+			if (start == NULL) 
+				return NULL;
 		}
 		fn = cur + 1;
 	}
@@ -550,8 +560,13 @@ static int iso_open(const char *fn, int mode) {
 	int		fd;
 	iso_dirent_t	*de;
 
+	if (memcmp(fn, "dvd:/", 6))
+		fn += 5;
+	else if (memcmp(fn, "dvd", 3) && memcmp(fn + 4, ":/", 2))
+		fn += 6;
+
 	/* Make sure they don't want to open things as writeable */
-	if (mode != O_RDONLY)
+	if (mode != O_RDONLY && mode != O_DIR)
 		return 0;
 	
 	/* Do this only when we need to (this is still imperfect) */
@@ -560,8 +575,9 @@ static int iso_open(const char *fn, int mode) {
 	percd_done = 1;
 
 	/* Find the file we want */
-	de = find_object_path(fn, /*(mode & O_DIR)?1:*/0, &root_dirent);
-	if (!de) return 0;
+	de = find_object_path(fn, (mode & O_DIR)?1:0, &root_dirent);
+	if (!de)	
+		return 0;
 	
 	/* Find a free file handle */
 	lock(fh_mutex);
@@ -577,7 +593,7 @@ static int iso_open(const char *fn, int mode) {
 
 	/* Fill in the file handle and return the fd */
 	fh[fd].first_extent = iso_733(de->extent);
-	fh[fd].dir = /*(mode & O_DIR)?1:*/0;
+	fh[fd].dir = (mode & O_DIR)?1:0;
 	fh[fd].ptr = 0;
 	fh[fd].size = iso_733(de->size);
 	fh[fd].broken = 0;
@@ -600,8 +616,8 @@ static ssize_t iso_read(int fd, void *buf, size_t bytes) {
 	u8 * outbuf;
 
 	/* Check that the fd is valid */
-	if (fd >= MAX_ISO_FILES || fh[fd].first_extent == 0 || fh[fd].broken)
-		return -1;
+	if (fd >= MAX_ISO_FILES || fh[fd].first_extent == 0 || fh[fd].broken)	
+		return -1;	
 
 	rv = 0;
 	outbuf = (u8 *)buf;
@@ -634,19 +650,15 @@ static ssize_t iso_read(int fd, void *buf, size_t bytes) {
 				thissect);*/
 
 			// Do the read
-			if (iso9660_dev->ops->read(iso9660_dev,outbuf,
-				fh[fd].first_extent + fh[fd].ptr/2048,
-				thissect) <= 0)
-			{
-				// Something went wrong...
-				return -1;
-			}
+			if (iso9660_dev->readSectors(fh[fd].first_extent + fh[fd].ptr/2048, thissect, outbuf) < 0)
+				return -2; // Something went wrong...
 		} else { 
 			toread = (toread > thissect) ? thissect : toread;
 		
 			/* Do the read */
 			c = bdread(fh[fd].first_extent + fh[fd].ptr/2048);
-			if (c < 0) return -1;
+			if (c < 0)			
+				return -3;			
 			memcpy(outbuf, dcache[c]->data + (fh[fd].ptr%2048), toread);
 		} 
 
@@ -781,11 +793,16 @@ static struct dirent *iso_readdir(int fd) {
 			pnt += pnt[2];
 		}
 	}
+	
+	//fh[fd].dirent.d_namlen = de->name_len;
 
-	if (de->flags & 2)
-		fh[fd].dirent.d_reclen = -1;
-	else
-		fh[fd].dirent.d_reclen = iso_733(de->size);
+	if (de->flags & 2){
+		//fh[fd].dirent.d_reclen = -1;
+		fh[fd].dirent.d_type = DT_DIR;
+	}else{
+		//fh[fd].dirent.d_reclen = iso_733(de->size);
+		fh[fd].dirent.d_type = DT_REG;
+	}
 
 	fh[fd].ptr += de->length;
 	
@@ -843,6 +860,8 @@ int fs_iso9660_init() {
 	/* Init thread mutexes */
 	cache_mutex = malloc(sizeof(u32));
 	fh_mutex = malloc(sizeof(u32));
+	*cache_mutex = 0;
+	*fh_mutex = 0;
 
 	/* Allocate cache block space */
 	for (i=0; i<NUM_CACHE_BLOCKS; i++) {
@@ -881,57 +900,294 @@ int fs_iso9660_shutdown() {
 	return 0;
 }
 
-
-off_t _iso9660_lseek(struct vfs_file_s *file, size_t offset, int whence)
+static int _ISO9660_open_r(struct _reent *r, void *fileStruct, const char *path, int flags, int mode)
 {
-	int fd = (int)file->priv[0];
-	return iso_seek(fd,offset,whence);
+	FILE_STRUCT* file = (FILE_STRUCT*)fileStruct;
+	file->fd = iso_open(path, flags);
+	return (int)file;
 }
 
-
-int _iso9660_read(struct vfs_file_s *file, void *dst, size_t len)
+static int _ISO9660_close_r(struct _reent *r, int fd)
 {
-	int fd = (int)file->priv[0];
-	return iso_read(fd,dst,len);
-}
-
-int _iso9660_fstat(struct vfs_file_s *file, struct stat *buf)
-{
-	int fd = (int)file->priv[0];
-	buf->st_size = iso_total(fd);
-	buf->st_mode = S_IFREG;
-	buf->st_blksize = 65536;
+	fd = ((FILE_STRUCT*)fd)->fd;
+	iso_close(fd);
 	return 0;
 }
 
-void _iso9660_close(struct vfs_file_s *file)
+static ssize_t _ISO9660_read_r(struct _reent *r, int fd, char *ptr, size_t len)
 {
-	int fd = (int)file->priv[0];
+	fd = ((FILE_STRUCT*)fd)->fd;
+	return iso_read(fd, ptr, len);
+}
+
+static off_t _ISO9660_seek_r(struct _reent *r, int fd, off_t pos, int dir)
+{
+	fd = ((FILE_STRUCT*)fd)->fd;
+	return iso_seek(fd, pos, dir);
+}
+
+static int _ISO9660_fstat_r(struct _reent *r, int fd, struct stat *st)
+{
+	fd = ((FILE_STRUCT*)fd)->fd;
+	memset(st, 0, sizeof(stat));
+	st->st_size = iso_total(fd);
+	st->st_mode = S_IFREG;
+	st->st_blksize = 65536;
+	return 0;
+}
+
+static int _ISO9660_stat_r(struct _reent *r, const char *path, struct stat *st)
+{
+	int fd = iso_open(path, O_RDONLY);
+	memset(st, 0, sizeof(stat));
+	st->st_size = iso_total(fd);
+	st->st_mode = S_IFREG;
+	st->st_blksize = 65536;
 	iso_close(fd);
+	return 0;
 }
 
-struct vfs_fileop_s vfs_iso9660_file_ops = {.read = _iso9660_read, .lseek = _iso9660_lseek, .fstat = _iso9660_fstat, .close = _iso9660_close};
-
-int _iso9660_open(struct vfs_file_s *file, struct mount_s *mount, const char *filename, int oflags, int perm)
+static int _ISO9660_chdir_r(struct _reent *r, const char *path)
 {
-	int fd = iso_open(filename,oflags);	
-	
-	file->priv[0] = (void *) fd;
-	file->ops = &vfs_iso9660_file_ops;
+	/*DIR_ENTRY entry;
+	MOUNT_DESCR *mdescr;
 
-	return fd<=0;
+	mdescr = _ISO9660_getMountDescrFromPath(path, NULL);
+	if (mdescr == NULL)
+	{
+		r->_errno = ENODEV;
+		return -1;
+	}
+
+	if (!entry_from_path(mdescr, &entry, path))
+	{
+		r->_errno = ENOENT;
+		return -1;
+	}
+	else if (!is_dir(&entry))
+	{
+		r->_errno = ENOTDIR;
+		return -1;
+	}
+
+	mdescr->iso_currententry = entry.path_entry;
+	if (entry.children)
+		free(entry.children);
+*/
+	return 0; //Dunno what to do about this one yet...
 }
 
-void _iso9660_mount(struct mount_s *mount, struct bdev * device)
+static DIR_ITER* _ISO9660_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path)
 {
-	iso9660_dev=device;
+	/*DIR_STATE_STRUCT *state = (DIR_STATE_STRUCT*) (dirState->dirStruct);
+	MOUNT_DESCR *mdescr;
+
+	mdescr = _ISO9660_getMountDescrFromPath(path, NULL);
+	if (mdescr == NULL)
+	{
+		r->_errno = ENODEV;
+		return NULL;
+	}
+
+	if (!entry_from_path(mdescr, &state->entry, path))
+	{
+		r->_errno = ENOENT;
+		return NULL;
+	}
+	else if (!is_dir(&state->entry))
+	{
+		r->_errno = ENOTDIR;
+		return NULL;
+	}
+
+	state->index = 0;
+	state->inUse = true;
+	return dirState;*/
+	return dirState; //Dunno what to do about this one yet...
+}
+
+static int _ISO9660_dirreset_r(struct _reent *r, DIR_ITER *dirState)
+{
+	/*DIR_STATE_STRUCT *state = (DIR_STATE_STRUCT*) (dirState->dirStruct);
+
+	if (!state->inUse)
+	{
+		r->_errno = EBADF;
+		return -1;
+	}
+
+	state->index = 0;*/
+	return 0; //Dunno what to do about this one yet...
+}
+
+static int _ISO9660_dirnext_r(struct _reent *r, DIR_ITER *dirState, char *filename, struct stat *st)
+{
+	/*DIR_ENTRY *entry;
+	DIR_STATE_STRUCT *state = (DIR_STATE_STRUCT*) (dirState->dirStruct);
+
+	if (!state->inUse)
+	{
+		r->_errno = EBADF;
+		return -1;
+	}
+
+	if (state->index >= state->entry.fileCount)
+	{
+		r->_errno = ENOENT;
+		return -1;
+	}
+
+	entry = &state->entry.children[state->index++];
+	strncpy(filename, entry->name, ISO_MAXPATHLEN - 1);
+	stat_entry(entry, st);*/
+	return 0; //Dunno what to do about this one yet...
+}
+
+static int _ISO9660_dirclose_r(struct _reent *r, DIR_ITER *dirState)
+{
+	/*DIR_STATE_STRUCT *state = (DIR_STATE_STRUCT*) (dirState->dirStruct);
+
+	if (!state->inUse)
+	{
+		r->_errno = EBADF;
+		return -1;
+	}
+
+	state->inUse = false;
+	if (state->entry.children)
+		free(state->entry.children);*/
+	return 0; //Dunno what to do about this one yet...
+}
+
+static int _ISO9660_statvfs_r(struct _reent *r, const char *path, struct statvfs *buf)
+{
+	// FAT clusters = POSIX blocks
+	buf->f_bsize = 0x800; // File system block size. 
+	buf->f_frsize = 0x800; // Fundamental file system block size. 
+
+	//buf->f_blocks	= totalsectors; // Total number of blocks on file system in units of f_frsize. 
+	buf->f_bfree = 0; // Total number of free blocks. 
+	buf->f_bavail = 0; // Number of free blocks available to non-privileged process. 
+
+	// Treat requests for info on inodes as clusters
+	//buf->f_files = totalentries;	// Total number of file serial numbers. 
+	buf->f_ffree = 0; // Total number of free file serial numbers. 
+	buf->f_favail = 0; // Number of file serial numbers available to non-privileged process. 
+
+	// File system ID. 32bit ioType value
+	buf->f_fsid = 0; //??!!? 
+
+	// Bit mask of f_flag values.
+	buf->f_flag = ST_NOSUID // No support for ST_ISUID and ST_ISGID file mode bits
+			| ST_RDONLY; // Read only file system
+	// Maximum filename length.
+	buf->f_namemax = 208;
+	return 0;
+}
+
+static const devoptab_t dotab_iso9660 =
+{
+	NULL,
+	sizeof(FILE_STRUCT),//Dunno?!
+	_ISO9660_open_r,
+	_ISO9660_close_r,
+	NULL,
+	_ISO9660_read_r,
+	_ISO9660_seek_r,
+	_ISO9660_fstat_r,
+	_ISO9660_stat_r,
+	NULL,
+	NULL,
+	_ISO9660_chdir_r,
+	NULL,
+	NULL,
+	sizeof(FILE_STRUCT),//Dunno?!
+	_ISO9660_diropen_r,
+	_ISO9660_dirreset_r,
+	_ISO9660_dirnext_r,
+	_ISO9660_dirclose_r,
+	_ISO9660_statvfs_r,
+	NULL, // device ftruncate_r
+	NULL, // device fsync_r
+	NULL // device data
+};
+
+bool ISO9660_Mount(const char* name, const DISC_INTERFACE *disc_interface)
+{
+	char *nameCopy;
+	devoptab_t *devops = NULL;
+	char devname[10];
+
+	if (!name || strlen(name) > 8 || !disc_interface)
+		return false;
+
+	if (!disc_interface->startup())
+		return false;
+
+	if (!disc_interface->isInserted())
+		return false;
+
+	sprintf(devname, "%s:", name);
+	if (FindDevice(devname) >= 0)
+		return false;
+
+	devops = malloc(sizeof(dotab_iso9660) + strlen(name) + 1);
+	if (!devops)
+		return false;
+
+	// Use the space allocated at the end of the devoptab struct for storing the name
+	nameCopy = (char*) (devops + 1);
+
+	iso9660_dev = disc_interface;
 	fs_iso9660_init();
+
+	// Add an entry for this device to the devoptab table
+	memcpy(devops, &dotab_iso9660, sizeof(dotab_iso9660));
+	strcpy(nameCopy, name);
+	devops->name = nameCopy;
+	if (AddDevice(devops) < 0)
+	{
+		free(devops);
+		return false;
+	}
+
+	return true;
 }
 
-void _iso9660_umount(struct mount_s *mount)
+static bool check_dev_name(const char* name, char *devname, size_t devname_size)
 {
-	fs_iso9660_shutdown();
+    size_t len;
+    
+	if (!name)
+		return false;
+
+	len = strlen(name);
+	if (len == 0 || len > devname_size-2)
+		return false;
+
+	// append ':' if missing
+	strcpy(devname, name);
+	if (devname[len-1] != ':')
+		strcat(devname, ":");
+
+	return true;
 }
 
-struct vfs_mountop_s vfs_iso9660_mount_ops = {.open = _iso9660_open, .mount = _iso9660_mount, .umount = _iso9660_umount};
+bool ISO9660_Unmount(const char* name)
+{
+	char devname[11];
+	if (! check_dev_name(name, devname, sizeof(devname)))
+		return false;
+	fs_iso9660_shutdown();	
+	if (RemoveDevice(name) == -1)
+		return false;
+	return true;
+}
 
+const char *ISO9660_GetVolumeLabel(const char *name)
+{
+	char devname[11];
+	if (!check_dev_name(name, devname, sizeof(devname)))
+		return NULL;
+	return name;
+}

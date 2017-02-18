@@ -45,17 +45,7 @@
     ********************************************************************* */
 
 
-#ifndef _CFE_
-#include <stdio.h>
-#include <time.h>
-#include <memory.h>
-#include <stdint.h>
-#include "usbhack.h"
-#include "lib_malloc.h"
-#include "lib_queue.h"
-#else
 #include "cfe.h"
-#endif
 
 #include "usbchap9.h"
 #include "usbd.h"
@@ -491,11 +481,7 @@ void usb_free_request(usbreq_t *ur)
 
 void usb_delay_ms(usbbus_t *bus,int ms)
 {
-#ifdef _CFE_
-    cfe_sleep(1+((ms*CFE_HZ)/1000));
-#else
-    mydelay(ms);
-#endif
+    mdelay(ms);
 }
 
 /*  *********************************************************************
@@ -747,7 +733,7 @@ int usb_clear_stall(usbdev_t *dev,int epaddr)
     uint8_t *requestbuf;
     usb_device_request_t *req;
     usbreq_t *ur;
-    int res;
+//    int res;
     int pipeidx;
 
     /*
@@ -776,10 +762,10 @@ int usb_clear_stall(usbdev_t *dev,int epaddr)
     ur = usb_make_request(dev,0,requestbuf,
 			  sizeof(usb_device_request_t),
 			  UR_FLAG_SETUP);
-    res = usb_sync_request(ur);
+    /*res =*/ usb_sync_request(ur);
     usb_free_request(ur);
     ur = usb_make_request(dev,0,requestbuf,0,UR_FLAG_STATUS_IN);
-    res = usb_sync_request(ur);
+    /*res =*/ usb_sync_request(ur);
     usb_free_request(ur);
 
     KFREE(requestbuf);

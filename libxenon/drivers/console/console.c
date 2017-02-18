@@ -30,17 +30,19 @@
 #include <string.h>
 #include <ppc/cache.h>
 #include "font_8x16.h"
+#include "console.h"
+#include <xenos/xenos.h>
 
 static int console_width, console_height,
     console_size;
 
 /* Colors in BGRA: background and foreground */
-static uint32_t console_color[2] = { 0x00000000, 0xFFA0A000 };
+uint32_t console_color[2] = { 0x00000000, 0xFFA0A000 };
+uint32_t console_oldbg, console_oldfg;
 
 static unsigned char *console_fb = 0LL;
 
-static int cursor_x, cursor_y,
-    max_x, max_y;
+static int cursor_x, cursor_y, max_x, max_y, offset_x, offset_y;
 
 struct ati_info {
 	uint32_t unknown1[4];
@@ -77,31 +79,23 @@ static void console_draw_char(const int x, const int y, const unsigned char c) {
 		}
 }
 
-static void console_clrscr(const unsigned int bgra) {
-#if 0
+void console_clrscr() {
 	unsigned int *fb = (unsigned int*)console_fb;
 	int count = console_width * console_height;
 	while (count--)
-		*fb++ = bgra;
-#else
-	memset(console_fb, bgra, console_size*4);
-	memdcbst(console_fb, console_size*4);
-#endif
-}
+		*fb++ = console_color[0];
 
-static void console_clrscr_alt(const unsigned int bgra) {
-//#if 0
-	unsigned int *fb = (unsigned int*)console_fb;
-	int count = console_width * console_height;
-	while (count--)
-		*fb++ = bgra;
-//#else
-	//memset(console_fb, bgra, console_size*4);
 	memdcbst(console_fb, console_size*4);
-//#endif
 
 	cursor_x=0;
 	cursor_y=0;
+}
+
+void console_clrline() {
+	char sp[max_x];
+	memset(sp,' ', max_x);
+	sp[max_x-1]='\0';
+	printf("\r%s\r",sp);
 }
 
 static void console_scroll32(const unsigned int lines) {
@@ -113,7 +107,13 @@ static void console_scroll32(const unsigned int lines) {
 		       console_fb + bs*l,
 		       bs);
 	}
-	memset(console_fb + console_size*4 - bs*lines, 0, bs*lines);
+
+	/* fill up last lines with background color */
+	uint32_t *fb = (uint32_t*)(console_fb + console_size*4 - bs*lines);
+	uint32_t *end = (uint32_t*)(console_fb + console_size*4);
+	while (fb != end)
+		*fb++ = console_color[0];
+
 	memdcbst(console_fb, console_size*4);
 }
 
@@ -136,7 +136,7 @@ void console_newline() {
 	}
 }
 
-static void console_putch(const char c) {
+void console_putch(const char c) {
 	if (!console_fb)
 		return;
 	if (c == '\r') {
@@ -144,7 +144,7 @@ static void console_putch(const char c) {
 	} else if (c == '\n') {
 		console_newline();
 	} else {
-		console_draw_char(cursor_x*8, cursor_y*16, c);
+		console_draw_char(cursor_x*8 + offset_x, cursor_y*16 + offset_y, c);
 		cursor_x++;
 		if (cursor_x >= max_x)
 			console_newline();
@@ -169,16 +169,33 @@ void console_init(void) {
 	console_height = ((ai->height+31)>>5)<<5;
 	console_size = console_width*console_height;
 
-	cursor_x = cursor_y = 0;
-	max_x = ai->width / 8;
-	max_y = ai->height / 16;
+	offset_x = offset_y = 0;
+	if (xenos_is_overscan())
+	{
+		offset_x = (ai->width/28); //50;
+		offset_y = (ai->height/28); //50;
+	}
 
-	console_clrscr(0);
+	cursor_x = cursor_y = 0;
+	max_x = (ai->width - offset_x * 2) / 8;
+	max_y = (ai->height - offset_y * 2) / 16;
+	
+	console_clrscr();
 	
 	stdout_hook = console_stdout_hook;
 
 	printf(" * Xenos FB with %dx%d (%dx%d) at %p initialized.\n",
 		max_x, max_y, ai->width, ai->height, console_fb);
+}
+
+void console_set_colors(unsigned int background, unsigned int foreground){
+	console_color[0]=background;
+	console_color[1]=foreground;
+}
+
+void console_get_dimensions(unsigned int * width,unsigned int * height){
+	if (width) *width=max_x;
+	if (height) *height=max_y;
 }
 
 void console_close(void)

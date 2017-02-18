@@ -2,11 +2,6 @@
 
 uint64_t xenon_secotp_read_line(int nr)
 {
-	return *(uint64_t*)(0x8000020000020000 + (nr * 0x200));
-}
-
-int xenon_secotp_blow_fuse(int nr)
-{
-		/* you wish :) */
-	return -1;
+	if (nr<0 || nr>=12) return -1;
+	return *(uint64_t*)(0x20020000 + (nr * 0x200));
 }

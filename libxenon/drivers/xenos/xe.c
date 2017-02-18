@@ -13,14 +13,14 @@
 #include <time/time.h>
 #include <debug.h>
 
-#define RINGBUFFER_BASE 0x10000000
-#define RINGBUFFER_SIZE 0x0F000000
+#define WRITEBACK_ZONE_SIZE 0x20000
 
 #define RPTR_WRITEBACK 0x10000
 #define SCRATCH_WRITEBACK 0x10100
 
 #define RINGBUFFER_PRIMARY_SIZE (0x8000/4)
-#define RINGBUFFER_SECONDARY_SIZE (0x100000/4)
+#define RINGBUFFER_SECONDARY_SIZE (0x400000/4)
+#define RINGBUFFER_SECONDARY_GUARD (0x200000/4)
 
 #define RADEON_CP_PACKET0               0x00000000
 #define RADEON_ONE_REG_WR                (1 << 15)
@@ -29,6 +29,8 @@
         (RADEON_CP_PACKET0 | ((n) << 16) | ((reg) >> 2))
 #define CP_PACKET0_TABLE( reg, n )                                      \
         (RADEON_CP_PACKET0 | RADEON_ONE_REG_WR | ((n) << 16) | ((reg) >> 2))
+
+#define VBPOOL_NUM_TRIANGLES 2000
 
 static inline void Xe_pWriteReg(struct XenosDevice *xe, u32 reg, u32 val)
 {
@@ -49,12 +51,12 @@ static inline u32 xy32(int x, int y)
 
 void Xe_pSyncToDevice(struct XenosDevice *xe, volatile void *data, int len)
 {
-	memdcbst(data, len);
+	memdcbst((void *)data, len);
 }
 
 void Xe_pSyncFromDevice(struct XenosDevice *xe, volatile void *data, int len)
 {
-	memdcbf(data, len);
+	memdcbf((void *)data, len);
 }
 
 void *Xe_pAlloc(struct XenosDevice *xe, u32 *phys, int size, int align)
@@ -62,17 +64,20 @@ void *Xe_pAlloc(struct XenosDevice *xe, u32 *phys, int size, int align)
 	void *r;
 	if (!align)
 		align = size;
-	xe->alloc_ptr += (-xe->alloc_ptr) & (align-1);
-	xe->alloc_ptr += align;
-	r = ((void*)xe->rb) + xe->alloc_ptr;
 
-	if (phys)
-		*phys = RINGBUFFER_BASE + xe->alloc_ptr;
-	xe->alloc_ptr += size;
-//	printf("Xe_pAlloc: at %d kb\n", xe->alloc_ptr / 1024);
-	if (xe->alloc_ptr > (RINGBUFFER_SIZE))
-		Xe_Fatal(xe, "FATAL: out of memory. (alloc_ptr: %d kb, RINGBUFFER_SIZE: %d kb)\n", xe->alloc_ptr / 1024, RINGBUFFER_SIZE / 1024);
-	return r;
+    r=memalign(align,size);
+    if (!r)
+        Xe_Fatal(xe, "out of memory\n");
+
+    if (phys)
+        *phys = (u32) r &~ 0x80000000;
+
+    return r;
+}
+
+void Xe_pFree(struct XenosDevice *xe, void * ptr)
+{
+    free(ptr);
 }
 
 void Xe_pInvalidateGpuCache_Primary(struct XenosDevice *xe, int base, int size)
@@ -109,11 +114,9 @@ void Xe_pRBKickSegment(struct XenosDevice *xe, int base, int len)
 		rput32p(xe->rb_secondary_base + base * 4); rput32p(len);
 }
 
-#define RINGBUFFER_SECONDARY_GUARD 0x20000
-
 void Xe_pRBKick(struct XenosDevice *xe)
 {
-//	printf("kick: wptr = %x, last_wptr = %x\n", rb_secondary_wptr, last_wptr);
+//	printf("kick: wptr = %x, last_wptr = %x\n", xe->rb_secondary_wptr, xe->last_wptr);
 	
 	Xe_pRBKickSegment(xe, xe->last_wptr, xe->rb_secondary_wptr - xe->last_wptr);
 
@@ -297,7 +300,7 @@ void Xe_pReset(struct XenosDevice *xe)
 	Xe_pInit1(xe);
 }
 
-void Xe_pInit0(struct XenosDevice *xe, u32 buffer_base, u32 size_in_l2qw)
+void Xe_pResetCP(struct XenosDevice *xe, u32 buffer_base, u32 size_in_l2qw)
 {
 	w32(0x07d8, 0x1000FFFF);
 	udelay(2000);
@@ -348,7 +351,7 @@ void Xe_pSetup(struct XenosDevice *xe, u32 buffer_base, u32 buffer_size, const u
 	w32(0x3214, 7);
 	w32(0x3294, 1);
 	w32(0x3408, 0x800);
-	Xe_pInit0(xe, buffer_base, buffer_size);
+	Xe_pResetCP(xe, buffer_base, buffer_size);
 	Xe_pWaitReady(xe);
 }
 
@@ -363,7 +366,7 @@ void Xe_pMasterInit(struct XenosDevice *xe, u32 buffer_base)
 	Xe_pSetup(xe, buffer_base, 0xC, xenos_ucode0, xenos_ucode1);
 
 	w32(0x07d4, 0);
-	w32(0x07d4, 1);
+    w32(0x07d4, 1);
 
 	w32(0x2054, 0x1E);
 	w32(0x2154, 0x1E);
@@ -637,7 +640,8 @@ void Xe_pUploadShaderConstants(struct XenosDevice *xe, struct XenosShader *s)
 		
 		constants += 16;
 
-		int size = *(u32*)constants; constants += 4;
+//		int size = *(u32*)constants;
+		constants += 4;
 		
 //		printf("uploading shader constants..\n");
 
@@ -759,7 +763,9 @@ void Xe_pUnlock(struct XenosDevice *xe, struct XenosLock *lock)
 
 void Xe_pLock(struct XenosDevice *xe, struct XenosLock *lock, void *addr, u32 phys, int size, int flags)
 {
-	if (!flags)
+	size=(size+4095)&~4095;
+    
+        if (!flags)
 		Xe_Fatal(xe, "flags=0");
 	if (lock->start)
 		Xe_Fatal(xe, "locked twice");
@@ -799,7 +805,7 @@ void Xe_ShaderApplyVFetchPatches(struct XenosDevice *xe, struct XenosShader *sh,
 	struct XenosShaderData *data = sh->shader + hdr->off_shader;
 	
 	void *shader_code = sh->shader_instance[index];
-	u32 *c = (u32*)(data + 1);
+	u32 *c = &data->unk1[2];
 	int skip = *c++;
 	int num_vfetch = *c;
 	++c;
@@ -934,7 +940,6 @@ void Xe_InstantiateShader(struct XenosDevice *xe, struct XenosShader *sh, unsign
 	void *shader_code = sh->shader + data->sh_off + hdr->offset;
 	
 	sh->shader_phys_size = data->sh_size;
-	printf("allocating %d bytes\n", data->sh_size);
 	void *p = Xe_pAlloc(xe, &sh->shader_phys[index], data->sh_size, 0x100);
 	memcpy(p, shader_code, data->sh_size);
 	Xe_pSyncToDevice(xe, p, data->sh_size);
@@ -951,52 +956,43 @@ int Xe_GetShaderLength(struct XenosDevice *xe, void *sh)
 void Xe_Init(struct XenosDevice *xe)
 {
 	memset(xe, 0, sizeof(*xe));
-	xe->regs = (void*)0xec800000;
-	xe->rb = xe->rb_primary = (void*)(RINGBUFFER_BASE | 0x80000000);
-	
-	xe->tex_fb.ptr = r32(0x6110);
-	xe->tex_fb.pitch = r32(0x6120) * 4;
-	xe->tex_fb.width = r32(0x6134);
-	xe->tex_fb.height = r32(0x6138);
-	xe->tex_fb.bypp = 4;
-	xe->tex_fb.base = (void*)(long)xe->tex_fb.ptr;
-	xe->tex_fb.format = XE_FMT_BGRA | XE_FMT_8888;
-	xe->tex_fb.tiled = 1;
-	
-	printf("Framebuffer %d x %d @ %08x\n", xe->tex_fb.width, xe->tex_fb.height, xe->tex_fb.ptr);
 
-#if 0
-	time_t t = time(0);
-	while (t == time(0));
-	t = time(0) + 10;
-	int nr = 0;
-	while (t > time(0))
-	{
-		memcpy(rb, rb + RINGBUFFER_SIZE / 2, RINGBUFFER_SIZE / 2);
-		++nr;
-	}
+	xe->regs = (void*)0xec800000;
+
+	xe->default_fb.ptr = r32(0x6110);
+	xe->default_fb.wpitch = r32(0x6120) * 4;
+	xe->default_fb.width = r32(0x6134);
+	xe->default_fb.height = r32(0x6138);
+	xe->default_fb.bypp = 4;
+	xe->default_fb.base = (void*)(long)xe->default_fb.ptr;
+	xe->default_fb.format = XE_FMT_BGRA | XE_FMT_8888;
+	xe->default_fb.tiled = 1;
+    
+    xe->tex_fb=xe->default_fb;
 	
-	printf("%d kB/s (%d)\n", nr * (RINGBUFFER_SIZE/1024)/2 / 10, nr);
-	return 0;
-#endif
+	printf("[xe] Framebuffer %d x %d @ %08x\n", xe->tex_fb.width, xe->tex_fb.height, xe->tex_fb.ptr);
+
+	u32 rb_phys=0;
+	xe->rb = Xe_pAlloc(xe,&rb_phys,WRITEBACK_ZONE_SIZE,WRITEBACK_ZONE_SIZE);
 
 	u32 rb_primary_phys = Xe_pRBAlloc(xe);
 
-//	memset((void*)xe->rb, 0xCC, RINGBUFFER_SIZE);
-
 	Xe_pMasterInit(xe, rb_primary_phys);
-	Xe_pEnableWriteback(xe, RINGBUFFER_BASE + RPTR_WRITEBACK, 6);
+	Xe_pEnableWriteback(xe, rb_phys + RPTR_WRITEBACK, 6);
 	
 	Xe_pSyncFromDevice(xe, xe->rb + RPTR_WRITEBACK, 4);
 	
-	Xe_pWriteReg(xe, 0x0774, RINGBUFFER_BASE + SCRATCH_WRITEBACK);
+	Xe_pWriteReg(xe, 0x0774, rb_phys + SCRATCH_WRITEBACK);
 	Xe_pWriteReg(xe, 0x0770, 0x20033);
 
 	Xe_pWriteReg(xe, 0x15e0, 0x1234567);
 	
 	Xe_pGInit(xe);
 
-	Xe_pInvalidateGpuCache(xe, RINGBUFFER_BASE, RINGBUFFER_SIZE);
+	Xe_pInvalidateGpuCache(xe, 0, 0x20000000); // whole DRAM
+	
+	xe->clear_color=0; // color clear: black
+	xe->clear_stencil_z=0xffffff00; // zbuffer / stencil clear: z to -1, stencil to 0
 }
 
 void Xe_SetRenderTarget(struct XenosDevice *xe, struct XenosSurface *rt)
@@ -1039,23 +1035,57 @@ void Xe_pSetEDRAMLayout(struct XenosDevice *xe)
 		rput32(xe->edram_depthbase | (0<<16) ); // depth info, float Z
 }
 
+void Xe_pSetClearValues(struct XenosDevice *xe)
+{
+	Xe_pWriteReg(xe, 0x8c74, xe->clear_stencil_z);
+	
+	unsigned int clearv[2];
+	
+	switch (xe->edram_colorformat)
+	{
+		case 0:
+		case 1:
+			clearv[0] = clearv[1] = xe->clear_color;
+			break;
+		case 4:
+		case 5:
+			clearv[0]  = (xe->clear_color & 0xFF000000);
+			clearv[0] |= (xe->clear_color & 0x00FF0000)>>8;
+			clearv[0] >>= 1;
+			clearv[0] |= (clearv[0] >> 8) & 0x00FF00FF;
+			clearv[1]  = (xe->clear_color & 0x0000FF00)<<16;
+			clearv[1] |= (xe->clear_color & 0x000000FF)<<8;
+			clearv[1] >>= 1;
+			clearv[1] |= (clearv[1] >> 8) & 0x00FF00FF;
+			break;
+		default:
+			clearv[0] = clearv[1] = 0;
+	}
+	
+	Xe_pWriteReg(xe, 0x8c78, clearv[0]);
+	Xe_pWriteReg(xe, 0x8c7c, clearv[1]);
+}
+
 void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int source, int clear)
 {
 	Xe_pSetSurfaceClip(xe, 0, 0, 0, 0, surface->width, surface->height);
 	
 	Xe_VBBegin(xe, 2);
 	float vbdata[] = 
-		{-.5, -.5, /* never ever dare to mess with these values. NO, you can not resolve arbitrary areas or even shapes. */
+	{
+		-.5, -.5, /* never ever dare to mess with these values. NO, you can not resolve arbitrary areas or even shapes. */
 		 surface->width - .5,
 		 0,
 		 surface->width - .5,
 		 surface->height - .5
-		};
+	};
+	
 	Xe_VBPut(xe, vbdata, sizeof(vbdata) / 4);
 	struct XenosVertexBuffer *vb = Xe_VBEnd(xe);
 	Xe_VBPoolAdd(xe, vb);
 
 	Xe_pSetEDRAMLayout(xe);
+
 	rput32(0x00002104); 
 		rput32(0x0000000f); // colormask 
 	rput32(0x0005210f); 
@@ -1067,9 +1097,9 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 	int pitch;
 	switch (surface->format & XE_FMT_MASK)
 	{
-	case XE_FMT_8888: pitch = surface->pitch / 4; break;
-	case XE_FMT_16161616: pitch = surface->pitch / 8; break;
-	default: Xe_Fatal(xe, "unsupported resolve target format");
+		case XE_FMT_8888: pitch = surface->wpitch / 4; break;
+		case XE_FMT_16161616: pitch = surface->wpitch / 8; break;
+		default: Xe_Fatal(xe, "unsupported resolve target format");
 	}
 	rput32(0x00032318); 
 		rput32(0x00100000 | (msaavals[xe->msaa_samples]<<4) | (clear << 8) | source ); // 300 = color,depth clear enabled!
@@ -1077,36 +1107,21 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 		rput32(xy32(pitch, surface->height));
 		rput32(0x01000000 | ((surface->format&XE_FMT_MASK)<<7) | ((surface->format&~XE_FMT_MASK)>>6));
 
-	Xe_pWriteReg(xe, 0x8c74, 0xffffff00); // zbuffer / stencil clear: z to -1, stencil to 0
+	Xe_pSetClearValues(xe);
+		
+	// edram copy
 	
-	unsigned int clearv[2];
+	rput32(0x00002208); rput32(0x00000006);
+	rput32(0x00002208); rput32((clear&XE_CLEAR_COLOR || surface->base)?6:5);
+	rput32(0x00002200); rput32(0x8777);
+	rput32(0x000005c8); rput32(0x00020000);
 	
-	switch (xe->edram_colorformat)
-	{
-	case 0:
-	case 1:
-		clearv[0] = clearv[1] = xe->clearcolor;
-		break;
-	case 4:
-	case 5:
-		clearv[0]  = (xe->clearcolor & 0xFF000000);
-		clearv[0] |= (xe->clearcolor & 0x00FF0000)>>8;
-		clearv[0] >>= 1;
-		clearv[0] |= (clearv[0] >> 8) & 0x00FF00FF;
-		clearv[1]  = (xe->clearcolor & 0x0000FF00)<<16;
-		clearv[1] |= (xe->clearcolor & 0x000000FF)<<8;
-		clearv[1] >>= 1;
-		clearv[1] |= (clearv[1] >> 8) & 0x00FF00FF;
-		break;
-	default:
-		clearv[0] = clearv[1] = 0;
-	}
+	// invalidate state
 	
-	Xe_pWriteReg(xe, 0x8c78, clearv[0]);
-	Xe_pWriteReg(xe, 0x8c7c, clearv[1]);
-
 	rput32(0xc0003b00); rput32(0x00000100);
 
+	// load a shader
+	
 	rput32(0xc0102b00); rput32(0x00000000);
 		rput32(0x0000000f); 
 
@@ -1117,17 +1132,9 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 		rput32(0x00000000); rput32(0x00000000); rput32(0x00000000);
 
 	rput32(0x00012180); rput32(0x00010002); rput32(0x00000000); 
-	if (surface->ptr)
-	{
-		rput32(0x00002208); rput32(0x00000006);
-	} else
-	{
-		rput32(0x00002208); rput32(0x00000005);
-	}
 
-	rput32(0x00002200); rput32(0x8777);
-
-	rput32(0x000005c8); rput32(0x00020000);
+	// prepare draw edram FB to real dram FB
+	
 	rput32(0x00002203); rput32(0x00000000);
 	rput32(0x00022100); rput32(0x0000ffff); rput32(0x00000000); rput32(0x00000000); 
 	rput32(0x00022204); rput32(0x00010000); rput32(0x00010000); rput32(0x00000300); 
@@ -1137,47 +1144,37 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 	rput32(0x00054800); rput32((vb->phys_base) | 3); rput32(0x1000001a); rput32(0x00000000); rput32(0x00000000); rput32(0x00000000); rput32(0x00000000);
 
 	rput32(0x00025000); rput32(0x00000000); rput32(0x00000000); rput32(0x00000000);
- 
-	rput32(0xc0003600); rput32(0x00030088); 
 
+	// draw command
+	
+	rput32(0xc0003600); rput32(0x00030088); 
 	rput32(0xc0004600); rput32(0x00000006); 
 	rput32(0x00002007); rput32(0x00000000); 
-	Xe_pInvalidateGpuCacheAll(xe, surface->ptr, surface->pitch * surface->height);
+	
+	// flush dram FB
+	
+	Xe_pInvalidateGpuCacheAll(xe, surface->ptr, surface->wpitch * surface->height);
 
+	// cleanup
+	
 	rput32(0x0000057e); rput32(0x00010001); 
 	rput32(0x00002318); rput32(0x00000000);
 	rput32(0x0000231b); rput32(0x00000000);
 
-#if 0
-	rput32(0x00001844); rput32(surface->ptr); 
-	rput32(0xc0022100); rput32(0x00001841); rput32(0xfffff8ff); rput32(0x00000000);
-	rput32(0x00001930); rput32(0x00000000);
-	rput32(0xc0003b00); rput32(0x00007fff);
-#endif
-
-#if 0
-	rput32(0xc0025800); rput32(0x00000003); // event zeugs
-		rput32(0x1fc4e006); rput32(0xbfb75313);
-	rput32(0xc0025800); rput32(0x00000003);
-		rput32(0x1fc4e002); rput32(0x000286d1);
-#endif
-
-	xe->dirty |= DIRTY_MISC;
+	xe->dirty = ~0;
 }
 
 void Xe_Clear(struct XenosDevice *xe, int flags)
 {
 	struct XenosSurface surface = *xe->rt;
-	surface.ptr = 0;
+	surface.base = NULL;
 	
 	Xe_ResolveInto(xe, &surface, 0, flags);
 }
 
 void Xe_Resolve(struct XenosDevice *xe)
 {
-	struct XenosSurface *surface = xe->rt;
-	
-	Xe_ResolveInto(xe, surface, XE_SOURCE_COLOR, XE_CLEAR_COLOR|XE_CLEAR_DS);
+	Xe_ResolveInto(xe, xe->rt, XE_SOURCE_COLOR, XE_CLEAR_COLOR|XE_CLEAR_DS);
 }
 
 
@@ -1244,15 +1241,38 @@ void Xe_pStuff(struct XenosDevice *xe)
 void Xe_Fatal(struct XenosDevice *xe, const char *fmt, ...)
 {
 	va_list arg;
-	va_start(arg, fmt);
+	printf("[xe] Fatal error: ");
+    va_start(arg, fmt);
 	vprintf(fmt, arg);
 	va_end(arg);
+	printf("\n");
 	abort();
 }
 
 struct XenosSurface *Xe_GetFramebufferSurface(struct XenosDevice *xe)
 {
 	return &xe->tex_fb;
+}
+
+void Xe_SetFrameBufferSurface(struct XenosDevice *xe, struct XenosSurface *fb)
+{
+	if(!fb->tiled)
+        Xe_Fatal(xe, "new framebuffer surface should be tiled.\n");
+
+	if(fb->bypp!=4)
+        Xe_Fatal(xe, "new framebuffer surface format should be 32bit (BGRA8888).\n");
+    
+    w32(0x6110,fb->ptr);
+	w32(0x6120,fb->wpitch/4);
+    w32(0x6134,fb->width);
+    w32(0x6138,fb->height);
+
+    xe->tex_fb.ptr = r32(0x6110);
+	xe->tex_fb.wpitch = r32(0x6120) * 4;
+	xe->tex_fb.width = r32(0x6134);
+	xe->tex_fb.height = r32(0x6138);
+	xe->tex_fb.bypp = 4;
+	xe->tex_fb.base = (void*)(long)xe->tex_fb.ptr;
 }
 
 void Xe_Execute(struct XenosDevice *xe)
@@ -1610,6 +1630,30 @@ void Xe_SetStencilWriteMask(struct XenosDevice *xe, int bfff, int writemask)
 	xe->dirty |= DIRTY_MISC;
 }
 
+void Xe_SetScissor(struct XenosDevice *xe, int enable, int left, int top, int right, int bottom)
+{
+	xe->scissor_enable=enable;
+	if (left>=0) xe->scissor_ltrb[0]=left;
+	if (top>=0) xe->scissor_ltrb[1]=top;
+	if (right>=0) xe->scissor_ltrb[2]=right;
+	if (bottom>=0) xe->scissor_ltrb[3]=bottom;
+	xe->dirty |= DIRTY_MISC;
+}
+
+void Xe_SetClipPlaneEnables(struct XenosDevice *xe, int enables)
+{
+	xe->controlpacket[4] &= ~0x3f;
+	xe->controlpacket[4] |= enables&0x3f;
+	xe->dirty |= DIRTY_CONTROL;
+}
+
+void Xe_SetClipPlane(struct XenosDevice *xe, int idx, float * plane)
+{
+	assert(idx>=0 && idx<6);
+	memcpy(&xe->clipplane[idx*4],plane,4*4);
+	xe->dirty |= DIRTY_CLIP;
+}
+
 void Xe_InvalidateState(struct XenosDevice *xe)
 {
 	xe->dirty = ~0;
@@ -1665,9 +1709,13 @@ void Xe_pSetState(struct XenosDevice *xe)
 	if (xe->dirty & DIRTY_INTEGER)
 		Xe_pUploadIntegerConstants(xe);
 
-//	if (xe->dirty & DIRTY_MISC)
+	if (xe->dirty & DIRTY_MISC)
 	{
-		Xe_pSetSurfaceClip(xe, 0, 0, 0, 0, xe->vp_xres, xe->vp_yres);
+		if (xe->scissor_enable)
+			Xe_pSetSurfaceClip(xe, 0, 0, xe->scissor_ltrb[0], xe->scissor_ltrb[1], xe->scissor_ltrb[2], xe->scissor_ltrb[3]);
+		else
+			Xe_pSetSurfaceClip(xe, 0, 0, 0, 0, xe->vp_xres, xe->vp_yres);
+		
 		Xe_pSetEDRAMLayout(xe);
 		rput32(0x0000200d);
 			rput32(0x00000000);
@@ -1700,7 +1748,7 @@ void Xe_pSetState(struct XenosDevice *xe)
 void Xe_SetTexture(struct XenosDevice *xe, int index, struct XenosSurface *tex)
 {
 	if (tex!=NULL)
-        TEXTURE_FETCH(xe->fetch_constants + index * 6, tex->ptr, tex->width - 1, tex->height - 1, tex->pitch, tex->tiled, tex->format, tex->ptr_mip, 2, tex->use_filtering, tex->u_addressing, tex->v_addressing);
+        TEXTURE_FETCH(xe->fetch_constants + index * 6, tex->ptr, tex->width - 1, tex->height - 1, tex->wpitch, tex->tiled, tex->format, tex->ptr_mip, 2, tex->use_filtering, tex->u_addressing, tex->v_addressing);
 	else
 		memset(xe->fetch_constants + index * 6,0,24);
 
@@ -1709,21 +1757,27 @@ void Xe_SetTexture(struct XenosDevice *xe, int index, struct XenosSurface *tex)
 
 void Xe_SetClearColor(struct XenosDevice *xe, u32 clearcolor)
 {
-	xe->clearcolor = clearcolor;
+	xe->clear_color = clearcolor;
 }
 
 struct XenosVertexBuffer *Xe_CreateVertexBuffer(struct XenosDevice *xe, int size)
 {
 	struct XenosVertexBuffer *vb = malloc(sizeof(struct XenosVertexBuffer));
 	memset(vb, 0, sizeof(struct XenosVertexBuffer));
-	printf("--- alloc new vb, at %p\n", vb);
+	printf("--- alloc new vb, at %p, size %d\n", vb, size);
 	vb->base = Xe_pAlloc(xe, &vb->phys_base, size, 0x1000);
 	vb->size = 0;
 	vb->space = size;
 	vb->next = 0;
 	vb->vertices = 0;
-	printf("alloc done, at %p %x\n", vb->base, vb->phys_base);
+//	printf("alloc done, at %p %x\n", vb->base, vb->phys_base);
 	return vb;
+}
+
+void Xe_DestroyVertexBuffer(struct XenosDevice *xe, struct XenosVertexBuffer *vb)
+{
+    Xe_pFree(xe,vb->base);
+    free(vb);
 }
 
 struct XenosVertexBuffer *Xe_VBPoolAlloc(struct XenosDevice *xe, int size)
@@ -1733,6 +1787,7 @@ struct XenosVertexBuffer *Xe_VBPoolAlloc(struct XenosDevice *xe, int size)
 	while (*vbp)
 	{
 		struct XenosVertexBuffer *vb = *vbp;
+//		printf("use %d %d\n",vb->space,size);
 		if (vb->space >= size)
 		{
 			*vbp = vb->next;
@@ -1780,9 +1835,11 @@ void Xe_VBPut(struct XenosDevice *xe, void *data, int len)
 	
 	while (len)
 	{
-		int remaining = xe->vb_current ? (xe->vb_current->space - xe->vb_current->size) : 0;
+		int remaining = xe->vb_current ? (xe->vb_current->space - xe->vb_current->size) / 4 : 0;
 		
 		remaining -= remaining % xe->vb_current_pitch;
+		
+//		printf("rem %d len %d\n",remaining,len);
 		
 		if (remaining > len)
 			remaining = len;
@@ -1790,13 +1847,13 @@ void Xe_VBPut(struct XenosDevice *xe, void *data, int len)
 		if (!remaining)
 		{
 			struct XenosVertexBuffer **n = xe->vb_head ? &xe->vb_current->next : &xe->vb_head;
-			xe->vb_current = Xe_VBPoolAlloc(xe, 0x10000);
+			xe->vb_current = Xe_VBPoolAlloc(xe, VBPOOL_NUM_TRIANGLES*3*xe->vb_current_pitch);
 			*n = xe->vb_current;
 			continue;
 		}
 		
-		memcpy(xe->vb_current->base + xe->vb_current->size * 4, data, remaining * 4);
-		xe->vb_current->size += remaining;
+		memcpy(xe->vb_current->base + xe->vb_current->size, data, remaining * 4);
+		xe->vb_current->size += remaining * 4;
 		xe->vb_current->vertices += remaining / xe->vb_current_pitch;
 		data += remaining * 4;
 		len -= remaining;
@@ -1810,8 +1867,8 @@ struct XenosVertexBuffer *Xe_VBEnd(struct XenosDevice *xe)
 	
 	while (xe->vb_head)
 	{
-		Xe_pSyncToDevice(xe, xe->vb_head->base, xe->vb_head->space * 4);
-		Xe_pInvalidateGpuCache(xe, xe->vb_head->phys_base, (xe->vb_head->space * 4) + 0x1000);
+		Xe_pSyncToDevice(xe, xe->vb_head->base, xe->vb_head->space);
+		Xe_pInvalidateGpuCache(xe, xe->vb_head->phys_base, xe->vb_head->space + 0x1000);
 		xe->vb_head = xe->vb_head->next;
 	}
 
@@ -1860,6 +1917,7 @@ int Xe_pCalcVtxCount(struct XenosDevice *xe, int primtype, int primcnt)
 	case XE_PRIMTYPE_TRIANGLESTRIP:  /* fall trough */
 	case XE_PRIMTYPE_TRIANGLEFAN: return 2 + primcnt;
 	case XE_PRIMTYPE_RECTLIST: return primcnt * 3; 
+	case XE_PRIMTYPE_QUADLIST: return primcnt * 4;
 	default:
 		Xe_Fatal(xe, "unknown primitive type");
 	}
@@ -1924,6 +1982,12 @@ struct XenosIndexBuffer *Xe_CreateIndexBuffer(struct XenosDevice *xe, int length
 	return ib;
 }
 
+void Xe_DestroyIndexBuffer(struct XenosDevice *xe, struct XenosIndexBuffer *ib)
+{
+    Xe_pFree(xe,ib->base);
+    free(ib);
+}
+
 void *Xe_VB_Lock(struct XenosDevice *xe, struct XenosVertexBuffer *vb, int offset, int size, int flags)
 {
 	Xe_pLock(xe, &vb->lock, vb->base + offset, vb->phys_base + offset, size, flags);
@@ -1971,6 +2035,34 @@ void Xe_SetPixelShaderConstantF(struct XenosDevice *xe, int start, const float *
 //	}
 }
 
+void Xe_SetVertexShaderConstantB(struct XenosDevice *xe, int index, int value)
+{
+    int bit=1<<(index&0x1f);
+    int block=index>>5;
+
+    if (value)
+        xe->integer_constants[block] |= bit;
+    else
+        xe->integer_constants[block] &= ~bit;
+
+    xe->dirty |= DIRTY_INTEGER;
+}
+
+void Xe_SetPixelShaderConstantB(struct XenosDevice *xe, int index, int value)
+{
+    index += 128;
+    
+    u32 bit=1<<(index&0x1f);
+    u32 block=index>>5;
+
+    if (value)
+        xe->integer_constants[block] |= bit;
+    else
+        xe->integer_constants[block] &= ~bit;
+
+    xe->dirty |= DIRTY_INTEGER;
+}
+
 struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width, unsigned int height, unsigned int levels, int format, int tiled)
 {
 	struct XenosSurface *surface = malloc(sizeof(struct XenosSurface));
@@ -1987,22 +2079,30 @@ struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width
 	}
 	assert(bypp);
 	
-	int pitch = (width * bypp + 127) &~127;
+	int wpitch = (width * bypp + 127) &~127;
+	int hpitch = (height + 31) &~31;
 	
 	surface->width = width;
 	surface->height = height;
-	surface->pitch = pitch;
+	surface->wpitch = wpitch;
+	surface->hpitch = hpitch;
 	surface->tiled = tiled;
 	surface->format = format;
 	surface->ptr_mip = 0;
 	surface->bypp = bypp;
-	surface->base = Xe_pAlloc(xe, &surface->ptr, height * pitch, 4096);
+    surface->base = Xe_pAlloc(xe, &surface->ptr, hpitch * wpitch, 4096);
 
     surface->use_filtering = 1;
     surface->u_addressing = XE_TEXADDR_WRAP;
     surface->v_addressing = XE_TEXADDR_WRAP;
 
 	return surface;
+}
+
+void Xe_DestroyTexture(struct XenosDevice *xe, struct XenosSurface *surface)
+{
+    Xe_pFree(xe,surface->base);
+    free(surface);
 }
 
 void *Xe_Surface_LockRect(struct XenosDevice *xe, struct XenosSurface *surface, int x, int y, int w, int h, int flags)
@@ -2019,8 +2119,14 @@ void *Xe_Surface_LockRect(struct XenosDevice *xe, struct XenosSurface *surface, 
 	if (!h)
 		h = surface->height;
 
-	int offset = y * surface->pitch + x * surface->bypp;
-	int size = h * surface->pitch;
+	int offset = y * surface->wpitch + x * surface->bypp;
+	int size = h * surface->wpitch;
+    
+    if (surface->height != surface->hpitch) {
+        //TODO: find a better way to handle this
+        offset = 0;
+        size = surface->hpitch * surface->wpitch;
+    }
 
 	Xe_pLock(xe, &surface->lock, surface->base + offset, surface->ptr + offset, size, flags);
 	return surface->base + offset;

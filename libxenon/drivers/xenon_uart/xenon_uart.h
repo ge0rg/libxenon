@@ -8,7 +8,9 @@ extern "C" {
 void putch(unsigned char c);
 int kbhit(void);
 int getch(void);
+void uart_puts(unsigned char *s);
 
+extern int crash_dumped;
 #ifdef __cplusplus
 };
 #endif

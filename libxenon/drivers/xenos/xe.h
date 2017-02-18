@@ -16,8 +16,8 @@ extern "C" {
 #define XE_PRIMTYPE_LINELIST 2
 #define XE_PRIMTYPE_LINESTRIP 3
 #define XE_PRIMTYPE_TRIANGLELIST 4
-#define XE_PRIMTYPE_TRIANGLESTRIP 5
-#define XE_PRIMTYPE_TRIANGLEFAN 6
+#define XE_PRIMTYPE_TRIANGLEFAN 5
+#define XE_PRIMTYPE_TRIANGLESTRIP 6
 #define XE_PRIMTYPE_RECTLIST 8
 #define XE_PRIMTYPE_QUADLIST 13
 
@@ -74,6 +74,18 @@ extern "C" {
 #define XE_TEXADDR_BORDER                 6
 #define XE_TEXADDR_MIRRORONCE_BORDER      7
 
+#define XE_CLIP_ENABLE_PLANE0  0x0001
+#define XE_CLIP_ENABLE_PLANE1  0x0002
+#define XE_CLIP_ENABLE_PLANE2  0x0004
+#define XE_CLIP_ENABLE_PLANE3  0x0008
+#define XE_CLIP_ENABLE_PLANE4  0x0010
+#define XE_CLIP_ENABLE_PLANE5  0x0020
+#define XE_CLIP_MASTER_DISABLE 0x10000
+	
+#define XE_FILL_POINT 0x01
+#define XE_FILL_WIREFRAME 0x25
+#define XE_FILL_SOLID 0x00
+
 struct XenosLock
 {
 	void *start;
@@ -83,6 +95,8 @@ struct XenosLock
 };
 
 #define XE_SHADER_MAX_INSTANCES 16
+
+#pragma pack(push,1)
 
 struct XenosShader
 {
@@ -99,22 +113,27 @@ struct XenosShaderHeader
 	u32 magic;
 	u32 offset;
 	
-	u32 _[3];
+	u32 unk1[3];
 
 	u32 off_constants, off_shader;
+
+	u32 unk2[2];
 };
 
 struct XenosShaderData
 {
 	u32 sh_off, sh_size;
 	u32 program_control, context_misc;
-	u32 _[2];
+	
+	u32 unk1[4];
 };
 
 struct XenosShaderVertex
 {
 	u32 cnt0, cnt_vfetch, cnt2;
 };
+
+#pragma pack(pop)
 
 #define SWIZZLE_XYZW 0x688
 #define SWIZZLE_XYZ1 0xA88 // 101 010 001 000
@@ -179,7 +198,7 @@ struct XenosVBFFormat
 
 struct XenosSurface
 {
-	int width, height, pitch, tiled, format;
+	int width, height, wpitch, hpitch, tiled, format;
 	u32 ptr, ptr_mip;
 	int bypp;
 
@@ -226,6 +245,7 @@ struct XenosDevice
 	u32 fetch_dirty; /* 3 * 2 per bit */
 
 	float clipplane[6*4];
+	
 	u32 integer_constants[10*4];
 	u32 controlpacket[9], stencildata[2];
 	unsigned int alpharef; // should be moved into state
@@ -251,15 +271,16 @@ struct XenosDevice
 	volatile unsigned int *regs;
 
 	struct XenosSurface tex_fb;
+	struct XenosSurface default_fb;
 	
 	struct XenosSurface *rt;
-	int alloc_ptr;
 	int last_wptr;
 	
 	int vp_xres, vp_yres;
 	int frameidx;
 	
-	u32 clearcolor;
+	u32 clear_color;
+	u32 clear_stencil_z;
 	int msaa_samples;
 
 	struct XenosVertexBuffer *vb_current, *vb_head;
@@ -273,6 +294,9 @@ struct XenosDevice
 	struct XenosVertexBuffer *current_vb;
 	
 	int edram_colorformat, edram_depthbase, edram_color0base, edram_hizpitch, edram_pitch;
+	
+	int scissor_enable;
+	int scissor_ltrb[4];
 };
 
 void Xe_Init(struct XenosDevice *xe);
@@ -293,6 +317,7 @@ void Xe_ResolveInto(struct XenosDevice *xe, struct XenosSurface *surface, int so
 	   (reason: resolve cannot handle arbitrary shapes) */
 void Xe_Clear(struct XenosDevice *xe, int flags);
 struct XenosSurface *Xe_GetFramebufferSurface(struct XenosDevice *xe);
+void Xe_SetFrameBufferSurface(struct XenosDevice *xe, struct XenosSurface *fb);
 
 void Xe_Execute(struct XenosDevice *xe);
 void Xe_Sync(struct XenosDevice *xe);
@@ -324,6 +349,7 @@ void Xe_SetCullMode(struct XenosDevice *xe, unsigned int cullmode);
 void Xe_SetAlphaTestEnable(struct XenosDevice *xe, int enable);
 void Xe_SetAlphaFunc(struct XenosDevice *xe, unsigned int func);
 void Xe_SetAlphaRef(struct XenosDevice *xe, float alpharef);
+void Xe_SetScissor(struct XenosDevice *xe, int enable, int left, int top, int right, int bottom);
 
 	/* bfff is a bitfield {backface,frontface} */
 void Xe_SetStencilEnable(struct XenosDevice *xe, unsigned int enable);
@@ -335,6 +361,9 @@ void Xe_SetStencilOp(struct XenosDevice *xe, int bfff, int fail, int zfail, int 
 void Xe_SetStencilRef(struct XenosDevice *xe, int bfff, int ref);
 void Xe_SetStencilMask(struct XenosDevice *xe, int bfff, int mask);
 void Xe_SetStencilWriteMask(struct XenosDevice *xe, int bfff, int writemask);
+
+void Xe_SetClipPlaneEnables(struct XenosDevice *xe, int enables); // enables is a set of 1<<plane_index
+void Xe_SetClipPlane(struct XenosDevice *xe, int idx, float * plane);
 
 void Xe_InvalidateState(struct XenosDevice *xe);
 void Xe_SetShader(struct XenosDevice *xe, int type, struct XenosShader *sh, int instance);
@@ -356,7 +385,10 @@ void Xe_DrawPrimitive(struct XenosDevice *xe, int type, int start, int primitive
 void Xe_SetStreamSource(struct XenosDevice *xe, int index, struct XenosVertexBuffer *vb, int offset, int stride);
 
 struct XenosIndexBuffer *Xe_CreateIndexBuffer(struct XenosDevice *xe, int length, int format);
+void Xe_DestroyIndexBuffer(struct XenosDevice *xe, struct XenosIndexBuffer *ib);
+
 struct XenosVertexBuffer *Xe_CreateVertexBuffer(struct XenosDevice *xe, int length);
+void Xe_DestroyVertexBuffer(struct XenosDevice *xe, struct XenosVertexBuffer *vb);
 
 #define XE_LOCK_READ 1
 #define XE_LOCK_WRITE 2
@@ -370,7 +402,11 @@ void Xe_IB_Unlock(struct XenosDevice *xe, struct XenosIndexBuffer *ib);
 void Xe_SetVertexShaderConstantF(struct XenosDevice *xe, int start, const float *data, int count); /* count = number of 4 floats */
 void Xe_SetPixelShaderConstantF(struct XenosDevice *xe, int start, const float *data, int count); /* count = number of 4 floats */
 
+void Xe_SetVertexShaderConstantB(struct XenosDevice *xe, int index, int value);
+void Xe_SetPixelShaderConstantB(struct XenosDevice *xe, int index, int value);
+
 struct XenosSurface *Xe_CreateTexture(struct XenosDevice *xe, unsigned int width, unsigned int height, unsigned int levels, int format, int tiled);
+void Xe_DestroyTexture(struct XenosDevice *xe, struct XenosSurface *surface);
 void *Xe_Surface_LockRect(struct XenosDevice *xe, struct XenosSurface *surface, int x, int y, int w, int h, int flags);
 void Xe_Surface_Unlock(struct XenosDevice *xe, struct XenosSurface *surface);
 

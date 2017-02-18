@@ -1,7 +1,7 @@
 #ifndef __XETYPES_H__
 #define __XETYPES_H__
 
-//#include <stdbool.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -41,7 +41,7 @@ typedef double f64;
 typedef volatile float vf32;
 typedef volatile double vf64;
 /*+----------------------------------------------------------------------------------------------+*/
-
+typedef unsigned long long lba_t;
 
 typedef unsigned int BOOL;
 /*+----------------------------------------------------------------------------------------------+*/
@@ -73,6 +73,15 @@ typedef unsigned int BOOL;
 #endif /* BYTE_ORDER */
 /*+----------------------------------------------------------------------------------------------+*/
 
+struct __argv {
+	int magic;	// magic value to indicate a valid struct
+	int argc;	// count of arguments passed
+	char **argv;	// pointer array containing arguments
+};
+
+extern struct __argv * __system_argv;
+
+#define ARGV_MAGIC 0x5f617267
 
 #ifdef __cplusplus
    }
